@@ -16,32 +16,26 @@ def clear_holdings(username: str = "testuser"):
         print(f"Users file not found: {users_file}")
         return
 
-    # Load users data
+    # Load users data (new structure: dict of users, not array)
     with open(users_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
+        users = json.load(f)
 
-    # Find user
-    user_found = False
-    for user in data.get("users", []):
-        if user.get("username") == username:
-            user_found = True
-            holdings_count = len(user.get("portfolio", {}).get("holdings", []))
-
-            # Clear holdings
-            if "portfolio" not in user:
-                user["portfolio"] = {}
-            user["portfolio"]["holdings"] = []
-
-            print(f"Cleared {holdings_count} holdings from user '{username}'")
-            break
-
-    if not user_found:
+    # Find user in dict
+    if username not in users:
         print(f"User '{username}' not found")
         return
 
+    user = users[username]
+    holdings_count = len(user.get("holdings", []))
+
+    # Clear holdings
+    user["holdings"] = []
+
+    print(f"Cleared {holdings_count} holdings from user '{username}'")
+
     # Save updated data
     with open(users_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+        json.dump(users, f, indent=2, ensure_ascii=False)
 
     print(f"Saved to {users_file}")
 
