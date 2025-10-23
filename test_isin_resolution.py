@@ -51,13 +51,13 @@ async def test_isin_resolution():
     print("\n\n2. Testing price fetching:")
     print("-" * 60)
 
-    settings = Settings()
-    async with FinnhubService(settings.FINNHUB_API_KEY) as fh:
-        for isin in test_isins:
-            ticker = isin_mapper.resolve_isin(isin)
-            if ticker:
-                try:
-                    quote = await fh.get_quote(ticker)
+    fh = FinnhubService()
+    for isin in test_isins:
+        ticker = isin_mapper.resolve_isin(isin)
+        if ticker:
+            try:
+                quote = await fh.get_quote(ticker)
+                if quote:
                     current_price = quote.get("c", 0)
                     change = quote.get("d", 0)
                     change_pct = quote.get("dp", 0)
@@ -65,8 +65,10 @@ async def test_isin_resolution():
                     print(f"\n  {ticker}:")
                     print(f"    Price: ${current_price:.2f}")
                     print(f"    Change: ${change:.2f} ({change_pct:.2f}%)")
-                except Exception as e:
-                    print(f"\n  {ticker}: Error - {e}")
+                else:
+                    print(f"\n  {ticker}: No quote data available")
+            except Exception as e:
+                print(f"\n  {ticker}: Error - {e}")
 
     print("\n" + "=" * 60)
     print("Test complete!")
