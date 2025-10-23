@@ -2,7 +2,11 @@
 
 import re
 from datetime import datetime
-from typing import Optional, Dict, Any, List
+from typing import Any
+
+ISIN_LENGTH = 12
+MAX_SYMBOL_LENGTH = 20
+CURRENCY_CODE_LENGTH = 3
 
 
 def validate_isin(isin: str) -> bool:
@@ -18,7 +22,7 @@ def validate_isin(isin: str) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    if not isin or len(isin) != 12:
+    if not isin or len(isin) != ISIN_LENGTH:
         return False
 
     # First two characters must be letters (country code)
@@ -26,10 +30,7 @@ def validate_isin(isin: str) -> bool:
         return False
 
     # Last 10 characters must be alphanumeric
-    if not isin[2:].isalnum():
-        return False
-
-    return True
+    return isin[2:].isalnum()
 
 
 def validate_date(date_str: str, date_format: str = "%Y-%m-%d") -> bool:
@@ -61,7 +62,7 @@ def validate_amount(amount: float) -> bool:
         True if valid (positive number), False otherwise
     """
     try:
-        return isinstance(amount, (int, float)) and amount > 0
+        return isinstance(amount, int | float) and amount > 0
     except (ValueError, TypeError):
         return False
 
@@ -77,7 +78,7 @@ def validate_shares(shares: float) -> bool:
         True if valid (positive number), False otherwise
     """
     try:
-        return isinstance(shares, (int, float)) and shares > 0
+        return isinstance(shares, int | float) and shares > 0
     except (ValueError, TypeError):
         return False
 
@@ -95,7 +96,7 @@ def validate_order_type(order_type: str) -> bool:
     return order_type.lower() in ["buy", "sell"]
 
 
-def validate_order(order: Dict[str, Any]) -> tuple[bool, List[str]]:
+def validate_order(order: dict[str, Any]) -> tuple[bool, list[str]]:
     """
     Validate a complete order dictionary.
 
@@ -149,14 +150,10 @@ def validate_symbol(symbol: str) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    if not symbol or len(symbol) > 20:
+    if not symbol or len(symbol) > MAX_SYMBOL_LENGTH:
         return False
-
     # Allow alphanumeric, dots, and hyphens
-    if not re.match(r"^[A-Z0-9.-]+$", symbol.upper()):
-        return False
-
-    return True
+    return bool(re.match(r"^[A-Z0-9.-]+$", symbol.upper()))
 
 
 def validate_currency(currency: str) -> bool:
@@ -169,13 +166,13 @@ def validate_currency(currency: str) -> bool:
     Returns:
         True if valid, False otherwise
     """
-    if not currency or len(currency) != 3:
+    if not currency or len(currency) != CURRENCY_CODE_LENGTH:
         return False
 
     return currency.upper().isalpha()
 
 
-def sanitize_string(value: str, max_length: Optional[int] = None) -> str:
+def sanitize_string(value: str, max_length: int | None = None) -> str:
     """
     Sanitize string input.
 

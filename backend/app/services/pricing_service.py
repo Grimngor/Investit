@@ -1,7 +1,7 @@
 """Pricing service for retrieving market data and prices."""
 
-import aiohttp
-from typing import Optional, Dict, Any, List
+from typing import Any
+
 from app.services.finnhub import FinnhubService
 
 
@@ -12,7 +12,7 @@ class PricingService:
         """Initialize pricing service with Finnhub integration."""
         self.finnhub = FinnhubService()
 
-    async def fetch_portfolio_data(self, symbols: List[str]) -> Dict[str, Any]:
+    async def fetch_portfolio_data(self, symbols: list[str]) -> dict[str, Any]:
         """
         Fetch data for multiple symbols.
 
@@ -31,7 +31,7 @@ class PricingService:
 
         return results
 
-    async def fetch_symbol_details(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def fetch_symbol_details(self, symbol: str) -> dict[str, Any] | None:
         """
         Fetch detailed information for a symbol.
 

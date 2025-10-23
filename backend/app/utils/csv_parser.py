@@ -1,11 +1,11 @@
 """CSV parser for Spanish bank format order imports."""
 
 import csv
-from datetime import datetime
-from typing import List, Dict, Any, Tuple
-from io import StringIO
 import re
 import uuid
+from datetime import datetime
+from io import StringIO
+from typing import Any, ClassVar
 
 
 class CSVParseError(Exception):
@@ -26,11 +26,19 @@ class SpanishOrderCSVParser:
     - Note: Header 'Nº' may appear as 'NÂº' due to encoding issues
     """
 
-    EXPECTED_HEADERS = ["Fecha de la orden", "ISIN", "Importe estimado", "Nº de participaciones", "Estado"]
+    EXPECTED_HEADERS: ClassVar[list[str]] = [
+        "Fecha de la orden",
+        "ISIN",
+        "Importe estimado",
+        "Nº de participaciones",
+        "Estado",
+    ]
 
-    HEADER_VARIATIONS = {
+    HEADER_VARIATIONS: ClassVar[dict[str, list[str]]] = {
         "Nº de participaciones": ["Nº de participaciones", "NÂº de participaciones", "N° de participaciones"],
     }
+
+    ISIN_LENGTH: ClassVar[int] = 12
 
     def __init__(self, encoding: str = "utf-8"):
         """Initialize parser with encoding."""
@@ -62,8 +70,8 @@ class SpanishOrderCSVParser:
         try:
             dt = datetime.strptime(date_str, "%d/%m/%Y")
             return dt.strftime("%Y-%m-%d")
-        except ValueError:
-            raise CSVParseError(f"Row {row_num}: Invalid date format '{date_str}'. Expected DD/MM/YYYY")
+        except ValueError as exc:
+            raise CSVParseError(f"Row {row_num}: Invalid date format '{date_str}'. Expected DD/MM/YYYY") from exc
 
     def _parse_amount(self, amount_str: str, row_num: int) -> float:
         """
@@ -93,12 +101,8 @@ class SpanishOrderCSVParser:
             last_comma_pos = amount_str.rfind(",")
             last_dot_pos = amount_str.rfind(".")
 
-            if last_comma_pos > last_dot_pos:
-                # Spanish format: 1.234,56 (dot is thousands, comma is decimal)
-                amount_str = amount_str.replace(".", "").replace(",", ".")
-            else:
-                # US format: 1,234.56 (comma is thousands, dot is decimal)
-                amount_str = amount_str.replace(",", "")
+            # Spanish format: 1.234,56 (dot thousands, comma decimal) vs US 1,234.56
+            amount_str = amount_str.replace(".", "").replace(",", ".") if last_comma_pos > last_dot_pos else amount_str.replace(",", "")
         elif has_comma:
             # Only comma - assume it's decimal separator (Spanish format)
             amount_str = amount_str.replace(",", ".")
@@ -106,8 +110,8 @@ class SpanishOrderCSVParser:
 
         try:
             return float(amount_str)
-        except ValueError:
-            raise CSVParseError(f"Row {row_num}: Invalid amount format '{amount_str}'")
+        except ValueError as exc:
+            raise CSVParseError(f"Row {row_num}: Invalid amount format '{amount_str}'") from exc
 
     def _parse_shares(self, shares_str: str, row_num: int) -> float:
         """
@@ -133,10 +137,10 @@ class SpanishOrderCSVParser:
             if shares <= 0:
                 raise CSVParseError(f"Row {row_num}: Shares must be positive, got {shares}")
             return shares
-        except ValueError:
-            raise CSVParseError(f"Row {row_num}: Invalid shares format '{shares_str}'")
+        except ValueError as exc:
+            raise CSVParseError(f"Row {row_num}: Invalid shares format '{shares_str}'") from exc
 
-    def parse_csv(self, csv_content: str) -> Tuple[List[Dict[str, Any]], List[str]]:
+    def parse_csv(self, csv_content: str) -> tuple[list[dict[str, Any]], list[str]]:
         """
         Parse CSV content and return orders and errors.
 
@@ -197,7 +201,7 @@ class SpanishOrderCSVParser:
                     if not isin:
                         errors.append(f"Row {row_num}: Missing ISIN")
                         continue
-                    if len(isin) != 12:
+                    if len(isin) != self.ISIN_LENGTH:
                         errors.append(f"Row {row_num}: Invalid ISIN length '{isin}' (expected 12 characters)")
                         continue
 
@@ -229,7 +233,7 @@ class SpanishOrderCSVParser:
                         "order_type": order_type,
                         "status": estado or "Finalizada",
                         "notes": "",
-                        "created_at": datetime.now().isoformat()
+                        "created_at": datetime.now().isoformat(),
                     }
 
                     orders.append(order)
@@ -237,15 +241,15 @@ class SpanishOrderCSVParser:
                 except CSVParseError as e:
                     errors.append(str(e))
                 except Exception as e:
-                    errors.append(f"Row {row_num}: Unexpected error - {str(e)}")
+                    errors.append(f"Row {row_num}: Unexpected error - {e!s}")
 
         except Exception as e:
-            errors.append(f"CSV parsing error: {str(e)}")
+            errors.append(f"CSV parsing error: {e!s}")
 
         return orders, errors
 
 
-def parse_spanish_csv(csv_content: str, encoding: str = "utf-8") -> Tuple[List[Dict[str, Any]], List[str]]:
+def parse_spanish_csv(csv_content: str, encoding: str = "utf-8") -> tuple[list[dict[str, Any]], list[str]]:
     """
     Convenience function to parse Spanish bank CSV format.
 

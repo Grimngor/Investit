@@ -1,8 +1,9 @@
 """Debug router for API testing and diagnostics."""
 
 from fastapi import APIRouter
-from app.services.finnhub import FinnhubService
+
 from app.config import settings
+from app.services.finnhub import FinnhubService
 
 router = APIRouter(prefix="/debug", tags=["debug"])
 

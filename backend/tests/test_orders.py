@@ -1,14 +1,16 @@
 """Tests for orders router (CSV import and CRUD)."""
 
-import pytest
+import json
 import tempfile
 from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
-from app.main import app
-from app.models.persistence import save_user_data, get_all_users
-from app.services.auth import get_password_hash
+
 from app.config import settings
-import json
+from app.main import app
+from app.models.persistence import get_all_users, save_user_data
+from app.services.auth import get_password_hash
 
 client = TestClient(app)
 
@@ -50,7 +52,9 @@ def test_import_csv_success(auth_token):
     try:
         with open(tmp_path, "rb") as f:
             response = client.post(
-                "/api/orders/import-csv", files={"file": ("orders.csv", f, "text/csv")}, headers={"Authorization": f"Bearer {auth_token}"}
+                "/api/orders/import-csv",
+                files={"file": ("orders.csv", f, "text/csv")},
+                headers={"Authorization": f"Bearer {auth_token}"},
             )
 
         print(f"Response: {response.status_code}, {response.text}")
@@ -77,7 +81,9 @@ invalid_date,IE00B4L5Y983,500.00 EUR,5.0,Finalizada
     try:
         with open(tmp_path, "rb") as f:
             response = client.post(
-                "/api/orders/import-csv", files={"file": ("orders.csv", f, "text/csv")}, headers={"Authorization": f"Bearer {auth_token}"}
+                "/api/orders/import-csv",
+                files={"file": ("orders.csv", f, "text/csv")},
+                headers={"Authorization": f"Bearer {auth_token}"},
             )
 
         assert response.status_code == 200
@@ -96,7 +102,9 @@ def test_import_csv_not_csv_file(auth_token):
     try:
         with open(tmp_path, "rb") as f:
             response = client.post(
-                "/api/orders/import-csv", files={"file": ("orders.txt", f, "text/plain")}, headers={"Authorization": f"Bearer {auth_token}"}
+                "/api/orders/import-csv",
+                files={"file": ("orders.txt", f, "text/plain")},
+                headers={"Authorization": f"Bearer {auth_token}"},
             )
 
         assert response.status_code == 400
@@ -124,7 +132,10 @@ def test_import_csv_unauthorized():
 
 def test_get_orders_empty(auth_token):
     """Test getting orders when none exist."""
-    response = client.get("/api/orders/", headers={"Authorization": f"Bearer {auth_token}"})
+    response = client.get(
+        "/api/orders/",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -145,12 +156,19 @@ def test_get_orders_after_import(auth_token):
 
     try:
         with open(tmp_path, "rb") as f:
-            client.post("/api/orders/import-csv", files={"file": ("orders.csv", f, "text/csv")}, headers={"Authorization": f"Bearer {auth_token}"})
+            client.post(
+                "/api/orders/import-csv",
+                files={"file": ("orders.csv", f, "text/csv")},
+                headers={"Authorization": f"Bearer {auth_token}"},
+            )
     finally:
         tmp_path.unlink(missing_ok=True)
 
     # Now get orders
-    response = client.get("/api/orders/", headers={"Authorization": f"Bearer {auth_token}"})
+    response = client.get(
+        "/api/orders/",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -171,7 +189,11 @@ def test_get_order_by_id(auth_token):
 
     try:
         with open(tmp_path, "rb") as f:
-            import_response = client.post("/api/orders/import-csv", files={"file": ("orders.csv", f, "text/csv")}, headers={"Authorization": f"Bearer {auth_token}"})
+            client.post(
+                "/api/orders/import-csv",
+                files={"file": ("orders.csv", f, "text/csv")},
+                headers={"Authorization": f"Bearer {auth_token}"},
+            )
     finally:
         tmp_path.unlink(missing_ok=True)
 
@@ -179,11 +201,14 @@ def test_get_order_by_id(auth_token):
     orders_response = client.get("/api/orders/", headers={"Authorization": f"Bearer {auth_token}"})
     data = orders_response.json()
     assert data["total"] > 0
-    
+
     order_id = data["orders"][0]["id"]
-    
+
     # Get specific order by ID
-    response = client.get(f"/api/orders/{order_id}", headers={"Authorization": f"Bearer {auth_token}"})
+    response = client.get(
+        f"/api/orders/{order_id}",
+        headers={"Authorization": f"Bearer {auth_token}"},
+    )
 
     assert response.status_code == 200
     data = response.json()

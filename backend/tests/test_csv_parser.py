@@ -1,7 +1,6 @@
 """Tests for CSV parser utility."""
 
-import pytest
-from app.utils.csv_parser import SpanishOrderCSVParser, parse_spanish_csv, CSVParseError
+from app.utils.csv_parser import parse_spanish_csv
 
 
 def test_parse_valid_csv():

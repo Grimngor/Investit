@@ -1,10 +1,12 @@
 """Storage service with atomic writes and file locking for JSON data."""
 
 import json
+import os
 import tempfile
-from pathlib import Path
-from typing import Any, Dict
 from contextlib import contextmanager
+from pathlib import Path
+from typing import Any
+
 import portalocker
 
 
@@ -93,8 +95,6 @@ class StorageService:
                 f.write(json_content)
                 f.flush()
                 # Force write to disk (fsync)
-                import os
-
                 os.fsync(f.fileno())
 
             # Atomic rename (replaces existing file atomically)
@@ -137,10 +137,7 @@ class StorageService:
             with cls._lock_file(file_path, exclusive=True) as f:
                 # Read current data
                 content = f.read()
-                if content:
-                    data = json.loads(content.decode("utf-8"))
-                else:
-                    data = default if default is not None else {}
+                data = json.loads(content.decode("utf-8")) if content else (default if default is not None else {})
         else:
             # File doesn't exist, use default
             data = default if default is not None else {}
@@ -155,27 +152,27 @@ class StorageService:
 
 
 # Convenience functions for common operations
-def load_users() -> Dict[str, Any]:
+def load_users() -> dict[str, Any]:
     """Load users.json file."""
     from app.config import settings
 
     return StorageService.load_json(settings.DATA_DIR / "users.json", default={})
 
 
-def save_users(users: Dict[str, Any]) -> None:
+def save_users(users: dict[str, Any]) -> None:
     """Save users.json file."""
     from app.config import settings
 
     StorageService.save_json(settings.DATA_DIR / "users.json", users)
 
 
-def load_user_data(username: str) -> Dict[str, Any] | None:
+def load_user_data(username: str) -> dict[str, Any] | None:
     """Load specific user data."""
     users = load_users()
     return users.get(username)
 
 
-def save_user_data(username: str, user_data: Dict[str, Any]) -> None:
+def save_user_data(username: str, user_data: dict[str, Any]) -> None:
     """Save specific user data atomically."""
     from app.config import settings
 

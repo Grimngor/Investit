@@ -1,19 +1,28 @@
 """Portfolio router for managing investment portfolios."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from typing import List, Dict, Any, Optional, Tuple
 import datetime
-from app.models.portfolio import Portfolio, Investment, InvestmentCreate, InvestmentUpdate, PortfolioSummary
+
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from app.models.persistence import get_all_users, save_user_data
+from app.models.portfolio import (
+    Investment,
+    InvestmentCreate,
+    InvestmentUpdate,
+    Portfolio,
+    PortfolioSummary,
+)
 from app.models.user import User
 from app.services.auth import get_current_user
 from app.services.finnhub import FinnhubService
 from app.services.isin_mapper import get_isin_mapper
-from app.models.persistence import save_user_data, load_user_data, get_all_users
+
+ISIN_LENGTH = 12
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
 # Module-level throttle tracking
-_LAST_PORTFOLIO_FETCH: Dict[str, datetime.datetime] = {}
+_LAST_PORTFOLIO_FETCH: dict[str, datetime.datetime] = {}
 _THROTTLE_SECONDS = 30
 
 
@@ -29,7 +38,9 @@ def _should_refresh_prices(username: str) -> bool:
     return elapsed >= _THROTTLE_SECONDS
 
 
-async def get_current_price_for_symbol(original_symbol: str) -> Tuple[Optional[float], Optional[str]]:
+async def get_current_price_for_symbol(
+    original_symbol: str,
+) -> tuple[float | None, str | None]:
     """
     Get current price for a symbol, resolving ISIN if needed.
 
@@ -43,7 +54,7 @@ async def get_current_price_for_symbol(original_symbol: str) -> Tuple[Optional[f
     isin_mapper = get_isin_mapper()
 
     # Check if it's an ISIN (12 characters, starts with 2 letters)
-    is_isin = len(original_symbol) == 12 and original_symbol[:2].isalpha()
+    is_isin = len(original_symbol) == ISIN_LENGTH and original_symbol[:2].isalpha()
 
     if is_isin:
         # Try to resolve ISIN to ticker
@@ -81,7 +92,7 @@ async def get_portfolio(current_user: User = Depends(get_current_user)):
         print(f"Refreshing current prices for {len(symbols)} symbols: {symbols}")
 
         # Fetch prices for each symbol
-        symbol_prices: Dict[str, Tuple[Optional[float], Optional[str]]] = {}
+        symbol_prices: dict[str, tuple[float | None, str | None]] = {}
         for symbol in symbols:
             price, resolved_symbol = await get_current_price_for_symbol(symbol)
             if price:
@@ -102,9 +113,8 @@ async def get_portfolio(current_user: User = Depends(get_current_user)):
 
         # Update throttle timestamp
         _LAST_PORTFOLIO_FETCH[current_user.username] = datetime.datetime.now()
-    else:
-        if holdings:
-            print(f"Skipping price refresh (throttled) for {current_user.username}")
+    elif holdings:
+        print(f"Skipping price refresh (throttled) for {current_user.username}")
 
     # Convert holdings to Investment objects
     investments = []
@@ -153,7 +163,7 @@ async def add_investment(investment: InvestmentCreate, current_user: User = Depe
         "asset_type": investment.asset_type or "stock",
         "currency": investment.currency or "USD",
         "resolved_symbol": resolved_symbol,
-        "last_price_timestamp": datetime.datetime.now().isoformat() if current_price else None,
+        "last_price_timestamp": (datetime.datetime.now().isoformat() if current_price else None),
     }
 
     holdings.append(new_investment)
@@ -164,7 +174,11 @@ async def add_investment(investment: InvestmentCreate, current_user: User = Depe
 
 
 @router.put("/{investment_id}", response_model=Investment)
-async def update_investment(investment_id: int, investment: InvestmentUpdate, current_user: User = Depends(get_current_user)):
+async def update_investment(
+    investment_id: int,
+    investment: InvestmentUpdate,
+    current_user: User = Depends(get_current_user),
+):
     """Update an existing investment."""
     users = get_all_users()
     user_data = users.get(current_user.username, {})
@@ -176,7 +190,7 @@ async def update_investment(investment_id: int, investment: InvestmentUpdate, cu
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Investment not found")
 
     # Update fields
-    update_data = investment.dict(exclude_unset=True)
+    update_data = investment.model_dump(exclude_unset=True)
     holding.update(update_data)
 
     # Refresh price if symbol changed
@@ -208,8 +222,6 @@ async def delete_investment(investment_id: int, current_user: User = Depends(get
     user_data["holdings"] = holdings
     save_user_data(current_user.username, user_data)
 
-    return None
-
 
 @router.get("/summary", response_model=PortfolioSummary)
 async def get_portfolio_summary(current_user: User = Depends(get_current_user)):
@@ -221,5 +233,8 @@ async def get_portfolio_summary(current_user: User = Depends(get_current_user)):
     total_gain_loss = total_value - total_cost
 
     return PortfolioSummary(
-        total_investments=len(portfolio.holdings), total_cost=total_cost, total_value=total_value, total_gain_loss=total_gain_loss
+        total_investments=len(portfolio.holdings),
+        total_cost=total_cost,
+        total_value=total_value,
+        total_gain_loss=total_gain_loss,
     )

@@ -1,8 +1,6 @@
 """Order and related models for the investment tracking system."""
 
 from pydantic import BaseModel, Field
-from typing import Optional, List
-from datetime import date, datetime
 
 
 class Order(BaseModel):
@@ -12,16 +10,16 @@ class Order(BaseModel):
     Based on PRD Section 3: Order-based data model.
     """
 
-    id: Optional[str] = None
+    id: str | None = None
     date: str = Field(..., description="Order execution date in YYYY-MM-DD format")
     isin: str = Field(..., min_length=12, max_length=12, description="ISIN code (12 characters)")
-    ticker: Optional[str] = Field(None, description="Optional ticker symbol")
+    ticker: str | None = Field(None, description="Optional ticker symbol")
     amount_eur: float = Field(..., gt=0, description="Order amount in EUR")
     shares: float = Field(..., gt=0, description="Number of shares/units")
     order_type: str = Field("buy", description="Order type: buy or sell")
     status: str = Field("Finalizada", description="Order status: Finalizada or Rechazada")
     notes: str = Field("", description="Optional notes")
-    created_at: Optional[str] = None
+    created_at: str | None = None
 
 
 class OrderCreate(BaseModel):
@@ -29,7 +27,7 @@ class OrderCreate(BaseModel):
 
     date: str
     isin: str = Field(..., min_length=12, max_length=12)
-    ticker: Optional[str] = None
+    ticker: str | None = None
     amount_eur: float = Field(..., gt=0)
     shares: float = Field(..., gt=0)
     order_type: str = "buy"
@@ -40,14 +38,14 @@ class OrderCreate(BaseModel):
 class OrderUpdate(BaseModel):
     """Schema for updating an existing order."""
 
-    date: Optional[str] = None
-    isin: Optional[str] = None
-    ticker: Optional[str] = None
-    amount_eur: Optional[float] = None
-    shares: Optional[float] = None
-    order_type: Optional[str] = None
-    status: Optional[str] = None
-    notes: Optional[str] = None
+    date: str | None = None
+    isin: str | None = None
+    ticker: str | None = None
+    amount_eur: float | None = None
+    shares: float | None = None
+    order_type: str | None = None
+    status: str | None = None
+    notes: str | None = None
 
 
 class OrderResponse(BaseModel):
@@ -56,7 +54,7 @@ class OrderResponse(BaseModel):
     id: str
     date: str
     isin: str
-    ticker: Optional[str]
+    ticker: str | None
     amount_eur: float
     shares: float
     order_type: str
@@ -77,10 +75,10 @@ class Instrument(BaseModel):
     name: str
     instrument_type: str = Field(..., description="ETF, Index Fund, Stock, Bond")
     currency: str = "EUR"
-    sector: Optional[str] = None
-    region: Optional[str] = None
-    geography: Optional[str] = None
-    risk_rating: Optional[str] = None
+    sector: str | None = None
+    region: str | None = None
+    geography: str | None = None
+    risk_rating: str | None = None
 
 
 class Price(BaseModel):

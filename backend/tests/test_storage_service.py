@@ -1,9 +1,11 @@
 """Tests for storage service with atomic writes and file locking."""
 
 import json
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
+
 from app.services.storage_service import StorageService
 
 
@@ -125,7 +127,7 @@ def test_update_json_multiple_updates(temp_json_file):
         data["items"] = items
         return data
 
-    for i in range(3):
+    for _ in range(3):
         StorageService.update_json(temp_json_file, add_item)
 
     loaded = json.loads(temp_json_file.read_text(encoding="utf-8"))

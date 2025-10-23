@@ -1,15 +1,15 @@
 """Compute service for portfolio calculations (PnL, positions, metrics)."""
 
 from datetime import datetime
-from typing import Dict, List, Any
 from decimal import Decimal
+from typing import Any
 
 
 class ComputeService:
     """Service for portfolio computations and financial calculations."""
 
     @staticmethod
-    def calculate_position(orders: List[Dict[str, Any]], isin: str) -> Dict[str, Any]:
+    def calculate_position(orders: list[dict[str, Any]], isin: str) -> dict[str, Any]:
         """
         Calculate current position for a specific ISIN from order history.
 
@@ -45,7 +45,7 @@ class ComputeService:
         }
 
     @staticmethod
-    def calculate_pnl(position: Dict[str, Any], current_price: float) -> Dict[str, Any]:
+    def calculate_pnl(position: dict[str, Any], current_price: float) -> dict[str, Any]:
         """
         Calculate profit/loss for a position.
 
@@ -70,7 +70,7 @@ class ComputeService:
         }
 
     @staticmethod
-    def calculate_portfolio_metrics(holdings: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def calculate_portfolio_metrics(holdings: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Calculate overall portfolio metrics.
 
@@ -101,7 +101,7 @@ class ComputeService:
         }
 
     @staticmethod
-    def calculate_allocation_by_key(holdings: List[Dict[str, Any]], key: str) -> List[Dict[str, Any]]:
+    def calculate_allocation_by_key(holdings: list[dict[str, Any]], key: str) -> list[dict[str, Any]]:
         """
         Calculate allocation breakdown by a specific key (e.g., geography, sector, asset_type).
 
@@ -120,7 +120,7 @@ class ComputeService:
             return []
 
         # Group by key
-        groups: Dict[str, float] = {}
+        groups: dict[str, float] = {}
         for h in holdings:
             category = h.get(key, "Unknown")
             value = h.get("current_value", 0.0)
@@ -140,7 +140,7 @@ class ComputeService:
         return result
 
     @staticmethod
-    def calculate_time_series(orders: List[Dict[str, Any]], prices: Dict[str, float]) -> List[Dict[str, Any]]:
+    def calculate_time_series(orders: list[dict[str, Any]], prices: dict[str, float]) -> list[dict[str, Any]]:
         """
         Calculate invested vs current value over time.
 
@@ -159,7 +159,7 @@ class ComputeService:
 
         time_series = []
         cumulative_invested = 0.0
-        positions: Dict[str, Decimal] = {}  # ISIN -> shares
+        positions: dict[str, Decimal] = {}  # ISIN -> shares
 
         for order in sorted_orders:
             if order.get("status", "").lower() != "finalizada":
@@ -216,7 +216,7 @@ class ComputeService:
             return True
 
     @staticmethod
-    def calculate_diversification_score(allocations: List[Dict[str, Any]]) -> float:
+    def calculate_diversification_score(allocations: list[dict[str, Any]]) -> float:
         """
         Calculate diversification score using Herfindahl-Hirschman Index (HHI).
 
@@ -246,7 +246,7 @@ class ComputeService:
         return normalized * 100
 
     @staticmethod
-    def calculate_weighted_average(items: List[Dict[str, Any]], value_key: str, weight_key: str) -> float:
+    def calculate_weighted_average(items: list[dict[str, Any]], value_key: str, weight_key: str) -> float:
         """
         Calculate weighted average.
 

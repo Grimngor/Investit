@@ -1,12 +1,14 @@
 """Tests for authentication endpoints."""
 
 import json
+
 import pytest
 from fastapi.testclient import TestClient
-from app.main import app
-from app.models.persistence import save_user_data, load_user_data, get_all_users
-from app.services.auth import get_password_hash
+
 from app.config import settings
+from app.main import app
+from app.models.persistence import get_all_users, load_user_data, save_user_data
+from app.services.auth import get_password_hash
 
 client = TestClient(app)
 
@@ -34,7 +36,7 @@ def test_register_new_user():
             del users[username]
             with open(settings.DATA_DIR / "users.json", "w", encoding="utf-8") as f:
                 json.dump(users, f, indent=2)
-    
+
     response = client.post(
         "/api/auth/register", json={"username": username, "email": "newuser@test.com", "password": "password123", "full_name": "Test User"}
     )
@@ -47,7 +49,13 @@ def test_register_new_user():
 def test_register_duplicate_user(test_user):
     """Test that registering with existing username fails."""
     response = client.post(
-        "/api/auth/register", json={"username": test_user["username"], "email": "another@test.com", "password": "anypassword", "full_name": "Another User"}
+        "/api/auth/register",
+        json={
+            "username": test_user["username"],
+            "email": "another@test.com",
+            "password": "anypassword",
+            "full_name": "Another User",
+        },
     )
     assert response.status_code == 400
 

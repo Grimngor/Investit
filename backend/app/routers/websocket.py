@@ -1,15 +1,45 @@
-"""WebSocket router for real-time updates."""
+"""WebSocket router for real-time updates and broadcast helper."""
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
-from typing import Optional
 import datetime
+from typing import Any
+
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
+
 from app.config import settings
 
 router = APIRouter(tags=["websocket"])
 
 
-async def decode_token(token: str) -> Optional[str]:
+class WebSocketManager:
+    """In-memory WebSocket connection manager per username."""
+
+    def __init__(self) -> None:
+        self._connections: dict[str, list[WebSocket]] = {}
+
+    async def connect(self, username: str, websocket: WebSocket) -> None:
+        self._connections.setdefault(username, []).append(websocket)
+
+    async def disconnect(self, username: str, websocket: WebSocket) -> None:
+        conns = self._connections.get(username, [])
+        if websocket in conns:
+            conns.remove(websocket)
+        if not conns:
+            self._connections.pop(username, None)
+
+    async def broadcast_to_user(self, username: str, message: dict[str, Any]) -> None:
+        for ws in self._connections.get(username, []):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                # Drop failing connection silently
+                await self.disconnect(username, ws)
+
+
+manager = WebSocketManager()
+
+
+async def decode_token(token: str) -> str | None:
     """Decode JWT token and return username."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -20,7 +50,7 @@ async def decode_token(token: str) -> Optional[str]:
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(None)):
+async def websocket_endpoint(websocket: WebSocket, token: str | None = Query(None)):
     """
     WebSocket endpoint with token-based authentication.
 
@@ -40,6 +70,7 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(
 
     # Accept connection
     await websocket.accept()
+    await manager.connect(username, websocket)
 
     # Send handshake message
     await websocket.send_json(
@@ -58,6 +89,7 @@ async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = Query(
                 await websocket.send_json(data)
 
     except WebSocketDisconnect:
+        await manager.disconnect(username, websocket)
         print(f"WebSocket disconnected for user: {username}")
 
 

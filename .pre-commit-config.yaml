@@ -1,0 +1,28 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff (lint + format)
+        entry: E:/JaviProyects/Proyects/Programming/Investit/venv/Scripts/python.exe scripts/format_python.py
+        language: system
+        pass_filenames: false
+  - repo: local
+    hooks:
+      - id: pytest-fast
+        name: pytest (fast fail)
+        entry: E:/JaviProyects/Proyects/Programming/Investit/venv/Scripts/python.exe scripts/pytest_fast.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: pytest-full
+        name: pytest (full suite)
+        entry: E:/JaviProyects/Proyects/Programming/Investit/venv/Scripts/python.exe scripts/pytest_full.py
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+      - id: end-of-file-fixer
+      - id: trailing-whitespace

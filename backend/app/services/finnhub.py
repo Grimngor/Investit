@@ -1,8 +1,10 @@
 """Finnhub API service for fetching stock market data."""
 
+from typing import Any
+
 import aiohttp
-from typing import Optional, Dict, Any, List
 from cachetools import TTLCache
+
 from app.config import settings
 
 
@@ -19,7 +21,7 @@ class FinnhubService:
         self._profile_cache = TTLCache(maxsize=500, ttl=600)  # 10 minutes
         self._symbols_cache = TTLCache(maxsize=100, ttl=7200)  # 2 hours
 
-    async def get_quote(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def get_quote(self, symbol: str) -> dict[str, Any] | None:
         """
         Get real-time quote for a symbol.
 
@@ -58,7 +60,7 @@ class FinnhubService:
             print(f"Error fetching quote for {symbol}: {e}")
             return None
 
-    async def search_symbol(self, query: str) -> List[Dict[str, Any]]:
+    async def search_symbol(self, query: str) -> list[dict[str, Any]]:
         """
         Search for symbols matching query.
 
@@ -85,7 +87,7 @@ class FinnhubService:
             print(f"Error searching for {query}: {e}")
             return []
 
-    async def get_company_profile(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def get_company_profile(self, symbol: str) -> dict[str, Any] | None:
         """
         Get company profile for a symbol.
 

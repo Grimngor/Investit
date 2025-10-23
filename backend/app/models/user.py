@@ -1,7 +1,6 @@
 """User model."""
 
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class User(BaseModel):
@@ -9,5 +8,5 @@ class User(BaseModel):
 
     username: str = Field(..., min_length=3, max_length=50)
     email: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     disabled: bool = False

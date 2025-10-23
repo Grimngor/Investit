@@ -35,3 +35,42 @@ exclude_lines = [
 
 [tool.coverage.html]
 directory = "htmlcov"
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+respect-gitignore = true
+extend-exclude = ["venv", "__pycache__"]
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # import sorting (replaces isort)
+    "B",  # flake8-bugbear
+    "UP", # pyupgrade
+    "SIM",# flake8-simplify
+    "PL", # pylint (subset)
+    "RUF" # ruff specific rules
+]
+ignore = [
+    "D203", "D212", "D401"  # docstring flexibility
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow magic numbers & HTTP status comparisons directly in tests for readability.
+"tests/test_*.py" = ["PLR2004"]
+# WebSocket tests keep explicit try/except for clarity; ignore simplify suggestion.
+"tests/test_websocket.py" = ["SIM105"]
+"app/routers/*.py" = ["B008", "PLR0913"]
+"app/services/finnhub.py" = ["PLR0911", "PLR2004"]
+"app/services/storage_service.py" = ["B008"]
+"app/services/auth.py" = ["SIM108"]
+"app/routers/orders.py" = ["B904"]
+"app/routers/portfolio.py" = ["PLR2004"]
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"

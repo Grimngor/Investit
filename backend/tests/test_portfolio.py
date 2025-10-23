@@ -2,6 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
+
 from app.main import app
 from app.models.persistence import save_user_data
 from app.services.auth import get_password_hash

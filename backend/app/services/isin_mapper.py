@@ -1,9 +1,9 @@
 """ISINMapper service for resolving ISIN codes to ticker symbols."""
 
 import json
-from pathlib import Path
 from functools import lru_cache
-from typing import Optional, Dict, Any
+from typing import Any
+
 from app.config import settings
 
 
@@ -12,7 +12,7 @@ class ISINMapper:
 
     def __init__(self):
         """Initialize the ISIN mapper and load mappings from JSON file."""
-        self.mappings: Dict[str, Dict[str, Any]] = {}
+        self.mappings: dict[str, dict[str, Any]] = {}
         self._load_mappings()
 
     def _load_mappings(self) -> None:
@@ -24,14 +24,14 @@ class ISINMapper:
             return
 
         try:
-            with open(mapping_file, "r", encoding="utf-8") as f:
+            with open(mapping_file, encoding="utf-8") as f:
                 data = json.load(f)
                 self.mappings = data.get("mappings", {})
                 print(f"Loaded {len(self.mappings)} ISIN mappings")
         except Exception as e:
             print(f"Error loading ISIN mappings: {e}")
 
-    def resolve_isin(self, isin: str) -> Optional[str]:
+    def resolve_isin(self, isin: str) -> str | None:
         """
         Resolve an ISIN code to a ticker symbol.
 
@@ -50,7 +50,7 @@ class ISINMapper:
 
         return None
 
-    def get_mapping_info(self, isin: str) -> Optional[Dict[str, Any]]:
+    def get_mapping_info(self, isin: str) -> dict[str, Any] | None:
         """
         Get full mapping information for an ISIN.
 
@@ -63,7 +63,7 @@ class ISINMapper:
         return self.mappings.get(isin)
 
 
-@lru_cache()
+@lru_cache
 def get_isin_mapper() -> ISINMapper:
     """Get singleton instance of ISINMapper."""
     return ISINMapper()

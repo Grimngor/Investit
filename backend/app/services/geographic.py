@@ -1,10 +1,7 @@
 """Geographic data and mapping services."""
 
-from typing import Dict, List, Optional
-
-
 # Country code to region mapping
-COUNTRY_REGIONS: Dict[str, str] = {
+COUNTRY_REGIONS: dict[str, str] = {
     # North America
     "US": "North America",
     "CA": "North America",

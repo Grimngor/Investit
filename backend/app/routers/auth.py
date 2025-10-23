@@ -1,13 +1,15 @@
 """Authentication router."""
 
 from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+
+from app.config import settings
+from app.models.auth_persistence import get_all_users, save_user_data
 from app.models.auth_schemas import Token, UserRegister
 from app.models.user import User
 from app.services.auth import authenticate_user, create_access_token, get_current_user, get_password_hash
-from app.models.auth_persistence import save_user_data, get_all_users
-from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -19,19 +21,15 @@ async def register(user_data: UserRegister):
 
     # Check if username exists
     if user_data.username in users:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
-
-    # Check if email exists
-    for username, data in users.items():
-        if data.get("email") == user_data.email:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered",
+        )
 
     # Create new user
     hashed_password = get_password_hash(user_data.password)
     new_user = {
         "username": user_data.username,
-        "email": user_data.email,
-        "full_name": user_data.full_name,
         "hashed_password": hashed_password,
         "disabled": False,
         "holdings": [],

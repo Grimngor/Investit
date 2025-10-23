@@ -2,17 +2,26 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.docs import tags_metadata, description
-from app.routers import auth, portfolio, websocket, debug, orders, dashboard
+
+from app.docs import description, tags_metadata
+from app.routers import auth, dashboard, debug, orders, portfolio, websocket
 
 # Create FastAPI app
-app = FastAPI(title="Investit API", description=description, version="1.0.0", openapi_tags=tags_metadata)
+app = FastAPI(
+    title="Investit API",
+    description=description,
+    version="1.0.0",
+    openapi_tags=tags_metadata,
+)
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,12 +37,12 @@ app.include_router(debug.router)
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     """Root endpoint."""
     return {"message": "Welcome to Investit API", "version": "1.0.0", "docs": "/docs"}
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Health check endpoint."""
     return {"status": "healthy"}

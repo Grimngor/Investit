@@ -1,7 +1,9 @@
 """Tests for compute service calculations."""
 
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
+
 from app.services.compute_service import ComputeService
 
 
