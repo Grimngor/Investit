@@ -38,7 +38,7 @@
 - [x] 4.2. Implement csv_parser.py with Spanish format support (12 tests passing).
 - [x] 4.3. Implement validators.py for order/CSV validation.
 - [ ] 4.4. Create compute_service.py for PnL and position calculations.
-- [ ] 4.5. Create storage_service.py to centralize JSON I/O with atomic writes.
+- [x] 4.5. Create storage_service.py to centralize JSON I/O with atomic writes (11 tests passing).
 - [x] 4.6. Update isin_mapper.py to load from JSON file (already implemented).
 - [ ] 4.7. Consider renaming services to match PRD (pricing_service.py, etc.).
 
@@ -87,19 +87,21 @@
 **Completed:**
 - ✅ Section 1: Project Cleanup (6/6 tasks complete)
 - ✅ Deleted 5 corrupted files (4 test files + 1 script)
-- ✅ Initialized git repository with 5 commits
+- ✅ Initialized git repository with 8 commits
 - ✅ Formatted 19 Python files with Black
-- ✅ Created comprehensive test suite (28 tests: 16 core + 12 CSV, all passing)
+- ✅ Created comprehensive test suite (39 tests: 16 core + 12 CSV + 11 storage, all passing)
 - ✅ Created utils/ directory with csv_parser.py and validators.py
+- ✅ Created storage_service.py with atomic writes and file locking
 - ✅ Created ISIN mapping JSON with 18 common ETFs
 - ✅ Fixed all three utility scripts (create_test_user.py, clear_holdings.py, test_isin_resolution.py)
+- ✅ Added portalocker for file locking
 
 **Current Stats:**
-- Backend: 27 Python files (25 app + 2 utils), all formatted
+- Backend: 29 Python files (27 app + 2 utils + 1 storage service), all formatted
 - Frontend: 80+ Vue/TS files
-- Tests: 28 passing (16 core + 12 CSV)
+- Tests: 39 passing (16 core + 12 CSV + 11 storage)
 - Test Coverage: Not measured yet
-- Git Commits: 5
+- Git Commits: 8
 
 **Key Findings:**
 - Data model mismatch: Current uses `holdings`, PRD expects `orders`
