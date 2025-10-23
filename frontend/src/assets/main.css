@@ -3,10 +3,12 @@
 @tailwind components;
 @tailwind utilities;
 
-#app {
+/* Remove global max-width restriction; apply via .app-shell where needed */
+.app-shell {
   max-width: 1280px;
   margin: 0 auto;
   font-weight: normal;
+  width: 100%;
 }
 
 a,
@@ -29,7 +31,7 @@ a,
     place-items: center;
   }
 
-  #app {
+  .app-shell {
     display: grid;
     grid-template-columns: 1fr;
     padding: 0 2rem;

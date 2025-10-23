@@ -1,5 +1,5 @@
 <template>
-  <div id="app">
+  <div id="app" :class="{ 'app-shell': !isAuthRoute }">
     <Navigation v-if="showNavigation" />
     <RouterView />
     <ToastContainer />
@@ -15,7 +15,9 @@ import ToastContainer from './components/ToastContainer.vue'
 import { useThemeStore } from './stores/theme'
 useThemeStore() // initialization side-effects handled internally
 const route = useRoute()
-const showNavigation = computed(() => route.path !== '/')
+const authPaths = new Set(['/','/login','/register'])
+const isAuthRoute = computed(() => authPaths.has(route.path))
+const showNavigation = computed(() => !isAuthRoute.value)
 </script>
 
 <style scoped>
