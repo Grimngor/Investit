@@ -2,14 +2,14 @@
   <div class="max-w-7xl mx-auto px-6 py-10">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Orders</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">History of executed orders (coming soon)</p>
+        <h1 class="page-title">Orders</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">History of executed orders (coming soon)</p>
       </div>
     </div>
 
-    <div class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-softblue-50/70 dark:bg-gray-900/70 backdrop-blur shadow-sm overflow-hidden">
+    <div class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur shadow-sm overflow-hidden">
       <table class="w-full text-sm" v-if="orders.length">
-        <thead class="bg-softblue-100/60 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
+        <thead class="bg-softblue-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
           <tr class="divide-x divide-gray-200 dark:divide-gray-700">
             <th class="px-4 py-3 text-left font-medium">Date</th>
             <th class="px-4 py-3 text-left font-medium">Symbol</th>
@@ -19,8 +19,8 @@
             <th class="px-4 py-3 text-right font-medium">Status</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-softblue-100 dark:divide-gray-800">
-          <tr v-for="o in orders" :key="o.id" class="hover:bg-softblue-100/40 dark:hover:bg-gray-800/60 transition">
+        <tbody class="divide-y divide-softblue-200 dark:divide-gray-700">
+          <tr v-for="o in orders" :key="o.id" class="hover:bg-softblue-50 dark:hover:bg-gray-700/40 transition">
             <td class="px-4 py-3">{{ o.date }}</td>
             <td class="px-4 py-3 font-medium">{{ o.symbol }}</td>
             <td class="px-4 py-3 text-right">{{ o.side }}</td>

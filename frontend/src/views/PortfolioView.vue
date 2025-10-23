@@ -2,8 +2,8 @@
   <div class="max-w-7xl mx-auto px-6 py-10">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">My Portfolio</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Overview of your current investments</p>
+        <h1 class="page-title">My Portfolio</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Overview of your current investments</p>
       </div>
       <button
         @click="refreshPortfolio"
@@ -23,9 +23,9 @@
     </div>
 
     <!-- Holdings Table -->
-    <div class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-softblue-50/70 dark:bg-gray-900/70 backdrop-blur shadow-sm overflow-hidden">
+    <div class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur shadow-sm overflow-hidden">
       <table class="w-full text-sm">
-        <thead class="bg-softblue-100/60 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
+        <thead class="bg-softblue-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
           <tr class="divide-x divide-gray-200 dark:divide-gray-700">
             <th class="px-4 py-3 text-left font-medium">Symbol</th>
             <th class="px-4 py-3 text-left font-medium">Name</th>
@@ -36,11 +36,11 @@
             <th class="px-4 py-3 text-right font-medium">Gain/Loss</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-softblue-100 dark:divide-gray-800">
+        <tbody class="divide-y divide-softblue-200 dark:divide-gray-700">
           <tr
             v-for="holding in holdings"
             :key="holding.id"
-            class="hover:bg-softblue-100/40 dark:hover:bg-gray-800/60 transition"
+            class="hover:bg-softblue-50 dark:hover:bg-gray-700/40 transition"
           >
             <td class="px-4 py-3 font-medium">{{ holding.resolved_symbol || holding.symbol }}</td>
             <td class="px-4 py-3">{{ holding.name }}</td>

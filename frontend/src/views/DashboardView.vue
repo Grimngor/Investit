@@ -2,8 +2,8 @@
   <div class="max-w-7xl mx-auto px-6 py-10">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">High-level overview & KPIs</p>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">High-level overview & KPIs</p>
       </div>
     </div>
 
@@ -15,8 +15,8 @@
     </div>
 
     <!-- Placeholder charts area -->
-    <div class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 backdrop-blur p-6 shadow-sm">
-      <h2 class="text-lg font-semibold mb-4">Performance (Coming Soon)</h2>
+    <div class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur p-6 shadow-sm">
+      <h2 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">Performance (Coming Soon)</h2>
       <div class="grid md:grid-cols-2 gap-6">
         <div class="h-56 flex items-center justify-center border border-dashed border-softblue-300 dark:border-gray-600 rounded-md text-xs text-gray-500 dark:text-gray-400">
           Chart placeholder
