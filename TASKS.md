@@ -12,11 +12,11 @@
 
 ### 1. Project Cleanup & File Review
 - [x] 1.1. List all files and directories in the project.
-- [ ] 1.2. Review each file for relevance, removing obsolete or unused files.
-- [ ] 1.3. Check for duplicate, temporary, or backup files and remove them.
-- [ ] 1.4. Ensure all code files have minimal, clean, and consistent formatting (Black for Python, Prettier for JS/Vue).
+- [x] 1.2. Review each file for relevance, removing obsolete or unused files.
+- [x] 1.3. Check for duplicate, temporary, or backup files and remove them.
+- [x] 1.4. Ensure all code files have minimal, clean, and consistent formatting (Black for Python, Prettier for JS/Vue).
 - [ ] 1.5. Validate that all scripts (e.g., .bat, .ps1, .py) execute without errors.
-- [ ] 1.6. Initialize git repository for version control.
+- [x] 1.6. Initialize git repository for version control.
 
 ### 2. Data Model & Structure Alignment
 - [ ] 2.1. Update data model from `holdings` to `orders` as per PRD.

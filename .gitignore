@@ -65,3 +65,9 @@ logs/
 # Build artifacts
 *.pyc
 *.pyo
+
+# Other docs
+TASKS.md
+CLEANUP_PROGRESS.md
+PROJECT_COMPLETION_SUMMARY.md
+INVESTIT_PRD.md
