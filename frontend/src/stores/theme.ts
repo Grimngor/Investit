@@ -4,8 +4,8 @@ import { defineStore } from 'pinia'
 export type Theme = 'light' | 'dark' | 'auto'
 
 export const useThemeStore = defineStore('theme', () => {
-  // Initialize from localStorage or default to 'auto'
-  const theme = ref<Theme>((localStorage.getItem('theme') as Theme) || 'auto')
+  // Initialize from localStorage or default to 'dark' (project preference)
+  const theme = ref<Theme>((localStorage.getItem('theme') as Theme) || 'dark')
   const isDark = ref(false)
 
   /**
