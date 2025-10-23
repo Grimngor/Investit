@@ -1,5 +1,5 @@
 <template>
-  <div id="app" :class="{ 'app-shell': !isAuthRoute }">
+  <div id="app" :class="[ !isAuthRoute ? 'app-shell' : 'auth-route' ]">
     <Navigation v-if="showNavigation" />
     <RouterView />
     <ToastContainer />

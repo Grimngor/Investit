@@ -1,5 +1,9 @@
 <template>
-  <div class="min-h-screen w-full flex items-center justify-center px-4 py-12 bg-gradient-to-br from-slate-50 to-slate-200 dark:from-navy-900 dark:to-black">
+  <div class="relative min-h-screen w-screen flex items-center justify-center px-4 py-12 overflow-hidden">
+    <div class="absolute inset-0 -z-10 bg-gradient-to-br from-slate-50 to-slate-200 dark:from-navy-900 dark:to-black"></div>
+    <button class="absolute top-4 right-4" aria-label="Toggle theme">
+      <ThemeToggle />
+    </button>
     <div class="w-full max-w-md space-y-6">
       <header class="text-center space-y-2">
         <h1 class="text-5xl font-bold tracking-tight text-blue-500">
@@ -19,6 +23,7 @@
 
 <script setup lang="ts">
 import AuthCard from './AuthCard.vue'
+import ThemeToggle from './ThemeToggle.vue'
 defineProps<{ subtitle?: string }>()
 </script>
 
