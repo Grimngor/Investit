@@ -38,7 +38,7 @@ async function handleLogin() {
   loading.value = false
 
   if (success) {
-    router.push('/portfolio')
+    router.push('/dashboard')
   }
 }
 </script>

@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import HomeView from '@/views/HomeView.vue'
+import DashboardView from '@/views/DashboardView.vue'
+import OrdersView from '@/views/OrdersView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import PortfolioView from '@/views/PortfolioView.vue'
@@ -13,6 +15,12 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: HomeView
+    },
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: DashboardView,
+      meta: { requiresAuth: true }
     },
     {
       path: '/login',
@@ -31,6 +39,12 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/orders',
+      name: 'orders',
+      component: OrdersView,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/about',
       name: 'about',
       component: AboutView
@@ -40,7 +54,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
-  
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login' })
   } else {
