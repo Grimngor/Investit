@@ -84,3 +84,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Utility classes (using plain CSS so they survive without Tailwind processing in this file) */
+.card-base { background: rgba(255,255,255,0.05); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.08); border-radius: 0.75rem; }
+.btn-primary { background:#2563eb; color:#fff; font-weight:500; border-radius:0.5rem; padding:0.5rem 1rem; font-size:.875rem; line-height:1.25rem; display:inline-flex; justify-content:center; align-items:center; gap:.5rem; }
+.btn-primary:hover { background:#1d4ed8; }
+.btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+.input-base { width:100%; padding:0.5rem 0.75rem; border:1px solid #4b5563; border-radius:0.5rem; background:#0f172a; color:#fff; font-size:.875rem; }
+.input-base:focus { outline:2px solid #2563eb; outline-offset:2px; }
