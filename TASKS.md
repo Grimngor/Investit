@@ -43,8 +43,8 @@
 - [ ] 4.7. Consider renaming services to match PRD (pricing_service.py, etc.).
 
 ### 5. PRD Feature Implementation
-- [ ] 5.1. Implement CSV import endpoint (POST /orders/import-csv).
-- [ ] 5.2. Add CSV parsing with Spanish format rules (DD/MM/YYYY, Estado validation, etc.).
+- [x] 5.1. Implement CSV import endpoint (POST /orders/import-csv) - 8 tests passing.
+- [x] 5.2. Add CSV parsing with Spanish format rules (DD/MM/YYYY, Estado validation, etc.) - Completed in Section 4.
 - [ ] 5.3. Add manual order CRUD endpoints (GET/POST/PUT/DELETE /orders).
 - [ ] 5.4. Implement orders history endpoint with filtering/sorting.
 - [ ] 5.5. Add dashboard KPI calculations (total invested, current value, PnL).
@@ -86,25 +86,28 @@
 
 **Completed:**
 - ✅ Section 1: Project Cleanup (6/6 tasks complete)
+- ✅ Section 2: Testing & Verification (6/8 tasks - 72% coverage achieved!)
 - ✅ Section 4: Service Layer & Utils (6/7 tasks complete)
 - ✅ Deleted 5 corrupted files (4 test files + 1 script)
-- ✅ Initialized git repository with 11 commits
+- ✅ Initialized git repository with 13 commits
 - ✅ Formatted 19 Python files with Black
-- ✅ Created comprehensive test suite (56 tests: 16 core + 12 CSV + 11 storage + 17 compute, all passing)
+- ✅ Created comprehensive test suite (64 tests: 16 core + 12 CSV + 11 storage + 17 compute + 8 orders, all passing)
 - ✅ Added test coverage reporting with pytest-cov (72% coverage)
 - ✅ Created utils/ directory with csv_parser.py and validators.py
 - ✅ Created storage_service.py with atomic writes and file locking
 - ✅ Created compute_service.py for PnL and portfolio calculations
+- ✅ Implemented CSV import endpoint POST /api/orders/import-csv
 - ✅ Created ISIN mapping JSON with 18 common ETFs
-- ✅ Fixed all three utility scripts (create_test_user.py, clear_holdings.py, test_isin_resolution.py)
+- ✅ Fixed all three utility scripts
 - ✅ Added portalocker for file locking
 
 **Current Stats:**
-- Backend: 31 Python files, all formatted
+- Backend: 33 Python files, all formatted
 - Frontend: 80+ Vue/TS files
-- Tests: 56 passing (16 core + 12 CSV + 11 storage + 17 compute)
+- Tests: 64 passing (16 core + 12 CSV + 11 storage + 17 compute + 8 orders)
 - Test Coverage: 72% (meets 70% target!)
-- Git Commits: 11
+- Git Commits: 13
+- API Endpoints: 15+ (auth, portfolio, orders, websocket, debug)
 
 **Key Findings:**
 - Data model mismatch: Current uses `holdings`, PRD expects `orders`
