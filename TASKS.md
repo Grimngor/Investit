@@ -37,7 +37,7 @@
 - [x] 4.1. Create backend/app/utils/ directory.
 - [x] 4.2. Implement csv_parser.py with Spanish format support (12 tests passing).
 - [x] 4.3. Implement validators.py for order/CSV validation.
-- [ ] 4.4. Create compute_service.py for PnL and position calculations.
+- [x] 4.4. Create compute_service.py for PnL and position calculations (17 tests passing).
 - [x] 4.5. Create storage_service.py to centralize JSON I/O with atomic writes (11 tests passing).
 - [x] 4.6. Update isin_mapper.py to load from JSON file (already implemented).
 - [ ] 4.7. Consider renaming services to match PRD (pricing_service.py, etc.).
