@@ -1,4 +1,4 @@
-/* Base styles and CSS variables */
+/* Base styles and CSS variables (Tailwind directives moved to main.css) */
 :root {
   --vt-c-white: #ffffff;
   --vt-c-white-soft: #f8f8f8;
