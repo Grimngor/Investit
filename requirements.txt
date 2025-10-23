@@ -18,6 +18,9 @@ aiohttp==3.10.10
 # Caching
 cachetools==5.5.0
 
+# File locking for atomic operations
+portalocker==3.2.0
+
 # Environment variables
 python-dotenv==1.0.1
 
