@@ -1,15 +1,15 @@
-"""Data fetcher service for retrieving market data."""
+"""Pricing service for retrieving market data and prices."""
 
 import aiohttp
 from typing import Optional, Dict, Any, List
 from app.services.finnhub import FinnhubService
 
 
-class DataFetcher:
-    """Service for fetching and aggregating market data."""
+class PricingService:
+    """Service for fetching and managing market prices."""
 
     def __init__(self):
-        """Initialize data fetcher with Finnhub service."""
+        """Initialize pricing service with Finnhub integration."""
         self.finnhub = FinnhubService()
 
     async def fetch_portfolio_data(self, symbols: List[str]) -> Dict[str, Any]:

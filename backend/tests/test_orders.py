@@ -169,12 +169,19 @@ def test_get_order_by_id(auth_token):
 
     try:
         with open(tmp_path, "rb") as f:
-            client.post("/api/orders/import-csv", files={"file": ("orders.csv", f, "text/csv")}, headers={"Authorization": f"Bearer {auth_token}"})
+            import_response = client.post("/api/orders/import-csv", files={"file": ("orders.csv", f, "text/csv")}, headers={"Authorization": f"Bearer {auth_token}"})
     finally:
         tmp_path.unlink(missing_ok=True)
 
-    # Get specific order
-    response = client.get("/api/orders/0", headers={"Authorization": f"Bearer {auth_token}"})
+    # Get all orders first to get an order ID
+    orders_response = client.get("/api/orders/", headers={"Authorization": f"Bearer {auth_token}"})
+    orders = orders_response.json()
+    assert len(orders) > 0
+    
+    order_id = orders[0]["id"]
+    
+    # Get specific order by ID
+    response = client.get(f"/api/orders/{order_id}", headers={"Authorization": f"Bearer {auth_token}"})
 
     assert response.status_code == 200
     data = response.json()

@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Tuple
 from io import StringIO
 import re
+import uuid
 
 
 class CSVParseError(Exception):
@@ -220,6 +221,7 @@ class SpanishOrderCSVParser:
 
                     # Create order
                     order = {
+                        "id": str(uuid.uuid4()),
                         "date": parsed_date,
                         "isin": isin,
                         "amount_eur": amount_eur,
@@ -227,6 +229,7 @@ class SpanishOrderCSVParser:
                         "order_type": order_type,
                         "status": estado or "Finalizada",
                         "notes": "",
+                        "created_at": datetime.now().isoformat()
                     }
 
                     orders.append(order)

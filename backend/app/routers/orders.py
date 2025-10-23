@@ -1,12 +1,15 @@
 """Router for order management (CSV import, CRUD operations)."""
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from datetime import datetime
 from app.models.user import User
+from app.models.order import OrderCreate, OrderUpdate, OrderResponse
 from app.routers.auth import get_current_user
 from app.utils.csv_parser import SpanishOrderCSVParser
 from app.services.storage_service import StorageService
 from app.config import settings
+import uuid
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -112,7 +115,7 @@ async def get_orders(current_user: User = Depends(get_current_user)) -> List[Dic
 
 
 @router.get("/{order_id}")
-async def get_order(order_id: int, current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+async def get_order(order_id: str, current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     """Get specific order by ID."""
     users_file = settings.DATA_DIR / "users.json"
     users = StorageService.load_json(users_file, default={})
@@ -121,8 +124,139 @@ async def get_order(order_id: int, current_user: User = Depends(get_current_user
         raise HTTPException(status_code=404, detail="User not found")
 
     orders = users[current_user.username].get("orders", [])
-
-    if order_id < 0 or order_id >= len(orders):
+    
+    # Find order by ID
+    order = next((o for o in orders if o.get("id") == order_id), None)
+    
+    if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    return orders[order_id]
+    return order
+
+
+@router.post("/", status_code=201)
+async def create_order(
+    order_data: OrderCreate,
+    current_user: User = Depends(get_current_user)
+) -> OrderResponse:
+    """
+    Create a new order manually.
+    
+    This allows users to add individual buy/sell orders without CSV import.
+    """
+    users_file = settings.DATA_DIR / "users.json"
+    users = StorageService.load_json(users_file, default={})
+
+    if current_user.username not in users:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Generate unique order ID
+    order_id = str(uuid.uuid4())
+    
+    # Create order with ID and timestamp
+    new_order = {
+        "id": order_id,
+        "date": order_data.date,
+        "isin": order_data.isin,
+        "ticker": order_data.ticker,
+        "amount_eur": order_data.amount_eur,
+        "shares": order_data.shares,
+        "order_type": order_data.order_type,
+        "status": order_data.status,
+        "notes": order_data.notes,
+        "created_at": datetime.now().isoformat()
+    }
+
+    # Add to user's orders
+    if "orders" not in users[current_user.username]:
+        users[current_user.username]["orders"] = []
+    
+    users[current_user.username]["orders"].append(new_order)
+    
+    # Sort by date (most recent first)
+    users[current_user.username]["orders"].sort(
+        key=lambda x: x.get("date", ""), 
+        reverse=True
+    )
+
+    # Save
+    StorageService.save_json(users_file, users)
+
+    return OrderResponse(**new_order)
+
+
+@router.put("/{order_id}")
+async def update_order(
+    order_id: str,
+    order_data: OrderUpdate,
+    current_user: User = Depends(get_current_user)
+) -> OrderResponse:
+    """Update an existing order."""
+    users_file = settings.DATA_DIR / "users.json"
+    users = StorageService.load_json(users_file, default={})
+
+    if current_user.username not in users:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    orders = users[current_user.username].get("orders", [])
+    
+    # Find order index
+    order_idx = next(
+        (i for i, o in enumerate(orders) if o.get("id") == order_id), 
+        None
+    )
+    
+    if order_idx is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    # Update order fields
+    order = orders[order_idx]
+    update_dict = order_data.model_dump(exclude_unset=True)
+    
+    for key, value in update_dict.items():
+        if value is not None:
+            order[key] = value
+
+    # Re-sort if date changed
+    if "date" in update_dict:
+        users[current_user.username]["orders"].sort(
+            key=lambda x: x.get("date", ""), 
+            reverse=True
+        )
+
+    # Save
+    StorageService.save_json(users_file, users)
+
+    return OrderResponse(**order)
+
+
+@router.delete("/{order_id}", status_code=204)
+async def delete_order(
+    order_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Delete an order."""
+    users_file = settings.DATA_DIR / "users.json"
+    users = StorageService.load_json(users_file, default={})
+
+    if current_user.username not in users:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    orders = users[current_user.username].get("orders", [])
+    
+    # Find and remove order
+    order_idx = next(
+        (i for i, o in enumerate(orders) if o.get("id") == order_id), 
+        None
+    )
+    
+    if order_idx is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    orders.pop(order_idx)
+
+    # Save
+    StorageService.save_json(users_file, users)
+
+    return None  # 204 No Content
+
