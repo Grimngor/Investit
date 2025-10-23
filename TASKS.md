@@ -7,13 +7,13 @@
 
 ---
 
-### 1. Project Cleanup & File Review
+### 1. Project Cleanup & File Review ✅ COMPLETE
 - [x] 1.1. List all files and directories in the project.
 - [x] 1.2. Review each file for relevance, remove obsolete/corrupted files (deleted 5 corrupted files).
 - [x] 1.3. Check for duplicate, temporary, or backup files and remove them.
 - [x] 1.4. Format all code files (Black for Python @140 chars, Prettier for JS/Vue).
 - [x] 1.5. Initialize git repository with proper .gitignore.
-- [ ] 1.6. Validate that all scripts (.bat, .ps1, .py) execute without errors.
+- [x] 1.6. Validate that all scripts (.bat, .ps1, .py) execute without errors.
 
 ### 2. Testing & Verification
 - [x] 2.1. Create new test files (replaced 4 corrupted test files).
@@ -29,14 +29,14 @@
 - [ ] 3.1. Design data migration plan from `holdings` to `orders` model.
 - [ ] 3.2. Create migration script for existing users.
 - [ ] 3.3. Create missing JSON files: orders.json, instruments.json, prices.json, settings.json.
-- [ ] 3.4. Create ISIN mapping JSON file with common ETF/fund mappings.
+- [x] 3.4. Create ISIN mapping JSON file with common ETF/fund mappings (18 entries).
 - [ ] 3.5. Implement atomic JSON writes with file locking.
 - [ ] 3.6. Add backup/export functionality (daily rotated backups per PRD).
 
 ### 4. Service Layer & Utils
-- [ ] 4.1. Create backend/app/utils/ directory.
-- [ ] 4.2. Implement csv_parser.py with Spanish format support.
-- [ ] 4.3. Implement validators.py for order/CSV validation.
+- [x] 4.1. Create backend/app/utils/ directory.
+- [x] 4.2. Implement csv_parser.py with Spanish format support (12 tests passing).
+- [x] 4.3. Implement validators.py for order/CSV validation.
 - [ ] 4.4. Create compute_service.py for PnL and position calculations.
 - [ ] 4.5. Create storage_service.py to centralize JSON I/O with atomic writes.
 - [ ] 4.6. Update isin_mapper.py to load from JSON file.
@@ -85,18 +85,21 @@
 ## Progress Summary
 
 **Completed:**
+- ✅ Section 1: Project Cleanup (6/6 tasks complete)
 - ✅ Deleted 5 corrupted files (4 test files + 1 script)
-- ✅ Initialized git repository with 2 commits
+- ✅ Initialized git repository with 5 commits
 - ✅ Formatted 19 Python files with Black
-- ✅ Created comprehensive test suite (16 tests, all passing)
-- ✅ Created CLEANUP_PROGRESS.md documentation
+- ✅ Created comprehensive test suite (28 tests: 16 core + 12 CSV, all passing)
+- ✅ Created utils/ directory with csv_parser.py and validators.py
+- ✅ Created ISIN mapping JSON with 18 common ETFs
+- ✅ Fixed all three utility scripts (create_test_user.py, clear_holdings.py, test_isin_resolution.py)
 
 **Current Stats:**
-- Backend: 25 Python files, all formatted
+- Backend: 27 Python files (25 app + 2 utils), all formatted
 - Frontend: 80+ Vue/TS files
-- Tests: 16 passing (smoke, auth, portfolio)
+- Tests: 28 passing (16 core + 12 CSV)
 - Test Coverage: Not measured yet
-- Git Commits: 2
+- Git Commits: 5
 
 **Key Findings:**
 - Data model mismatch: Current uses `holdings`, PRD expects `orders`
