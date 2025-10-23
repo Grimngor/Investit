@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.docs import tags_metadata, description
-from app.routers import auth, portfolio, websocket, debug, orders
+from app.routers import auth, portfolio, websocket, debug, orders, dashboard
 
 # Create FastAPI app
 app = FastAPI(title="Investit API", description=description, version="1.0.0", openapi_tags=tags_metadata)
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(portfolio.router)
 app.include_router(orders.router)
+app.include_router(dashboard.router)
 app.include_router(websocket.router)
 app.include_router(debug.router)
 

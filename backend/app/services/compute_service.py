@@ -20,7 +20,7 @@ class ComputeService:
         Returns:
             Dict with total_shares, average_cost, total_invested
         """
-        relevant_orders = [o for o in orders if o.get("isin") == isin and o.get("status") == "ejecutada"]
+        relevant_orders = [o for o in orders if o.get("isin") == isin and o.get("status", "").lower() == "finalizada"]
 
         if not relevant_orders:
             return {"total_shares": 0.0, "average_cost": 0.0, "total_invested": 0.0}
@@ -162,7 +162,7 @@ class ComputeService:
         positions: Dict[str, Decimal] = {}  # ISIN -> shares
 
         for order in sorted_orders:
-            if order.get("status") != "ejecutada":
+            if order.get("status", "").lower() != "finalizada":
                 continue
 
             date = order.get("date")

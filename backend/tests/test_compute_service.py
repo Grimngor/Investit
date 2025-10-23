@@ -7,7 +7,7 @@ from app.services.compute_service import ComputeService
 
 def test_calculate_position_single_order():
     """Test position calculation with single order."""
-    orders = [{"date": "2024-01-15", "isin": "IE00B4L5Y983", "shares": 10.0, "amount_eur": 1000.0, "status": "ejecutada"}]
+    orders = [{"date": "2024-01-15", "isin": "IE00B4L5Y983", "shares": 10.0, "amount_eur": 1000.0, "status": "Finalizada"}]
 
     position = ComputeService.calculate_position(orders, "IE00B4L5Y983")
 
@@ -19,8 +19,8 @@ def test_calculate_position_single_order():
 def test_calculate_position_multiple_orders():
     """Test position calculation with multiple orders at different prices."""
     orders = [
-        {"date": "2024-01-15", "isin": "IE00B4L5Y983", "shares": 10.0, "amount_eur": 1000.0, "status": "ejecutada"},
-        {"date": "2024-02-20", "isin": "IE00B4L5Y983", "shares": 5.0, "amount_eur": 600.0, "status": "ejecutada"},
+        {"date": "2024-01-15", "isin": "IE00B4L5Y983", "shares": 10.0, "amount_eur": 1000.0, "status": "Finalizada"},
+        {"date": "2024-02-20", "isin": "IE00B4L5Y983", "shares": 5.0, "amount_eur": 600.0, "status": "Finalizada"},
     ]
 
     position = ComputeService.calculate_position(orders, "IE00B4L5Y983")
@@ -33,8 +33,8 @@ def test_calculate_position_multiple_orders():
 def test_calculate_position_ignores_rejected_orders():
     """Test that rejected orders are ignored."""
     orders = [
-        {"date": "2024-01-15", "isin": "IE00B4L5Y983", "shares": 10.0, "amount_eur": 1000.0, "status": "ejecutada"},
-        {"date": "2024-02-20", "isin": "IE00B4L5Y983", "shares": 5.0, "amount_eur": 600.0, "status": "rechazada"},
+        {"date": "2024-01-15", "isin": "IE00B4L5Y983", "shares": 10.0, "amount_eur": 1000.0, "status": "Finalizada"},
+        {"date": "2024-02-20", "isin": "IE00B4L5Y983", "shares": 5.0, "amount_eur": 600.0, "status": "Rechazada"},
     ]
 
     position = ComputeService.calculate_position(orders, "IE00B4L5Y983")
@@ -45,7 +45,7 @@ def test_calculate_position_ignores_rejected_orders():
 
 def test_calculate_position_different_isin():
     """Test position for different ISIN returns empty."""
-    orders = [{"date": "2024-01-15", "isin": "IE00B4L5Y983", "shares": 10.0, "amount_eur": 1000.0, "status": "ejecutada"}]
+    orders = [{"date": "2024-01-15", "isin": "IE00B4L5Y983", "shares": 10.0, "amount_eur": 1000.0, "status": "Finalizada"}]
 
     position = ComputeService.calculate_position(orders, "US1234567890")
 
@@ -131,8 +131,8 @@ def test_calculate_allocation_empty():
 def test_calculate_time_series():
     """Test time series calculation."""
     orders = [
-        {"date": "2024-01-15", "isin": "ISIN1", "shares": 10.0, "amount_eur": 1000.0, "status": "ejecutada"},
-        {"date": "2024-02-20", "isin": "ISIN2", "shares": 5.0, "amount_eur": 500.0, "status": "ejecutada"},
+        {"date": "2024-01-15", "isin": "ISIN1", "shares": 10.0, "amount_eur": 1000.0, "status": "Finalizada"},
+        {"date": "2024-02-20", "isin": "ISIN2", "shares": 5.0, "amount_eur": 500.0, "status": "Finalizada"},
     ]
     prices = {"ISIN1": 110.0, "ISIN2": 120.0}
 
