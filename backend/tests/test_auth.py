@@ -1,10 +1,12 @@
 """Tests for authentication endpoints."""
 
+import json
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.models.persistence import save_user_data
+from app.models.persistence import save_user_data, load_user_data, get_all_users
 from app.services.auth import get_password_hash
+from app.config import settings
 
 client = TestClient(app)
 
@@ -22,12 +24,23 @@ def test_user():
 
 def test_register_new_user():
     """Test user registration with new credentials."""
+    # Clean up the user first if it exists
+    username = "new_test_user"
+    user_data = load_user_data(username)
+    if user_data:
+        # Delete the user from users.json
+        users = get_all_users()
+        if username in users:
+            del users[username]
+            with open(settings.DATA_DIR / "users.json", "w", encoding="utf-8") as f:
+                json.dump(users, f, indent=2)
+    
     response = client.post(
-        "/api/auth/register", json={"username": "new_test_user", "email": "newuser@test.com", "password": "password123", "full_name": "Test User"}
+        "/api/auth/register", json={"username": username, "email": "newuser@test.com", "password": "password123", "full_name": "Test User"}
     )
     assert response.status_code == 201
     data = response.json()
-    assert data["username"] == "new_test_user"
+    assert data["username"] == username
     assert data["message"] == "User registered successfully"
 
 
