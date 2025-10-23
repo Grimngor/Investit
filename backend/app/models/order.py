@@ -4,102 +4,102 @@ from pydantic import BaseModel, Field
 
 
 class Order(BaseModel):
-    """
-    Represents a buy/sell order for an investment instrument.
+	"""
+	Represents a buy/sell order for an investment instrument.
 
-    Based on PRD Section 3: Order-based data model.
-    """
+	Based on PRD Section 3: Order-based data model.
+	"""
 
-    id: str | None = None
-    date: str = Field(..., description="Order execution date in YYYY-MM-DD format")
-    isin: str = Field(..., min_length=12, max_length=12, description="ISIN code (12 characters)")
-    ticker: str | None = Field(None, description="Optional ticker symbol")
-    amount_eur: float = Field(..., gt=0, description="Order amount in EUR")
-    shares: float = Field(..., gt=0, description="Number of shares/units")
-    order_type: str = Field("buy", description="Order type: buy or sell")
-    status: str = Field("Finalizada", description="Order status: Finalizada or Rechazada")
-    notes: str = Field("", description="Optional notes")
-    created_at: str | None = None
+	id: str | None = None
+	date: str = Field(..., description="Order execution date in YYYY-MM-DD format")
+	isin: str = Field(..., min_length=12, max_length=12, description="ISIN code (12 characters)")
+	ticker: str | None = Field(None, description="Optional ticker symbol")
+	amount_eur: float = Field(..., gt=0, description="Order amount in EUR")
+	shares: float = Field(..., gt=0, description="Number of shares/units")
+	order_type: str = Field("buy", description="Order type: buy or sell")
+	status: str = Field("Finalizada", description="Order status: Finalizada or Rechazada")
+	notes: str = Field("", description="Optional notes")
+	created_at: str | None = None
 
 
 class OrderCreate(BaseModel):
-    """Schema for creating a new order manually."""
+	"""Schema for creating a new order manually."""
 
-    date: str
-    isin: str = Field(..., min_length=12, max_length=12)
-    ticker: str | None = None
-    amount_eur: float = Field(..., gt=0)
-    shares: float = Field(..., gt=0)
-    order_type: str = "buy"
-    status: str = "Finalizada"
-    notes: str = ""
+	date: str
+	isin: str = Field(..., min_length=12, max_length=12)
+	ticker: str | None = None
+	amount_eur: float = Field(..., gt=0)
+	shares: float = Field(..., gt=0)
+	order_type: str = "buy"
+	status: str = "Finalizada"
+	notes: str = ""
 
 
 class OrderUpdate(BaseModel):
-    """Schema for updating an existing order."""
+	"""Schema for updating an existing order."""
 
-    date: str | None = None
-    isin: str | None = None
-    ticker: str | None = None
-    amount_eur: float | None = None
-    shares: float | None = None
-    order_type: str | None = None
-    status: str | None = None
-    notes: str | None = None
+	date: str | None = None
+	isin: str | None = None
+	ticker: str | None = None
+	amount_eur: float | None = None
+	shares: float | None = None
+	order_type: str | None = None
+	status: str | None = None
+	notes: str | None = None
 
 
 class OrderResponse(BaseModel):
-    """Response schema for order operations."""
+	"""Response schema for order operations."""
 
-    id: str
-    date: str
-    isin: str
-    ticker: str | None
-    amount_eur: float
-    shares: float
-    order_type: str
-    status: str
-    notes: str
-    created_at: str
+	id: str
+	date: str
+	isin: str
+	ticker: str | None
+	amount_eur: float
+	shares: float
+	order_type: str
+	status: str
+	notes: str
+	created_at: str
 
 
 class Instrument(BaseModel):
-    """
-    Represents an investment instrument (ETF, fund, stock).
+	"""
+	Represents an investment instrument (ETF, fund, stock).
 
-    Separate from orders per PRD architecture.
-    """
+	Separate from orders per PRD architecture.
+	"""
 
-    isin: str = Field(..., min_length=12, max_length=12)
-    ticker: str
-    name: str
-    instrument_type: str = Field(..., description="ETF, Index Fund, Stock, Bond")
-    currency: str = "EUR"
-    sector: str | None = None
-    region: str | None = None
-    geography: str | None = None
-    risk_rating: str | None = None
+	isin: str = Field(..., min_length=12, max_length=12)
+	ticker: str
+	name: str
+	instrument_type: str = Field(..., description="ETF, Index Fund, Stock, Bond")
+	currency: str = "EUR"
+	sector: str | None = None
+	region: str | None = None
+	geography: str | None = None
+	risk_rating: str | None = None
 
 
 class Price(BaseModel):
-    """
-    Current price for an instrument.
+	"""
+	Current price for an instrument.
 
-    Separate collection per PRD.
-    """
+	Separate collection per PRD.
+	"""
 
-    isin: str
-    ticker: str
-    price: float
-    currency: str = "EUR"
-    timestamp: str
-    source: str = "finnhub"
+	isin: str
+	ticker: str
+	price: float
+	currency: str = "EUR"
+	timestamp: str
+	source: str = "finnhub"
 
 
 class UserSettings(BaseModel):
-    """User-specific settings."""
+	"""User-specific settings."""
 
-    username: str
-    default_currency: str = "EUR"
-    theme: str = "light"
-    notifications_enabled: bool = True
+	username: str
+	default_currency: str = "EUR"
+	theme: str = "light"
+	notifications_enabled: bool = True

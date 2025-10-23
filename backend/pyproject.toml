@@ -70,7 +70,7 @@ ignore = [
 "app/routers/portfolio.py" = ["PLR2004"]
 
 [tool.ruff.format]
-quote-style = "preserve"
-indent-style = "space"
+quote-style = "double"
+indent-style = "tab"
 skip-magic-trailing-comma = false
 line-ending = "auto"

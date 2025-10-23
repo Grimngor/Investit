@@ -1,22 +1,22 @@
 """FastAPI documentation configuration."""
 
 tags_metadata = [
-    {
-        "name": "auth",
-        "description": "Authentication and user management operations. Register, login, and manage user tokens.",
-    },
-    {
-        "name": "portfolio",
-        "description": "Portfolio management operations. Create, read, update, and delete investments in your portfolio.",
-    },
-    {
-        "name": "websocket",
-        "description": "WebSocket connections for real-time updates.",
-    },
-    {
-        "name": "debug",
-        "description": "Debug and diagnostic endpoints for development and testing.",
-    },
+	{
+		"name": "auth",
+		"description": "Authentication and user management operations. Register, login, and manage user tokens.",
+	},
+	{
+		"name": "portfolio",
+		"description": "Portfolio management operations. Create, read, update, and delete investments in your portfolio.",
+	},
+	{
+		"name": "websocket",
+		"description": "WebSocket connections for real-time updates.",
+	},
+	{
+		"name": "debug",
+		"description": "Debug and diagnostic endpoints for development and testing.",
+	},
 ]
 
 description = """
