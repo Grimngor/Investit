@@ -26,10 +26,10 @@ class FinnhubService:
 		Get real-time quote for a symbol.
 
 		Args:
-		    symbol: Stock ticker symbol
+			symbol: Stock ticker symbol
 
 		Returns:
-		    Dictionary with quote data or None if not found
+			Dictionary with quote data or None if not found
 		"""
 		if not symbol:
 			return None
@@ -65,10 +65,10 @@ class FinnhubService:
 		Search for symbols matching query.
 
 		Args:
-		    query: Search query string
+			query: Search query string
 
 		Returns:
-		    List of matching symbols
+			List of matching symbols
 		"""
 		if not query:
 			return []
@@ -92,10 +92,10 @@ class FinnhubService:
 		Get company profile for a symbol.
 
 		Args:
-		    symbol: Stock ticker symbol
+			symbol: Stock ticker symbol
 
 		Returns:
-		    Dictionary with company profile or None
+			Dictionary with company profile or None
 		"""
 		if not symbol:
 			return None

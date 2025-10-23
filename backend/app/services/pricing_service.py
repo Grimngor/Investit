@@ -17,10 +17,10 @@ class PricingService:
 		Fetch data for multiple symbols.
 
 		Args:
-		    symbols: List of ticker symbols
+			symbols: List of ticker symbols
 
 		Returns:
-		    Dictionary mapping symbols to their data
+			Dictionary mapping symbols to their data
 		"""
 		results = {}
 
@@ -36,10 +36,10 @@ class PricingService:
 		Fetch detailed information for a symbol.
 
 		Args:
-		    symbol: Ticker symbol
+			symbol: Ticker symbol
 
 		Returns:
-		    Dictionary with symbol details or None
+			Dictionary with symbol details or None
 		"""
 		profile = await self.finnhub.get_company_profile(symbol)
 		quote = await self.finnhub.get_quote(symbol)

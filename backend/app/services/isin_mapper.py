@@ -36,10 +36,10 @@ class ISINMapper:
 		Resolve an ISIN code to a ticker symbol.
 
 		Args:
-		    isin: The ISIN code to resolve
+			isin: The ISIN code to resolve
 
 		Returns:
-		    The ticker symbol if found, None otherwise
+			The ticker symbol if found, None otherwise
 		"""
 		if not isin:
 			return None
@@ -55,10 +55,10 @@ class ISINMapper:
 		Get full mapping information for an ISIN.
 
 		Args:
-		    isin: The ISIN code
+			isin: The ISIN code
 
 		Returns:
-		    Dictionary with mapping details or None
+			Dictionary with mapping details or None
 		"""
 		return self.mappings.get(isin)
 

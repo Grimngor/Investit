@@ -17,10 +17,10 @@ def validate_isin(isin: str) -> bool:
 	Total: 12 characters
 
 	Args:
-	    isin: ISIN code to validate
+		isin: ISIN code to validate
 
 	Returns:
-	    True if valid, False otherwise
+		True if valid, False otherwise
 	"""
 	if not isin or len(isin) != ISIN_LENGTH:
 		return False
@@ -38,11 +38,11 @@ def validate_date(date_str: str, date_format: str = "%Y-%m-%d") -> bool:
 	Validate date string format.
 
 	Args:
-	    date_str: Date string to validate
-	    date_format: Expected date format (default: YYYY-MM-DD)
+		date_str: Date string to validate
+		date_format: Expected date format (default: YYYY-MM-DD)
 
 	Returns:
-	    True if valid, False otherwise
+		True if valid, False otherwise
 	"""
 	try:
 		datetime.strptime(date_str, date_format)
@@ -56,10 +56,10 @@ def validate_amount(amount: float) -> bool:
 	Validate monetary amount.
 
 	Args:
-	    amount: Amount to validate
+		amount: Amount to validate
 
 	Returns:
-	    True if valid (positive number), False otherwise
+		True if valid (positive number), False otherwise
 	"""
 	try:
 		return isinstance(amount, int | float) and amount > 0
@@ -72,10 +72,10 @@ def validate_shares(shares: float) -> bool:
 	Validate number of shares.
 
 	Args:
-	    shares: Number of shares to validate
+		shares: Number of shares to validate
 
 	Returns:
-	    True if valid (positive number), False otherwise
+		True if valid (positive number), False otherwise
 	"""
 	try:
 		return isinstance(shares, int | float) and shares > 0
@@ -88,10 +88,10 @@ def validate_order_type(order_type: str) -> bool:
 	Validate order type.
 
 	Args:
-	    order_type: Order type to validate ('buy' or 'sell')
+		order_type: Order type to validate ('buy' or 'sell')
 
 	Returns:
-	    True if valid, False otherwise
+		True if valid, False otherwise
 	"""
 	return order_type.lower() in ["buy", "sell"]
 
@@ -101,10 +101,10 @@ def validate_order(order: dict[str, Any]) -> tuple[bool, list[str]]:
 	Validate a complete order dictionary.
 
 	Args:
-	    order: Order dictionary to validate
+		order: Order dictionary to validate
 
 	Returns:
-	    Tuple of (is_valid, error_messages)
+		Tuple of (is_valid, error_messages)
 	"""
 	errors = []
 
@@ -145,10 +145,10 @@ def validate_symbol(symbol: str) -> bool:
 	Validate ticker symbol format.
 
 	Args:
-	    symbol: Ticker symbol to validate
+		symbol: Ticker symbol to validate
 
 	Returns:
-	    True if valid, False otherwise
+		True if valid, False otherwise
 	"""
 	if not symbol or len(symbol) > MAX_SYMBOL_LENGTH:
 		return False
@@ -161,10 +161,10 @@ def validate_currency(currency: str) -> bool:
 	Validate currency code (ISO 4217).
 
 	Args:
-	    currency: Currency code to validate (e.g., 'USD', 'EUR')
+		currency: Currency code to validate (e.g., 'USD', 'EUR')
 
 	Returns:
-	    True if valid, False otherwise
+		True if valid, False otherwise
 	"""
 	if not currency or len(currency) != CURRENCY_CODE_LENGTH:
 		return False
@@ -177,11 +177,11 @@ def sanitize_string(value: str, max_length: int | None = None) -> str:
 	Sanitize string input.
 
 	Args:
-	    value: String to sanitize
-	    max_length: Maximum allowed length (optional)
+		value: String to sanitize
+		max_length: Maximum allowed length (optional)
 
 	Returns:
-	    Sanitized string
+		Sanitized string
 	"""
 	if not isinstance(value, str):
 		value = str(value)

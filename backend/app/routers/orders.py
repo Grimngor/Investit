@@ -78,7 +78,7 @@ async def import_csv(
 	- Status: Finalizada (accepted), Rechazada (rejected)
 
 	Returns:
-	    Dict with imported_count, rejected_count, errors list
+		Dict with imported_count, rejected_count, errors list
 	"""
 	# Validate file type
 	if not file.filename.endswith(".csv"):
@@ -166,19 +166,19 @@ async def get_orders(
 	Get orders for current user with filtering, sorting, and pagination.
 
 	Query Parameters:
-	    - isin: Filter by ISIN code
-	    - ticker: Filter by ticker symbol
-	    - order_type: Filter by buy/sell
-	    - status: Filter by order status
-	    - date_from: Start date (inclusive)
-	    - date_to: End date (inclusive)
-	    - sort_by: Field to sort by (date, amount_eur, shares)
-	    - sort_order: asc or desc
-	    - limit: Maximum number of results
-	    - offset: Skip this many results (for pagination)
+		- isin: Filter by ISIN code
+		- ticker: Filter by ticker symbol
+		- order_type: Filter by buy/sell
+		- status: Filter by order status
+		- date_from: Start date (inclusive)
+		- date_to: End date (inclusive)
+		- sort_by: Field to sort by (date, amount_eur, shares)
+		- sort_order: asc or desc
+		- limit: Maximum number of results
+		- offset: Skip this many results (for pagination)
 
 	Returns:
-	    Dict with orders list, total count, and filter info
+		Dict with orders list, total count, and filter info
 	"""
 	users_file = settings.DATA_DIR / "users.json"
 	users = StorageService.load_json(users_file, default={})

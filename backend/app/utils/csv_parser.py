@@ -57,14 +57,14 @@ class SpanishOrderCSVParser:
 		Parse date from DD/MM/YYYY to YYYY-MM-DD format.
 
 		Args:
-		    date_str: Date string in DD/MM/YYYY format
-		    row_num: Row number for error reporting
+			date_str: Date string in DD/MM/YYYY format
+			row_num: Row number for error reporting
 
 		Returns:
-		    Date string in YYYY-MM-DD format
+			Date string in YYYY-MM-DD format
 
 		Raises:
-		    CSVParseError: If date format is invalid
+			CSVParseError: If date format is invalid
 		"""
 		date_str = date_str.strip()
 		try:
@@ -78,14 +78,14 @@ class SpanishOrderCSVParser:
 		Parse amount, handling Spanish format (comma as decimal separator).
 
 		Args:
-		    amount_str: Amount string (e.g., '1.234,56' or '1234.56' or '1234,56 EUR')
-		    row_num: Row number for error reporting
+			amount_str: Amount string (e.g., '1.234,56' or '1234.56' or '1234,56 EUR')
+			row_num: Row number for error reporting
 
 		Returns:
-		    Amount as float
+			Amount as float
 
 		Raises:
-		    CSVParseError: If amount format is invalid
+			CSVParseError: If amount format is invalid
 		"""
 		amount_str = amount_str.strip()
 
@@ -118,14 +118,14 @@ class SpanishOrderCSVParser:
 		Parse number of shares.
 
 		Args:
-		    shares_str: Shares string
-		    row_num: Row number for error reporting
+			shares_str: Shares string
+			row_num: Row number for error reporting
 
 		Returns:
-		    Shares as float
+			Shares as float
 
 		Raises:
-		    CSVParseError: If shares format is invalid
+			CSVParseError: If shares format is invalid
 		"""
 		shares_str = shares_str.strip()
 
@@ -145,23 +145,23 @@ class SpanishOrderCSVParser:
 		Parse CSV content and return orders and errors.
 
 		Args:
-		    csv_content: CSV file content as string
+			csv_content: CSV file content as string
 
 		Returns:
-		    Tuple of (parsed_orders, errors)
-		    - parsed_orders: List of order dictionaries
-		    - errors: List of error messages
+			Tuple of (parsed_orders, errors)
+			- parsed_orders: List of order dictionaries
+			- errors: List of error messages
 
 		Order dictionary structure:
-		{
-		    'date': 'YYYY-MM-DD',
-		    'isin': 'IE00BYX5NX33',
-		    'amount_eur': 300.00,
-		    'shares': 24.624,
-		    'order_type': 'buy' or 'sell',
-		    'status': 'Finalizada',
-		    'notes': ''
-		}
+			{
+				'date': 'YYYY-MM-DD',
+				'isin': 'IE00BYX5NX33',
+				'amount_eur': 300.00,
+				'shares': 24.624,
+				'order_type': 'buy' or 'sell',
+				'status': 'Finalizada',
+				'notes': ''
+			}
 		"""
 		orders = []
 		errors = []
@@ -254,11 +254,11 @@ def parse_spanish_csv(csv_content: str, encoding: str = "utf-8") -> tuple[list[d
 	Convenience function to parse Spanish bank CSV format.
 
 	Args:
-	    csv_content: CSV file content as string
-	    encoding: File encoding (default: utf-8)
+		csv_content: CSV file content as string
+		encoding: File encoding (default: utf-8)
 
 	Returns:
-	    Tuple of (parsed_orders, errors)
+		Tuple of (parsed_orders, errors)
 	"""
 	parser = SpanishOrderCSVParser(encoding=encoding)
 	return parser.parse_csv(csv_content)

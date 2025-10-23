@@ -28,10 +28,10 @@ class BackupService:
 		Create a timestamped backup of a data file.
 
 		Args:
-		    filename: Name of the file to backup (e.g., "users.json")
+			filename: Name of the file to backup (e.g., "users.json")
 
 		Returns:
-		    Path to the created backup file
+			Path to the created backup file
 		"""
 		source_file = self.data_dir / filename
 		if not source_file.exists():
@@ -55,10 +55,10 @@ class BackupService:
 		Delete backups older than retention_days.
 
 		Args:
-		    filename_pattern: Glob pattern to match backup files
+			filename_pattern: Glob pattern to match backup files
 
 		Returns:
-		    Number of backups deleted
+			Number of backups deleted
 		"""
 		if not self.backup_dir.exists():
 			return 0
@@ -82,7 +82,7 @@ class BackupService:
 		Perform daily backup of all data files with rotation.
 
 		Returns:
-		    Dict with backup statistics
+			Dict with backup statistics
 		"""
 		stats = {"backups_created": [], "backups_deleted": 0, "errors": []}
 
@@ -116,10 +116,10 @@ class BackupService:
 		Export a user's complete portfolio data for download.
 
 		Args:
-		    username: Username to export
+			username: Username to export
 
 		Returns:
-		    Dict containing user's orders, instruments, and summary
+			Dict containing user's orders, instruments, and summary
 		"""
 		# Load users
 		users_file = self.data_dir / "users.json"
@@ -167,11 +167,11 @@ class BackupService:
 		Export user portfolio to a JSON file.
 
 		Args:
-		    username: Username to export
-		    output_path: Where to save the export
+			username: Username to export
+			output_path: Where to save the export
 
 		Returns:
-		    Path to the exported file
+			Path to the exported file
 		"""
 		export_data = self.export_user_portfolio(username)
 
@@ -185,10 +185,10 @@ class BackupService:
 		List all available backups.
 
 		Args:
-		    filename_pattern: Glob pattern to match backup files
+			filename_pattern: Glob pattern to match backup files
 
 		Returns:
-		    List of backup file info (name, size, date)
+			List of backup file info (name, size, date)
 		"""
 		if not self.backup_dir.exists():
 			return []

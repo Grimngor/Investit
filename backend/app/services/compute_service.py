@@ -14,11 +14,11 @@ class ComputeService:
 		Calculate current position for a specific ISIN from order history.
 
 		Args:
-		    orders: List of order dicts with date, isin, shares, amount_eur, status
-		    isin: ISIN code to calculate position for
+			orders: List of order dicts with date, isin, shares, amount_eur, status
+			isin: ISIN code to calculate position for
 
 		Returns:
-		    Dict with total_shares, average_cost, total_invested
+			Dict with total_shares, average_cost, total_invested
 		"""
 		relevant_orders = [o for o in orders if o.get("isin") == isin and o.get("status", "").lower() == "finalizada"]
 
@@ -50,11 +50,11 @@ class ComputeService:
 		Calculate profit/loss for a position.
 
 		Args:
-		    position: Position dict with total_shares, average_cost, total_invested
-		    current_price: Current market price per share
+			position: Position dict with total_shares, average_cost, total_invested
+			current_price: Current market price per share
 
 		Returns:
-		    Dict with current_value, unrealized_pnl, unrealized_pnl_pct
+			Dict with current_value, unrealized_pnl, unrealized_pnl_pct
 		"""
 		total_shares = position.get("total_shares", 0.0)
 		total_invested = position.get("total_invested", 0.0)
@@ -75,10 +75,10 @@ class ComputeService:
 		Calculate overall portfolio metrics.
 
 		Args:
-		    holdings: List of holdings with total_invested, current_value, unrealized_pnl
+			holdings: List of holdings with total_invested, current_value, unrealized_pnl
 
 		Returns:
-		    Dict with total_invested, total_value, total_pnl, total_pnl_pct
+			Dict with total_invested, total_value, total_pnl, total_pnl_pct
 		"""
 		if not holdings:
 			return {
@@ -106,11 +106,11 @@ class ComputeService:
 		Calculate allocation breakdown by a specific key (e.g., geography, sector, asset_type).
 
 		Args:
-		    holdings: List of holdings with current_value and the specified key
-		    key: Key to group by (e.g., 'geography', 'sector', 'asset_type')
+			holdings: List of holdings with current_value and the specified key
+			key: Key to group by (e.g., 'geography', 'sector', 'asset_type')
 
 		Returns:
-		    List of dicts with category, value, percentage
+			List of dicts with category, value, percentage
 		"""
 		if not holdings:
 			return []
@@ -145,11 +145,11 @@ class ComputeService:
 		Calculate invested vs current value over time.
 
 		Args:
-		    orders: List of orders sorted by date
-		    prices: Dict mapping ISIN to current price
+			orders: List of orders sorted by date
+			prices: Dict mapping ISIN to current price
 
 		Returns:
-		    List of dicts with date, invested_value, current_value
+			List of dicts with date, invested_value, current_value
 		"""
 		if not orders:
 			return []
@@ -198,11 +198,11 @@ class ComputeService:
 		Check if a price is stale (older than threshold).
 
 		Args:
-		    last_update: ISO format datetime string
-		    threshold_days: Number of days to consider stale (default: 3)
+			last_update: ISO format datetime string
+			threshold_days: Number of days to consider stale (default: 3)
 
 		Returns:
-		    True if price is stale, False otherwise
+			True if price is stale, False otherwise
 		"""
 		if not last_update:
 			return True
@@ -221,10 +221,10 @@ class ComputeService:
 		Calculate diversification score using Herfindahl-Hirschman Index (HHI).
 
 		Args:
-		    allocations: List of dicts with 'percentage' key
+			allocations: List of dicts with 'percentage' key
 
 		Returns:
-		    Score from 0-100, where 100 is perfectly diversified
+			Score from 0-100, where 100 is perfectly diversified
 		"""
 		if not allocations:
 			return 0.0
@@ -251,12 +251,12 @@ class ComputeService:
 		Calculate weighted average.
 
 		Args:
-		    items: List of items
-		    value_key: Key for the value to average
-		    weight_key: Key for the weight
+			items: List of items
+			value_key: Key for the value to average
+			weight_key: Key for the weight
 
 		Returns:
-		    Weighted average
+			Weighted average
 		"""
 		total_weight = sum(item.get(weight_key, 0.0) for item in items)
 		if total_weight == 0:

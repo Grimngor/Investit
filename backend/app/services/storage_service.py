@@ -20,11 +20,11 @@ class StorageService:
 		Context manager for file locking.
 
 		Args:
-		    file_path: Path to the file to lock
-		    exclusive: If True, acquire exclusive lock (for writes), else shared lock (for reads)
+			file_path: Path to the file to lock
+			exclusive: If True, acquire exclusive lock (for writes), else shared lock (for reads)
 
 		Yields:
-		    File object with appropriate lock
+			File object with appropriate lock
 		"""
 		mode = "r+b" if exclusive else "rb"
 		flags = portalocker.LOCK_EX if exclusive else portalocker.LOCK_SH
@@ -47,11 +47,11 @@ class StorageService:
 		Load JSON data from file with shared lock.
 
 		Args:
-		    file_path: Path to JSON file
-		    default: Default value if file doesn't exist or is empty
+			file_path: Path to JSON file
+			default: Default value if file doesn't exist or is empty
 
 		Returns:
-		    Parsed JSON data or default value
+			Parsed JSON data or default value
 		"""
 		if not file_path.exists():
 			return default if default is not None else {}
@@ -77,9 +77,9 @@ class StorageService:
 		3. Rename to target (atomic operation)
 
 		Args:
-		    file_path: Path to JSON file
-		    data: Data to serialize as JSON
-		    indent: JSON indentation level (default: 2)
+			file_path: Path to JSON file
+			data: Data to serialize as JSON
+			indent: JSON indentation level (default: 2)
 		"""
 		file_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -115,19 +115,19 @@ class StorageService:
 		saves result atomically.
 
 		Args:
-		    file_path: Path to JSON file
-		    update_fn: Function that takes current data and returns updated data
-		    default: Default value if file doesn't exist
+			file_path: Path to JSON file
+			update_fn: Function that takes current data and returns updated data
+			default: Default value if file doesn't exist
 
 		Returns:
-		    Updated data
+			Updated data
 
 		Example:
-		    def add_user(data):
-		        data['users']['new_user'] = {...}
-		        return data
+			def add_user(data):
+				data['users']['new_user'] = {...}
+				return data
 
-		    StorageService.update_json(users_file, add_user)
+			StorageService.update_json(users_file, add_user)
 		"""
 		# Check if file exists before locking
 		file_exists = file_path.exists()

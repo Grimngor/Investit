@@ -19,12 +19,12 @@ async def get_kpis(current_user: User = Depends(get_current_user)) -> dict[str, 
 	Get dashboard KPIs for current user.
 
 	Returns:
-	    - total_invested: Sum of all order amounts (EUR)
-	    - current_value: Sum of (shares x latest_price) for all positions
-	    - total_pnl: Absolute profit/loss (EUR)
-	    - total_pnl_pct: Percentage profit/loss (%)
-	    - positions_count: Number of active positions (ISIN with shares > 0)
-	    - orders_count: Total number of finalized orders
+		- total_invested: Sum of all order amounts (EUR)
+		- current_value: Sum of (shares x latest_price) for all positions
+		- total_pnl: Absolute profit/loss (EUR)
+		- total_pnl_pct: Percentage profit/loss (%)
+		- positions_count: Number of active positions (ISIN with shares > 0)
+		- orders_count: Total number of finalized orders
 	"""
 	users_file = settings.DATA_DIR / "users.json"
 	users = StorageService.load_json(users_file, default={})

@@ -45,10 +45,10 @@ async def get_current_price_for_symbol(
 	Get current price for a symbol, resolving ISIN if needed.
 
 	Args:
-	    original_symbol: The symbol or ISIN to get price for
+		original_symbol: The symbol or ISIN to get price for
 
 	Returns:
-	    Tuple of (price, resolved_symbol) or (None, None) if not found
+		Tuple of (price, resolved_symbol) or (None, None) if not found
 	"""
 	finnhub_service = FinnhubService()
 	isin_mapper = get_isin_mapper()
