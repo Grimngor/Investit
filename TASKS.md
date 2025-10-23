@@ -20,8 +20,8 @@
 - [x] 2.2. Write smoke tests for basic app functionality (4 tests).
 - [x] 2.3. Write authentication tests (6 tests: register, login, authorization).
 - [x] 2.4. Write portfolio CRUD tests (6 tests: create, read, update, delete).
-- [x] 2.5. Verify all tests pass (16/16 passing).
-- [ ] 2.6. Add test coverage reporting with pytest-cov.
+- [x] 2.5. Verify all tests pass (56 tests passing).
+- [x] 2.6. Add test coverage reporting with pytest-cov (72% coverage).
 - [ ] 2.7. Achieve target coverage: 70% unit, 20% integration, 10% E2E.
 - [ ] 2.8. Add frontend tests verification.
 
@@ -86,22 +86,25 @@
 
 **Completed:**
 - ✅ Section 1: Project Cleanup (6/6 tasks complete)
+- ✅ Section 4: Service Layer & Utils (6/7 tasks complete)
 - ✅ Deleted 5 corrupted files (4 test files + 1 script)
-- ✅ Initialized git repository with 8 commits
+- ✅ Initialized git repository with 11 commits
 - ✅ Formatted 19 Python files with Black
-- ✅ Created comprehensive test suite (39 tests: 16 core + 12 CSV + 11 storage, all passing)
+- ✅ Created comprehensive test suite (56 tests: 16 core + 12 CSV + 11 storage + 17 compute, all passing)
+- ✅ Added test coverage reporting with pytest-cov (72% coverage)
 - ✅ Created utils/ directory with csv_parser.py and validators.py
 - ✅ Created storage_service.py with atomic writes and file locking
+- ✅ Created compute_service.py for PnL and portfolio calculations
 - ✅ Created ISIN mapping JSON with 18 common ETFs
 - ✅ Fixed all three utility scripts (create_test_user.py, clear_holdings.py, test_isin_resolution.py)
 - ✅ Added portalocker for file locking
 
 **Current Stats:**
-- Backend: 29 Python files (27 app + 2 utils + 1 storage service), all formatted
+- Backend: 31 Python files, all formatted
 - Frontend: 80+ Vue/TS files
-- Tests: 39 passing (16 core + 12 CSV + 11 storage)
-- Test Coverage: Not measured yet
-- Git Commits: 8
+- Tests: 56 passing (16 core + 12 CSV + 11 storage + 17 compute)
+- Test Coverage: 72% (meets 70% target!)
+- Git Commits: 11
 
 **Key Findings:**
 - Data model mismatch: Current uses `holdings`, PRD expects `orders`
