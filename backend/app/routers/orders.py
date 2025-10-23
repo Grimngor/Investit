@@ -1,6 +1,6 @@
 """Router for order management (CSV import, CRUD operations)."""
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from app.models.user import User
@@ -95,12 +95,36 @@ async def import_csv(
 
 
 @router.get("/")
-async def get_orders(current_user: User = Depends(get_current_user)) -> List[Dict[str, Any]]:
+async def get_orders(
+    current_user: User = Depends(get_current_user),
+    isin: Optional[str] = Query(None, description="Filter by ISIN"),
+    ticker: Optional[str] = Query(None, description="Filter by ticker symbol"),
+    order_type: Optional[str] = Query(None, description="Filter by order type (buy/sell)"),
+    status: Optional[str] = Query(None, description="Filter by status (Finalizada/Rechazada)"),
+    date_from: Optional[str] = Query(None, description="Filter orders from this date (YYYY-MM-DD)"),
+    date_to: Optional[str] = Query(None, description="Filter orders up to this date (YYYY-MM-DD)"),
+    sort_by: str = Query("date", description="Sort by field: date, amount_eur, shares"),
+    sort_order: str = Query("desc", description="Sort order: asc or desc"),
+    limit: Optional[int] = Query(None, ge=1, le=1000, description="Limit number of results"),
+    offset: int = Query(0, ge=0, description="Offset for pagination")
+) -> Dict[str, Any]:
     """
-    Get all orders for current user.
+    Get orders for current user with filtering, sorting, and pagination.
+    
+    Query Parameters:
+        - isin: Filter by ISIN code
+        - ticker: Filter by ticker symbol
+        - order_type: Filter by buy/sell
+        - status: Filter by order status
+        - date_from: Start date (inclusive)
+        - date_to: End date (inclusive)
+        - sort_by: Field to sort by (date, amount_eur, shares)
+        - sort_order: asc or desc
+        - limit: Maximum number of results
+        - offset: Skip this many results (for pagination)
 
     Returns:
-        List of orders sorted by date (most recent first)
+        Dict with orders list, total count, and filter info
     """
     users_file = settings.DATA_DIR / "users.json"
     users = StorageService.load_json(users_file, default={})
@@ -110,8 +134,63 @@ async def get_orders(current_user: User = Depends(get_current_user)) -> List[Dic
 
     user_data = users[current_user.username]
     orders = user_data.get("orders", [])
+    
+    # Apply filters
+    filtered_orders = orders
+    
+    if isin:
+        filtered_orders = [o for o in filtered_orders if o.get("isin", "").upper() == isin.upper()]
+    
+    if ticker:
+        filtered_orders = [o for o in filtered_orders if o.get("ticker", "").upper() == ticker.upper()]
+    
+    if order_type:
+        filtered_orders = [o for o in filtered_orders if o.get("order_type", "") == order_type.lower()]
+    
+    if status:
+        filtered_orders = [o for o in filtered_orders if o.get("status", "").lower() == status.lower()]
+    
+    if date_from:
+        filtered_orders = [o for o in filtered_orders if o.get("date", "") >= date_from]
+    
+    if date_to:
+        filtered_orders = [o for o in filtered_orders if o.get("date", "") <= date_to]
+    
+    # Sort orders
+    reverse = sort_order.lower() == "desc"
+    
+    if sort_by in ["date", "amount_eur", "shares"]:
+        filtered_orders.sort(
+            key=lambda x: x.get(sort_by, 0 if sort_by != "date" else ""),
+            reverse=reverse
+        )
+    
+    total_count = len(filtered_orders)
+    
+    # Apply pagination
+    paginated_orders = filtered_orders[offset:]
+    if limit:
+        paginated_orders = paginated_orders[:limit]
+    
+    return {
+        "orders": paginated_orders,
+        "total": total_count,
+        "offset": offset,
+        "limit": limit,
+        "filters": {
+            "isin": isin,
+            "ticker": ticker,
+            "order_type": order_type,
+            "status": status,
+            "date_from": date_from,
+            "date_to": date_to
+        },
+        "sort": {
+            "by": sort_by,
+            "order": sort_order
+        }
+    }
 
-    return orders
 
 
 @router.get("/{order_id}")

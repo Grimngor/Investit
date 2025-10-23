@@ -101,7 +101,9 @@ def test_get_orders_empty(auth_headers):
     response = client.get("/api/orders/", headers=auth_headers)
     
     assert response.status_code == 200
-    assert response.json() == []
+    data = response.json()
+    assert data["total"] == 0
+    assert data["orders"] == []
 
 
 def test_get_orders_after_create(auth_headers):
@@ -132,12 +134,13 @@ def test_get_orders_after_create(auth_headers):
     response = client.get("/api/orders/", headers=auth_headers)
     
     assert response.status_code == 200
-    orders = response.json()
-    assert len(orders) == 2
+    data = response.json()
+    assert data["total"] == 2
+    assert len(data["orders"]) == 2
     
-    # Should be sorted by date (most recent first)
-    assert orders[0]["date"] == "2024-01-20"
-    assert orders[1]["date"] == "2024-01-15"
+    # Should be sorted by date (most recent first by default)
+    assert data["orders"][0]["date"] == "2024-01-20"
+    assert data["orders"][1]["date"] == "2024-01-15"
 
 
 def test_get_order_by_id(auth_headers):
@@ -253,7 +256,7 @@ def test_delete_order(auth_headers):
     
     # Verify orders list is empty
     list_response = client.get("/api/orders/", headers=auth_headers)
-    assert len(list_response.json()) == 0
+    assert list_response.json()["total"] == 0
 
 
 def test_delete_order_not_found(auth_headers):

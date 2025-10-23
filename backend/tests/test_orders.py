@@ -128,8 +128,9 @@ def test_get_orders_empty(auth_token):
 
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) == 0
+    assert "orders" in data
+    assert isinstance(data["orders"], list)
+    assert data["total"] == 0
 
 
 def test_get_orders_after_import(auth_token):
@@ -153,8 +154,9 @@ def test_get_orders_after_import(auth_token):
 
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["isin"] == "IE00B4L5Y983"
+    assert data["total"] == 1
+    assert len(data["orders"]) == 1
+    assert data["orders"][0]["isin"] == "IE00B4L5Y983"
 
 
 def test_get_order_by_id(auth_token):
@@ -175,10 +177,10 @@ def test_get_order_by_id(auth_token):
 
     # Get all orders first to get an order ID
     orders_response = client.get("/api/orders/", headers={"Authorization": f"Bearer {auth_token}"})
-    orders = orders_response.json()
-    assert len(orders) > 0
+    data = orders_response.json()
+    assert data["total"] > 0
     
-    order_id = orders[0]["id"]
+    order_id = data["orders"][0]["id"]
     
     # Get specific order by ID
     response = client.get(f"/api/orders/{order_id}", headers={"Authorization": f"Bearer {auth_token}"})
