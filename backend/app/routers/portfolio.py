@@ -14,6 +14,7 @@ from app.models.portfolio import (
 )
 from app.models.user import User
 from app.services.auth import get_current_user
+from app.services.compute_service import ComputeService
 from app.services.finnhub import FinnhubService
 from app.services.isin_mapper import get_isin_mapper
 
@@ -74,66 +75,56 @@ async def get_current_price_for_symbol(
 
 @router.get("/", response_model=Portfolio)
 async def get_portfolio(current_user: User = Depends(get_current_user)):
-	"""Get the current user's portfolio with live prices."""
+	"""Get the current user's portfolio computed from orders."""
 	users = get_all_users()
 	user_data = users.get(current_user.username)
 
 	if not user_data:
 		return Portfolio(username=current_user.username, holdings=[])
 
-	holdings = user_data.get("holdings", [])
+	# Get orders instead of holdings
+	orders = user_data.get("orders", [])
+	prices = user_data.get("prices", {})
 
-	# Check if we should refresh prices
-	should_refresh = _should_refresh_prices(current_user.username)
+	if not orders:
+		return Portfolio(username=current_user.username, holdings=[])
 
-	if should_refresh and holdings:
-		# Get unique symbols
-		symbols = list(set(h.get("symbol") for h in holdings if h.get("symbol")))
-		print(f"Refreshing current prices for {len(symbols)} symbols: {symbols}")
+	# Filter finalized orders
+	finalized_orders = [o for o in orders if o.get("status", "").lower() == "finalizada"]
 
-		# Fetch prices for each symbol
-		symbol_prices: dict[str, tuple[float | None, str | None]] = {}
-		for symbol in symbols:
-			price, resolved_symbol = await get_current_price_for_symbol(symbol)
-			if price:
-				symbol_prices[symbol] = (price, resolved_symbol)
+	# Get unique ISINs
+	unique_isins = set(o.get("isin") for o in finalized_orders if o.get("isin"))
 
-		# Update holdings with new prices
-		now_iso = datetime.datetime.now().isoformat()
-		for holding in holdings:
-			symbol = holding.get("symbol")
-			if symbol in symbol_prices:
-				price, resolved_symbol = symbol_prices[symbol]
-				holding["current_price"] = price
-				holding["last_price_timestamp"] = now_iso
-				holding["resolved_symbol"] = resolved_symbol
-
-		# Save updated prices
-		save_user_data(current_user.username, {"holdings": holdings})
-
-		# Update throttle timestamp
-		_LAST_PORTFOLIO_FETCH[current_user.username] = datetime.datetime.now()
-	elif holdings:
-		print(f"Skipping price refresh (throttled) for {current_user.username}")
-
-	# Convert holdings to Investment objects
+	# Build investments from computed positions
 	investments = []
-	for h in holdings:
-		investments.append(
-			Investment(
-				id=h.get("id"),
-				symbol=h.get("symbol"),
-				name=h.get("name", ""),
-				quantity=h.get("quantity", 0),
-				purchase_price=h.get("purchase_price", 0),
-				purchase_date=h.get("purchase_date"),
-				current_price=h.get("current_price"),
-				asset_type=h.get("asset_type", "stock"),
-				currency=h.get("currency", "USD"),
-				resolved_symbol=h.get("resolved_symbol"),
-				last_price_timestamp=h.get("last_price_timestamp"),
+	for isin in unique_isins:
+		position = ComputeService.calculate_position(finalized_orders, isin)
+
+		if position["total_shares"] > 0:
+			# Get price for this ISIN
+			price_data = prices.get(isin, {})
+			current_price = price_data.get("price")
+			last_price_timestamp = price_data.get("timestamp")
+
+			# Get the most recent order for this ISIN to extract metadata
+			isin_orders = [o for o in finalized_orders if o.get("isin") == isin]
+			latest_order = max(isin_orders, key=lambda x: x.get("date", ""))
+
+			investments.append(
+				Investment(
+					id=len(investments) + 1,  # Generate sequential ID
+					symbol=isin,  # Use ISIN as symbol
+					name=price_data.get("name", isin),  # Use name from prices or fallback to ISIN
+					quantity=position["total_shares"],
+					purchase_price=position["average_cost"],
+					purchase_date=latest_order.get("date", ""),
+					current_price=current_price,
+					asset_type="stock",
+					currency="EUR",
+					resolved_symbol=None,
+					last_price_timestamp=last_price_timestamp,
+				)
 			)
-		)
 
 	return Portfolio(username=current_user.username, holdings=investments)
 

@@ -3,7 +3,9 @@
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
       <div>
         <h1 class="page-title">My Portfolio</h1>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Overview of your current investments</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Manage your investments and import orders
+        </p>
       </div>
       <button
         @click="refreshPortfolio"
@@ -19,11 +21,31 @@
     <div class="grid gap-4 md:grid-cols-3 mb-10">
       <SummaryCard label="Total Cost" :value="totalCost" prefix="€" />
       <SummaryCard label="Total Value" :value="totalValue" prefix="€" />
-      <SummaryCard label="Gain/Loss" :value="totalGainLoss" prefix="€" :value-class="gainLossClass" />
+      <SummaryCard
+        label="Gain/Loss"
+        :value="totalGainLoss"
+        prefix="€"
+        :value-class="gainLossClass"
+      />
+    </div>
+
+    <!-- CSV Importer -->
+    <div class="mb-10">
+      <CSVImporter @import-complete="handleImportComplete" />
+    </div>
+
+    <!-- Manual Order Form -->
+    <div class="mb-10">
+      <OrderForm @order-saved="handleOrderSaved" @order-deleted="handleOrderDeleted" />
     </div>
 
     <!-- Holdings Table -->
-    <div class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur shadow-sm overflow-hidden">
+    <div
+      class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur shadow-sm overflow-hidden"
+    >
+      <div class="px-6 py-4 border-b border-softblue-200 dark:border-gray-700">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Current Holdings</h2>
+      </div>
       <table class="w-full text-sm">
         <thead class="bg-softblue-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
           <tr class="divide-x divide-gray-200 dark:divide-gray-700">
@@ -46,10 +68,21 @@
             <td class="px-4 py-3">{{ holding.name }}</td>
             <td class="px-4 py-3 text-right">{{ holding.quantity }}</td>
             <td class="px-4 py-3 text-right">€{{ holding.purchase_price.toFixed(2) }}</td>
-            <td class="px-4 py-3 text-right">€{{ (holding.current_price || holding.purchase_price).toFixed(2) }}</td>
-            <td class="px-4 py-3 text-right">€{{ (holding.quantity * (holding.current_price || holding.purchase_price)).toFixed(2) }}</td>
             <td class="px-4 py-3 text-right">
-              <span :class="['inline-flex px-2 py-1 rounded text-xs font-semibold', getBadgeClass(holding)]">
+              €{{ (holding.current_price || holding.purchase_price).toFixed(2) }}
+            </td>
+            <td class="px-4 py-3 text-right">
+              €{{
+                (holding.quantity * (holding.current_price || holding.purchase_price)).toFixed(2)
+              }}
+            </td>
+            <td class="px-4 py-3 text-right">
+              <span
+                :class="[
+                  'inline-flex px-2 py-1 rounded text-xs font-semibold',
+                  getBadgeClass(holding),
+                ]"
+              >
                 {{ formatGainLoss(holding) }}
               </span>
             </td>
@@ -58,18 +91,20 @@
       </table>
       <div v-if="!holdings || holdings.length === 0" class="p-12 text-center">
         <div class="text-gray-400 dark:text-gray-500 mb-2">No investments yet</div>
-        <p class="text-xs text-gray-500 dark:text-gray-600">Add your first investment to get started.</p>
+        <p class="text-xs text-gray-500 dark:text-gray-600">
+          Import a CSV or add your first manual order above.
+        </p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, defineAsyncComponent } from 'vue'
+import { computed, onMounted } from 'vue'
 import { usePortfolioStore, type Investment } from '@/stores/portfolio'
-
-// Lazy load summary card component (can be expanded later for charts etc.)
-const SummaryCard = defineAsyncComponent(() => import('@/components/SummaryCard.vue'))
+import SummaryCard from '@/components/SummaryCard.vue'
+import CSVImporter from '@/components/portfolio/CSVImporter.vue'
+import OrderForm from '@/components/portfolio/OrderForm.vue'
 
 const portfolioStore = usePortfolioStore()
 
@@ -101,5 +136,24 @@ async function refreshPortfolio() {
   await portfolioStore.fetchPortfolio()
 }
 
-onMounted(() => { portfolioStore.fetchPortfolio() })
+async function handleImportComplete() {
+  // Refresh portfolio after successful CSV import
+  await refreshPortfolio()
+}
+
+async function handleOrderSaved() {
+  // Refresh portfolio after manual order is saved
+  await refreshPortfolio()
+}
+
+async function handleOrderDeleted() {
+  // Refresh portfolio after order is deleted
+  await refreshPortfolio()
+}
+
+onMounted(() => {
+  portfolioStore.fetchPortfolio()
+})
 </script>
+
+<style scoped></style>

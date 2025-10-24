@@ -29,6 +29,16 @@ def authenticated_client():
 def test_get_empty_portfolio(authenticated_client):
 	"""Test getting an empty portfolio."""
 	client, headers = authenticated_client
+
+	# Get all orders and delete them to ensure clean state
+	orders_response = client.get("/api/orders", headers=headers)
+	if orders_response.status_code == 200:
+		orders_data = orders_response.json()
+		orders = orders_data.get("orders", [])
+		for order in orders:
+			client.delete(f"/api/orders/{order['id']}", headers=headers)
+
+	# Now portfolio should be empty
 	response = client.get("/api/portfolio/", headers=headers)
 	assert response.status_code == 200
 	data = response.json()
@@ -60,71 +70,99 @@ def test_get_portfolio_with_holdings(authenticated_client):
 	"""Test getting portfolio after adding investment."""
 	client, headers = authenticated_client
 
-	# Add an investment first
-	investment_data = {
-		"symbol": "MSFT",
-		"name": "Microsoft",
-		"quantity": 5.0,
-		"purchase_price": 300.0,
-		"purchase_date": "2024-02-01",
+	# Add an order (portfolio now computed from orders)
+	order_data = {
+		"date": "01-02-2024",
+		"isin": "US5949181045",  # MSFT ISIN
+		"amount_eur": 1500.0,
+		"shares": 5.0,
+		"status": "Finalizada",
 	}
-	client.post("/api/portfolio/", json=investment_data, headers=headers)
+	client.post("/api/orders", json=order_data, headers=headers)
 
 	# Get portfolio
 	response = client.get("/api/portfolio/", headers=headers)
 	assert response.status_code == 200
 	data = response.json()
 	assert len(data["holdings"]) >= 1
-	assert any(h["symbol"] == "MSFT" for h in data["holdings"])
+	# Portfolio returns ISIN as symbol now
+	assert any(h["symbol"] == "US5949181045" for h in data["holdings"])
 
 
 def test_delete_investment(authenticated_client):
-	"""Test deleting an investment."""
+	"""Test that deleting an order affects portfolio holdings."""
 	client, headers = authenticated_client
 
-	# Add an investment
-	investment_data = {
-		"symbol": "GOOGL",
-		"name": "Alphabet",
-		"quantity": 3.0,
-		"purchase_price": 2500.0,
-		"purchase_date": "2024-03-01",
+	# Clear existing orders for clean state
+	orders_response = client.get("/api/orders", headers=headers)
+	if orders_response.status_code == 200:
+		orders_data = orders_response.json()
+		orders = orders_data.get("orders", [])
+		for order in orders:
+			client.delete(f"/api/orders/{order['id']}", headers=headers)
+
+	# Add an order
+	order_data = {
+		"date": "01-03-2024",
+		"isin": "US02079K3059",  # GOOGL ISIN
+		"amount_eur": 7500.0,
+		"shares": 3.0,
+		"status": "Finalizada",
 	}
-	add_response = client.post("/api/portfolio/", json=investment_data, headers=headers)
-	investment_id = add_response.json()["id"]
+	add_response = client.post("/api/orders", json=order_data, headers=headers)
+	order_id = add_response.json()["id"]
 
-	# Delete it
-	delete_response = client.delete(f"/api/portfolio/{investment_id}", headers=headers)
-	assert delete_response.status_code == 204
-
-	# Verify it's gone
+	# Verify order creates holding in portfolio
 	portfolio_response = client.get("/api/portfolio/", headers=headers)
 	holdings = portfolio_response.json()["holdings"]
-	assert not any(h["id"] == investment_id for h in holdings)
+	assert len(holdings) > 0
+
+	# Delete the order
+	delete_response = client.delete(f"/api/orders/{order_id}", headers=headers)
+	assert delete_response.status_code == 204
+
+	# Verify holding is gone from portfolio
+	portfolio_response = client.get("/api/portfolio/", headers=headers)
+	holdings = portfolio_response.json()["holdings"]
+	assert len(holdings) == 0
 
 
 def test_update_investment(authenticated_client):
-	"""Test updating an investment."""
+	"""Test that updating an order affects portfolio holdings."""
 	client, headers = authenticated_client
 
-	# Add an investment
-	investment_data = {
-		"symbol": "TSLA",
-		"name": "Tesla",
-		"quantity": 2.0,
-		"purchase_price": 800.0,
-		"purchase_date": "2024-04-01",
-	}
-	add_response = client.post("/api/portfolio/", json=investment_data, headers=headers)
-	investment_id = add_response.json()["id"]
+	# Clear existing orders for clean state
+	orders_response = client.get("/api/orders", headers=headers)
+	if orders_response.status_code == 200:
+		orders_data = orders_response.json()
+		orders = orders_data.get("orders", [])
+		for order in orders:
+			client.delete(f"/api/orders/{order['id']}", headers=headers)
 
-	# Update it
-	update_data = {"quantity": 5.0, "purchase_price": 750.0}
-	update_response = client.put(f"/api/portfolio/{investment_id}", json=update_data, headers=headers)
+	# Add an order
+	order_data = {
+		"date": "01-04-2024",
+		"isin": "US88160R1014",  # TSLA ISIN
+		"amount_eur": 1600.0,
+		"shares": 2.0,
+		"status": "Finalizada",
+	}
+	add_response = client.post("/api/orders", json=order_data, headers=headers)
+	order_id = add_response.json()["id"]
+
+	# Update the order
+	update_data = {"shares": 5.0, "amount_eur": 3750.0}
+	update_response = client.put(f"/api/orders/{order_id}", json=update_data, headers=headers)
 	assert update_response.status_code == 200
 	updated = update_response.json()
-	assert updated["quantity"] == 5.0
-	assert updated["purchase_price"] == 750.0
+	assert updated["shares"] == 5.0
+	assert updated["amount_eur"] == 3750.0
+
+	# Verify portfolio reflects the update
+	portfolio_response = client.get("/api/portfolio/", headers=headers)
+	holdings = portfolio_response.json()["holdings"]
+	assert len(holdings) == 1  # Only the one we added
+	assert any(h["quantity"] == 5.0 for h in holdings)
 
 
 def test_delete_nonexistent_investment(authenticated_client):
