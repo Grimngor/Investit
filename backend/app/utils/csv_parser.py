@@ -19,6 +19,7 @@ class SpanishOrderCSVParser:
 	Parser for Spanish bank CSV format.
 
 	Expected CSV format per PRD:
+	- Delimiter: Automatically detects comma (,) or semicolon (;) delimiters
 	- Headers: Fecha de la orden, ISIN, Importe estimado, Nº de participaciones, Estado
 	- Date format: DD/MM/YYYY
 	- Amount format: can use ',' or '.' as decimal separator, may include ' EUR' suffix
@@ -167,9 +168,13 @@ class SpanishOrderCSVParser:
 		errors = []
 
 		try:
+			# Detect delimiter (semicolon or comma)
+			first_line = csv_content.split("\n")[0] if csv_content else ""
+			delimiter = ";" if ";" in first_line else ","
+
 			# Parse CSV
 			csv_file = StringIO(csv_content)
-			reader = csv.DictReader(csv_file)
+			reader = csv.DictReader(csv_file, delimiter=delimiter)
 
 			# Normalize headers
 			if reader.fieldnames:

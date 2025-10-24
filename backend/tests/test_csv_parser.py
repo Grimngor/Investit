@@ -152,3 +152,21 @@ INVALID,IE0032126645,500.00,12.345,Finalizada
 
 	assert len(orders) == 0
 	assert len(errors) >= 3  # Should have multiple errors
+
+
+def test_parse_csv_with_semicolon_delimiter():
+	"""Test parsing CSV with semicolon delimiter (common in Spanish Excel exports)."""
+	csv_content = """Fecha de la orden;ISIN;Importe estimado;Nº de participaciones;Estado
+02/10/2025;IE00BYX5NX33;300 EUR;24,624;Finalizada
+02/10/2025;IE0032126645;300 EUR;4,32;Finalizada"""
+
+	orders, errors = parse_spanish_csv(csv_content)
+
+	assert len(orders) == 2
+	assert len(errors) == 0
+	assert orders[0]["date"] == "2025-10-02"
+	assert orders[0]["isin"] == "IE00BYX5NX33"
+	assert orders[0]["amount_eur"] == 300.00
+	assert orders[0]["shares"] == 24.624
+	assert orders[1]["isin"] == "IE0032126645"
+	assert orders[1]["shares"] == 4.32
