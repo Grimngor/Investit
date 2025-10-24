@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { apiClient } from '@/services/api'
 import { wsClient } from '@/services/websocket'
 import { useToastStore } from './toast'
+import { logger } from '@/utils/logger'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<any>(null)
@@ -18,21 +19,21 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const data = await apiClient.login(username, password)
-      
+
       token.value = data.access_token
       localStorage.setItem('token', data.access_token)
-      
+
       // Fetch user info
       await loadUser()
-      
+
       // Connect WebSocket with duplicate connection guard
       const ws = (wsClient as any).ws
       if (!ws || ws.readyState !== WebSocket.OPEN) {
         wsClient.connect(data.access_token)
       }
-      
+
       useToastStore().addToast('Login successful', 'success')
-      
+
       return true
     } catch (err: any) {
       error.value = err.response?.data?.detail || 'Login failed'
@@ -64,7 +65,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       user.value = await apiClient.getCurrentUser()
       localStorage.setItem('user', JSON.stringify(user.value))
-      
+
       // Connect WebSocket if we have a token and not already connected
       const storedToken = localStorage.getItem('token')
       if (storedToken) {
@@ -74,7 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
       }
     } catch (err) {
-      console.error('Failed to load user:', err)
+      logger.error('Failed to load user', { error: err })
       logout()
     }
   }

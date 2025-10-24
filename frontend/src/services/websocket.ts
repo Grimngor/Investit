@@ -1,3 +1,5 @@
+import { logger } from '@/utils/logger'
+
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws'
 
 type MessageHandler = (data: any) => void
@@ -12,19 +14,19 @@ class WebSocketClient {
   connect(token?: string) {
     // Connection guard - prevent duplicate connections
     if (this.ws?.readyState === WebSocket.OPEN || this.ws?.readyState === WebSocket.CONNECTING) {
-      console.log('[WebSocket] Already connected or connecting, skipping...')
+      logger.debug('WebSocket already connected or connecting, skipping')
       return
     }
 
     const url = token ? `${WS_URL}?token=${token}` : WS_URL
-    
+
     try {
       this.ws = new WebSocket(url)
 
       this.ws.onopen = () => {
-        console.log('[WebSocket] Connection opened')
+        logger.info('WebSocket connection opened')
         this.reconnectAttempts = 0
-        
+
         // Send ping on connect
         this.send({ type: 'ping' })
       }
@@ -32,54 +34,54 @@ class WebSocketClient {
       this.ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          
+
           // Handle handshake
           if (data.type === 'connection_status') {
-            console.log('[WebSocket] Handshake received:', data)
+            logger.debug('WebSocket handshake received', { data })
             return
           }
-          
+
           // Handle pong
           if (data.type === 'pong') {
-            console.log('[WebSocket] Pong received')
+            logger.debug('WebSocket pong received')
             return
           }
-          
+
           // Dispatch to handlers
           const handlers = this.handlers.get(data.type) || []
           handlers.forEach(handler => handler(data))
         } catch (error) {
-          console.error('[WebSocket] Error parsing message:', error)
+          logger.error('WebSocket error parsing message', { error })
         }
       }
 
       this.ws.onerror = (error) => {
-        console.error('[WebSocket] Error:', error)
+        logger.error('WebSocket error', { error })
       }
 
       this.ws.onclose = (event) => {
-        console.log(`[WebSocket] Connection closed. Code: ${event.code}, Reason: ${event.reason}`)
-        
+        logger.info('WebSocket connection closed', { code: event.code, reason: event.reason })
+
         // Don't reconnect on code 1008 (policy violation - auth failed)
         if (event.code === 1008) {
-          console.log('[WebSocket] Auth failed, not reconnecting')
+          logger.warn('WebSocket auth failed, not reconnecting')
           return
         }
-        
+
         // Attempt to reconnect
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
           this.reconnectAttempts++
-          console.log(`[WebSocket] Reconnecting... Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`)
-          
+          logger.info('WebSocket reconnecting', { attempt: this.reconnectAttempts, max: this.maxReconnectAttempts })
+
           setTimeout(() => {
             this.connect(token)
           }, this.reconnectInterval * this.reconnectAttempts)
         } else {
-          console.log('[WebSocket] Max reconnect attempts reached')
+          logger.warn('WebSocket max reconnect attempts reached')
         }
       }
     } catch (error) {
-      console.error('[WebSocket] Connection error:', error)
+      logger.error('WebSocket connection error', { error })
     }
   }
 
@@ -94,7 +96,7 @@ class WebSocketClient {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data))
     } else {
-      console.warn('[WebSocket] Cannot send message, connection not open')
+      logger.warn('WebSocket cannot send message, connection not open')
     }
   }
 

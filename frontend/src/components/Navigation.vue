@@ -7,6 +7,7 @@
           <router-link v-if="isAuthenticated" to="/dashboard" class="nav-link" :class="{ active: isRoute('/dashboard') }">Dashboard</router-link>
           <router-link v-if="isAuthenticated" to="/portfolio" class="nav-link" :class="{ active: isRoute('/portfolio') }">Portfolio</router-link>
           <router-link v-if="isAuthenticated" to="/orders" class="nav-link" :class="{ active: isRoute('/orders') }">Orders</router-link>
+          <router-link v-if="isAuthenticated" to="/logs" class="nav-link" :class="{ active: isRoute('/logs') }">Logs</router-link>
           <router-link v-if="!isAuthenticated" to="/login" class="nav-link" :class="{ active: isRoute('/login') }">Login</router-link>
           <router-link v-if="!isAuthenticated" to="/register" class="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium">Register</router-link>
         </div>
