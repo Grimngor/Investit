@@ -1,5 +1,6 @@
 """Authentication router."""
 
+import logging
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,15 +13,18 @@ from app.models.user import User
 from app.services.auth import authenticate_user, create_access_token, get_current_user, get_password_hash
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserRegister):
 	"""Register a new user."""
+	logger.info(f"Registration attempt - Username: {user_data.username}, Email: {user_data.email}")
 	users = get_all_users()
 
 	# Check if username exists
 	if user_data.username in users:
+		logger.warning(f"Registration failed - Username already exists: {user_data.username}")
 		raise HTTPException(
 			status_code=status.HTTP_400_BAD_REQUEST,
 			detail="Username already registered",

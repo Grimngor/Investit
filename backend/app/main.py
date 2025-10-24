@@ -1,10 +1,20 @@
 """Main FastAPI application."""
 
+import logging
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.docs import description, tags_metadata
+from app.logger import setup_logging
 from app.routers import auth, dashboard, debug, orders, portfolio, websocket
+
+# Initialize logging
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+setup_logging(level=LOG_LEVEL)
+
+logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
@@ -34,6 +44,8 @@ app.include_router(orders.router)
 app.include_router(dashboard.router)
 app.include_router(websocket.router)
 app.include_router(debug.router)
+
+logger.info("InvestIt API started successfully")
 
 
 @app.get("/")

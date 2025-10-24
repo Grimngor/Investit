@@ -10,7 +10,7 @@
 - Name **local variables short** and **module-level variables descriptive**.
 - Include **unit tests** for all new features and major changes.
 - If you create new terminals make sure to activate the **virtual environment** before installing anything, and don't create a new one if an existing one is already active.
-- Respect my preference for **Ruff formatter** and **140 character line length** in Python.
+- Respect my preference for **Ruff formatter**, **tabs for indentation**, and **140 character line length** in Python.
 
 ## Frontend Best Practices (Vue + CSS)
 

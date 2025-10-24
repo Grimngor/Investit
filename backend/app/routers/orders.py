@@ -1,5 +1,6 @@
 """Router for order management (CSV import, CRUD operations)."""
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -15,6 +16,7 @@ from app.services.storage_service import StorageService
 from app.utils.csv_parser import SpanishOrderCSVParser
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+logger = logging.getLogger(__name__)
 
 
 def get_websocket_manager():
@@ -80,24 +82,31 @@ async def import_csv(
 	Returns:
 		Dict with imported_count, rejected_count, errors list
 	"""
+	logger.info(f"CSV import started - User: {current_user.username}, File: {file.filename}")
+
 	# Validate file type
 	if not file.filename.endswith(".csv"):
+		logger.warning(f"Invalid file type attempted: {file.filename}")
 		raise HTTPException(status_code=400, detail="File must be a CSV")
 
 	# Read file content
 	try:
 		content = await file.read()
 		content_str = content.decode("utf-8")
+		logger.debug(f"CSV file read successfully - Size: {len(content_str)} bytes")
 	except Exception as e:
+		logger.error(f"Error reading CSV file: {e!s}")
 		raise HTTPException(status_code=400, detail=f"Error reading file: {e!s}") from e
 
 	try:
 		# Parse CSV
 		parser = SpanishOrderCSVParser()
 		orders, errors = parser.parse_csv(content_str)
+		logger.info(f"CSV parsed - Orders: {len(orders)}, Errors: {len(errors)}")
 
 		# Check for parsing errors
 		if errors:
+			logger.warning(f"CSV import completed with errors: {errors[:3]}")  # Log first 3 errors
 			# Return partial success with errors
 			return {
 				"success": True,
@@ -120,10 +129,12 @@ async def import_csv(
 		users = StorageService.load_json(users_file, default={})
 
 		if current_user.username not in users:
+			logger.error(f"User not found during CSV import: {current_user.username}")
 			raise HTTPException(status_code=404, detail="User not found")
 
 		users[current_user.username] = add_orders(users[current_user.username])
 		StorageService.save_json(users_file, users)
+		logger.info(f"CSV import completed successfully - User: {current_user.username}, Orders: {len(orders)}")
 
 		# Broadcast update via WebSocket
 		manager = get_websocket_manager()
