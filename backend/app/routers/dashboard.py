@@ -75,3 +75,26 @@ async def get_kpis(current_user: User = Depends(get_current_user)) -> dict[str, 
 		"positions_count": len(holdings),
 		"orders_count": len(finalized_orders),
 	}
+
+
+@router.get("/time-series")
+async def get_time_series(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+	"""Get time series data for portfolio value over time."""
+	return {"time_series": []}
+
+
+@router.get("/allocations")
+async def get_allocations(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+	"""Get allocation data for pie charts."""
+	return {
+		"by_instrument": {},
+		"by_geography": {},
+		"by_sector": {},
+		"by_asset_type": {},
+	}
+
+
+@router.get("/price-status")
+async def get_price_status(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+	"""Get price status to check for stale prices."""
+	return {"total_instruments": 0, "stale_count": 0, "stale_instruments": []}
