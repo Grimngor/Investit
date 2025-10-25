@@ -155,7 +155,7 @@ async def refresh_instrument_metadata(current_user: User = Depends(get_current_u
 	users = load_users()
 	if current_user.username not in users:
 		raise HTTPException(status_code=404, detail="User not found")
-	
+
 	user_data = users[current_user.username]
 	orders = user_data.get("orders", [])
 	finalized = [o for o in orders if o.get("status", "").lower() == "finalizada" and o.get("isin")]
