@@ -300,11 +300,8 @@ async def get_allocations(current_user: User = Depends(get_current_user)) -> dic
 		"Africa": "Africa",
 		"Oceania": "Oceania",
 	}
-	
-	by_geography_named = {
-		country_names.get(code, code): value 
-		for code, value in by_geography.items()
-	}
+
+	by_geography_named = {country_names.get(code, code): value for code, value in by_geography.items()}
 
 	return {
 		"by_instrument": by_instrument,
