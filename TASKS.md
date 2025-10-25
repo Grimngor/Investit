@@ -88,41 +88,41 @@
 - [x] 8.8. Document launcher scripts (LAUNCHER_GUIDE.md)
 
 ### 9. Code Quality & Refactoring
-- [x] 10.1. Fix CSV parser to use 'Importe neto' (net amount)
-- [x] 10.2. Fix Morningstar service language parameter
-- [x] 10.3. Add /api/instruments/refresh endpoint
-- [x] 10.4. Add country code → name mapping for dashboard
-- [x] 10.5. Fix sell order handling in compute service
-- [ ] 10.6. Refactor large price-fetch function (prices.fetch_and_update_prices) [PLR0915: 60 statements]
-- [ ] 10.7. Refactor dashboard allocations function [PLR0915: 62 statements]
-- [ ] 10.8. Reduce branches in refresh_instrument_metadata [PLR0912: 13 branches]
-- [ ] 10.9. Reduce branches in Morningstar get_fund_metadata [PLR0912: 13 branches]
-- [ ] 10.10. Extract magic values to constants (ISIN prefix length)
+- [x] 9.1. Fix CSV parser to use 'Importe neto' (net amount)
+- [x] 9.2. Fix Morningstar service language parameter
+- [x] 9.3. Add /api/instruments/refresh endpoint
+- [x] 9.4. Add country code → name mapping for dashboard
+- [x] 9.5. Fix sell order handling in compute service
+- [ ] 9.6. Refactor large price-fetch function (prices.fetch_and_update_prices) [PLR0915: 60 statements]
+- [ ] 9.7. Refactor dashboard allocations function [PLR0915: 62 statements]
+- [ ] 9.8. Reduce branches in refresh_instrument_metadata [PLR0912: 13 branches]
+- [ ] 9.9. Reduce branches in Morningstar get_fund_metadata [PLR0912: 13 branches]
+- [ ] 9.10. Extract magic values to constants (ISIN prefix length)
 
 ### 10. Resilience & Production Readiness
-- [ ] 11.1. Add cache warming task on startup
-- [ ] 11.2. Add resilience around Morningstar rate-limiting (retry with exponential backoff)
-- [ ] 11.3. Add retry logic for YahooQuery API failures
-- [ ] 11.4. Add circuit breaker pattern for external API calls
-- [ ] 11.5. Add health check endpoint with dependency status
-- [ ] 11.6. Add metrics collection (API latency, cache hit rate, error rate)
+- [ ] 10.1. Add cache warming task on startup
+- [ ] 10.2. Add resilience around Morningstar rate-limiting (retry with exponential backoff)
+- [ ] 10.3. Add retry logic for YahooQuery API failures
+- [ ] 10.4. Add circuit breaker pattern for external API calls
+- [ ] 10.5. Add health check endpoint with dependency status
+- [ ] 10.6. Add metrics collection (API latency, cache hit rate, error rate)
 
 ### 11. Data Quality & Validation
-- [ ] 12.1. Add price validation (compare historical vs calculated, flag discrepancies)
-- [ ] 12.2. Add data integrity checks (detect missing ISINs, invalid dates)
-- [ ] 12.3. Create admin endpoint to trigger price backfill for specific users/ISINs
-- [ ] 12.4. Add instrument metadata validation (check for missing sectors/regions)
-- [ ] 12.5. Create data quality dashboard/report
+- [ ] 11.1. Add price validation (compare historical vs calculated, flag discrepancies)
+- [ ] 11.2. Add data integrity checks (detect missing ISINs, invalid dates)
+- [ ] 11.3. Create admin endpoint to trigger price backfill for specific users/ISINs
+- [ ] 11.4. Add instrument metadata validation (check for missing sectors/regions)
+- [ ] 11.5. Create data quality dashboard/report
 
 ### 12. Final Review & Validation
-- [ ] 9.1. Manual walkthrough of all features
-- [x] 9.2. Verify all tests pass (130 backend tests)
-- [ ] 9.3. Add frontend E2E tests
-- [ ] 9.4. Security audit
-- [ ] 9.5. Performance review (API < 300ms)
-- [x] 9.6. Final linting and formatting check
-- [ ] 9.7. Verify launcher scripts
-- [ ] 9.8. Test complete user flow
+- [ ] 12.1. Manual walkthrough of all features
+- [x] 12.2. Verify all tests pass (130 backend tests)
+- [ ] 12.3. Add frontend E2E tests
+- [ ] 12.4. Security audit
+- [ ] 12.5. Performance review (API < 300ms)
+- [x] 12.6. Final linting and formatting check
+- [ ] 12.7. Verify launcher scripts
+- [ ] 12.8. Test complete user flow
 
 ---
 
