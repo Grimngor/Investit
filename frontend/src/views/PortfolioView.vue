@@ -186,15 +186,15 @@ async function fetchPrices() {
   try {
     toastStore.addToast('Fetching prices from Yahoo Finance... This may take 10-15 seconds.', 'info')
     const response = await apiClient.fetchPrices()
-    
+
     // Wait for background task to complete (with progress updates)
     toastStore.addToast('Processing price data...', 'info')
-    
+
     setTimeout(async () => {
       await refreshPortfolio()
       const dashboardStore = useDashboardStore()
       await dashboardStore.fetchAll()
-      
+
       if (response.count && response.count > 0) {
         toastStore.addToast(`Successfully updated prices for ${response.count} instrument(s)`, 'success')
       } else {

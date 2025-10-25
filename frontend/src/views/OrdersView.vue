@@ -28,7 +28,7 @@
       <div v-if="loading" class="p-12 text-center">
         <div class="text-gray-500 dark:text-gray-400">Loading orders...</div>
       </div>
-      
+
       <table class="w-full text-sm" v-else-if="orders.length">
         <thead class="bg-softblue-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
           <tr class="divide-x divide-gray-200 dark:divide-gray-700">
@@ -51,7 +51,7 @@
             <td class="px-4 py-3 text-right">€{{ order.amount_eur?.toFixed(2) || '0.00' }}</td>
             <td class="px-4 py-3 text-right">€{{ calculatePrice(order) }}</td>
             <td class="px-4 py-3 text-right">
-              <span 
+              <span
                 :class="[
                   'inline-flex px-2 py-1 rounded text-xs font-semibold',
                   getStatusClass(order.status)
@@ -85,7 +85,7 @@
           </tr>
         </tbody>
       </table>
-      
+
       <div v-else class="p-12 text-center">
         <div class="text-gray-400 dark:text-gray-500 mb-2">No orders yet</div>
         <p class="text-xs text-gray-500 dark:text-gray-600">
@@ -167,7 +167,7 @@ async function refreshOrders() {
 
 async function confirmDelete(order: Order) {
   if (!order.id) return
-  
+
   if (confirm(`Delete order for ${order.isin} on ${formatDate(order.date)}?`)) {
     await deleteOrder(order.id)
   }

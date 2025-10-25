@@ -141,10 +141,10 @@ const chartData = computed<ChartData<'pie'> | null>(() => {
 
   const labels = Object.keys(data)
   const values = Object.values(data)
-  
+
   // Calculate total for percentage calculation
   const total = values.reduce((sum, val) => sum + val, 0)
-  
+
   const backgroundColors = labels.map((_, index) => colorPalette[index % colorPalette.length])
 
   return {
