@@ -123,6 +123,7 @@
 - [x] 12.6. Final linting and formatting check
 - [ ] 12.7. Verify launcher scripts
 - [ ] 12.8. Test complete user flow
+- [ ] 12.9. Review and verify .gitignore (data/, logs/, venv/, node_modules/, etc.)
 
 ---
 
