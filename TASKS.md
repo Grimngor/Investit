@@ -71,7 +71,11 @@
 - [x] 7.12. Pagination controls
 - [x] 7.13. Chart.js integration with dark mode
 - [x] 7.14. Frontend logging infrastructure
-- [ ] 7.15. CSV import preview/confirmation modal with edit capability
+- [x] 7.15. Chart percentage calculation and sorting
+- [x] 7.16. Gain/loss cards with percentage and +/- signs
+- [x] 7.17. Euro symbol positioning (after amount with space)
+- [x] 7.18. Unified SummaryCard component across views
+- [ ] 7.19. CSV import preview/confirmation modal with edit capability
 
 ### 8. Documentation
 - [x] 8.1. Update README.md
@@ -79,17 +83,21 @@
 - [x] 8.3. Update USER_GUIDE.md
 - [x] 8.4. OpenAPI/Swagger docs at /docs
 - [x] 8.5. Document historical price implementation (HISTORICAL_PRICE_IMPLEMENTATION.md)
-- [ ] 8.6. Document data migration process
-- [ ] 8.7. Create GitHub issue templates (optional)
-- [ ] 8.8. Create GitHub PR template (optional)
+- [x] 8.6. Document monthly update setup (MONTHLY_UPDATE_SETUP.md)
+- [x] 8.7. Document logging infrastructure (docs/LOGGING.md)
+- [x] 8.8. Document launcher scripts (LAUNCHER_GUIDE.md)
 
 ### 9. Code Quality & Refactoring
-- [ ] 10.1. Refactor large price-fetch function (prices.fetch_and_update_prices)
-- [ ] 10.2. Extract startup_event helpers to reduce complexity
-- [ ] 10.3. Fix lint warnings (PLR0915: too many statements, PLR0912: too many branches)
-- [ ] 10.4. Add direct /api/instruments/refresh endpoint combining all metadata sources
-- [ ] 10.5. Normalize geographic regions into country roll-ups for dashboard
-- [ ] 10.6. Suppress or handle asyncio.exceptions.CancelledError on dev reloads
+- [x] 10.1. Fix CSV parser to use 'Importe neto' (net amount)
+- [x] 10.2. Fix Morningstar service language parameter
+- [x] 10.3. Add /api/instruments/refresh endpoint
+- [x] 10.4. Add country code → name mapping for dashboard
+- [x] 10.5. Fix sell order handling in compute service
+- [ ] 10.6. Refactor large price-fetch function (prices.fetch_and_update_prices) [PLR0915: 60 statements]
+- [ ] 10.7. Refactor dashboard allocations function [PLR0915: 62 statements]
+- [ ] 10.8. Reduce branches in refresh_instrument_metadata [PLR0912: 13 branches]
+- [ ] 10.9. Reduce branches in Morningstar get_fund_metadata [PLR0912: 13 branches]
+- [ ] 10.10. Extract magic values to constants (ISIN prefix length)
 
 ### 10. Resilience & Production Readiness
 - [ ] 11.1. Add cache warming task on startup
@@ -125,4 +133,3 @@
 - **API Endpoints:** 25+ (auth, portfolio, orders, dashboard, prices, instruments, websocket)
 - **Data Sources:** yfinance (prices + historical), mstarpy (Morningstar metadata), yahooquery (sector allocations)
 - **Status:** Core features complete (Sections 1-7), refactoring & resilience pending (Sections 10-12)
-
