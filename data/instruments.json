@@ -1,1 +1,79 @@
-[]
+[
+  {
+    "isin": "IE00BYX5NX33",
+    "name": "Fidelity MSCI World Index EUR P Acc",
+    "sector_allocation": {
+      "Basic Materials": 0.0296959,
+      "Consumer Cyclical": 0.0994862,
+      "Financial Services": 0.15879379999999998,
+      "Real Estate": 0.0193352,
+      "Communication Services": 0.0897498,
+      "Energy": 0.0336436,
+      "Industrials": 0.10589639999999999,
+      "Technology": 0.2891995,
+      "Consumer Defensive": 0.0540747,
+      "Healthcare": 0.09407959999999999,
+      "Utilities": 0.0260453
+    },
+    "geo_allocation": {
+      "North America": 0.75924,
+      "Europe (Developed)": 0.12263,
+      "Europe (Emerging)": 4e-05,
+      "United Kingdom": 0.0347859,
+      "Japan": 0.053869999999999994,
+      "Australasia": 0.01647,
+      "Asia (Developed)": 0.00931,
+      "Asia (Emerging)": 0.0005099999999999999,
+      "Africa/Middle East": 0.00187,
+      "Latin America": 0.00128
+    }
+  },
+  {
+    "isin": "IE0032126645",
+    "name": "Vanguard U.S. 500 Stk Idx € Acc",
+    "sector_allocation": {
+      "Basic Materials": 0.0157897,
+      "Consumer Cyclical": 0.10668839999999999,
+      "Financial Services": 0.1319938,
+      "Real Estate": 0.0193639,
+      "Communication Services": 0.1047616,
+      "Energy": 0.028882500000000002,
+      "Industrials": 0.0751532,
+      "Technology": 0.356162,
+      "Consumer Defensive": 0.049081799999999995,
+      "Healthcare": 0.0886043,
+      "Utilities": 0.023489
+    },
+    "geo_allocation": {
+      "North America": 0.9956999999999999,
+      "Europe (Developed)": 0.00393,
+      "United Kingdom": 0.0003324
+    }
+  },
+  {
+    "isin": "IE0031786696",
+    "name": "Vanguard Em Mkts Stk Idx € Acc",
+    "sector_allocation": {
+      "Basic Materials": 0.06392350000000001,
+      "Consumer Cyclical": 0.13630979999999998,
+      "Financial Services": 0.22031610000000001,
+      "Real Estate": 0.0141868,
+      "Communication Services": 0.1059018,
+      "Energy": 0.039897800000000004,
+      "Industrials": 0.06755130000000001,
+      "Technology": 0.2543749,
+      "Consumer Defensive": 0.0375142,
+      "Healthcare": 0.0369906,
+      "Utilities": 0.023033199999999997
+    },
+    "geo_allocation": {
+      "North America": 0.00635,
+      "Europe (Developed)": 0.00697,
+      "Europe (Emerging)": 0.01924,
+      "Asia (Developed)": 0.30736,
+      "Asia (Emerging)": 0.49273000000000006,
+      "Africa/Middle East": 0.09664,
+      "Latin America": 0.07071
+    }
+  }
+]

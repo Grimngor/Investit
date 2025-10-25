@@ -11,7 +11,7 @@
       </button>
     </div>
 
-    <Doughnut v-if="chartData" :data="chartData" :options="chartOptions" />
+  <Pie v-if="chartData" :data="chartData" :options="chartOptions" />
     <div v-else class="flex items-center justify-center h-48 text-gray-500 dark:text-gray-400">
       <p class="text-sm">No {{ type }} data available</p>
     </div>
@@ -20,14 +20,14 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Doughnut } from 'vue-chartjs'
+import { Pie } from 'vue-chartjs'
 import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  type ChartData,
-  type ChartOptions,
+	Chart as ChartJS,
+	ArcElement,
+	Tooltip,
+	Legend,
+	type ChartData,
+	type ChartOptions,
 } from 'chart.js'
 
 // Register Chart.js components
@@ -133,7 +133,7 @@ const colorPalette = [
 ]
 
 // Generate chart data
-const chartData = computed<ChartData<'doughnut'> | null>(() => {
+const chartData = computed<ChartData<'pie'> | null>(() => {
   const data = processedAllocations.value
   if (!data || Object.keys(data).length === 0) {
     return null
@@ -141,6 +141,10 @@ const chartData = computed<ChartData<'doughnut'> | null>(() => {
 
   const labels = Object.keys(data)
   const values = Object.values(data)
+  
+  // Calculate total for percentage calculation
+  const total = values.reduce((sum, val) => sum + val, 0)
+  
   const backgroundColors = labels.map((_, index) => colorPalette[index % colorPalette.length])
 
   return {
@@ -151,13 +155,15 @@ const chartData = computed<ChartData<'doughnut'> | null>(() => {
         backgroundColor: backgroundColors,
         borderWidth: 2,
         borderColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+        // Store total for percentage calculation in tooltip
+        total: total,
       },
     ],
   }
 })
 
 // Chart options with dark mode support
-const chartOptions = computed<ChartOptions<'doughnut'>>(() => {
+const chartOptions = computed<ChartOptions<'pie'>>(() => {
   const isDark = document.documentElement.classList.contains('dark')
   const textColor = isDark ? '#d1d5db' : '#374151'
 
@@ -179,9 +185,10 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => {
           generateLabels: function (chart) {
             const data = chart.data
             if (data.labels && data.datasets.length) {
+              const total = (data.datasets[0].data as number[]).reduce((sum, val) => sum + val, 0)
               return data.labels.map((label, i) => {
                 const value = data.datasets[0].data[i] as number
-                const percentage = (value * 100).toFixed(1)
+                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
                 const bgColors = data.datasets[0].backgroundColor as string[]
                 return {
                   text: `${label}: ${percentage}%`,
@@ -206,7 +213,8 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => {
           label: function (context) {
             const label = context.label || ''
             const value = context.parsed as number
-            const percentage = (value * 100).toFixed(1)
+            const total = (context.dataset.data as number[]).reduce((sum: number, val: number) => sum + val, 0)
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
             return `${label}: ${percentage}%`
           },
         },
@@ -222,8 +230,8 @@ function toggleEUCollapse() {
 
 <style scoped>
 .chart-container {
-  position: relative;
-  height: 280px;
-  width: 100%;
+	position: relative;
+	height: 340px; /* enlarged height */
+	width: 100%;
 }
 </style>

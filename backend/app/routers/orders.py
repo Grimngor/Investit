@@ -12,6 +12,7 @@ from app.models.order import OrderCreate, OrderResponse, OrderUpdate
 from app.models.user import User
 from app.routers.auth import get_current_user
 from app.routers.websocket import manager as websocket_manager
+from app.services.historical_price_service import HistoricalPriceService
 from app.services.storage_service import StorageService
 from app.utils.csv_parser import SpanishOrderCSVParser
 
@@ -120,10 +121,42 @@ async def import_csv(
 		def add_orders(user_data):
 			if "orders" not in user_data:
 				user_data["orders"] = []
-			user_data["orders"].extend(orders)
+
+			# Detect duplicates: orders with same ISIN, date, and quantity
+			existing_orders = user_data["orders"]
+			new_count = 0
+			updated_count = 0
+
+			for order in orders:
+				# Create a unique key for the order
+				order_key = (order.get("isin"), order.get("date"), order.get("shares"))
+
+				# Check if order already exists
+				existing_idx = None
+				for idx, existing_order in enumerate(existing_orders):
+					existing_key = (
+						existing_order.get("isin"),
+						existing_order.get("date"),
+						existing_order.get("shares"),
+					)
+					if order_key == existing_key:
+						existing_idx = idx
+						break
+
+				if existing_idx is not None:
+					# Update existing order
+					existing_orders[existing_idx] = order
+					updated_count += 1
+				else:
+					# Add new order
+					existing_orders.append(order)
+					new_count += 1
+
 			# Sort by date (most recent first)
 			user_data["orders"].sort(key=lambda x: x.get("date", ""), reverse=True)
-			return user_data
+
+			logger.info(f"CSV import: {new_count} new orders, {updated_count} updated orders")
+			return user_data, new_count, updated_count
 
 		users_file = settings.DATA_DIR / "users.json"
 		users = StorageService.load_json(users_file, default={})
@@ -132,9 +165,9 @@ async def import_csv(
 			logger.error(f"User not found during CSV import: {current_user.username}")
 			raise HTTPException(status_code=404, detail="User not found")
 
-		users[current_user.username] = add_orders(users[current_user.username])
+		users[current_user.username], new_count, updated_count = add_orders(users[current_user.username])
 		StorageService.save_json(users_file, users)
-		logger.info(f"CSV import completed successfully - User: {current_user.username}, Orders: {len(orders)}")
+		logger.info(f"CSV import completed successfully - User: {current_user.username}, " f"New: {new_count}, Updated: {updated_count}")
 
 		# Broadcast update via WebSocket
 		manager = get_websocket_manager()
@@ -149,10 +182,11 @@ async def import_csv(
 
 		return {
 			"success": True,
-			"imported_count": len(orders),
+			"imported_count": new_count,
+			"updated_count": updated_count,
 			"rejected_count": len([o for o in orders if o.get("status") == "rechazada"]),
 			"errors": [],
-			"message": f"Successfully imported {len(orders)} orders",
+			"message": f"Successfully imported {new_count} new orders and updated {updated_count} existing orders",
 		}
 
 	except Exception as e:
@@ -251,6 +285,7 @@ async def create_order(order_data: OrderCreate, current_user: User = Depends(get
 	Create a new order manually.
 
 	This allows users to add individual buy/sell orders without CSV import.
+	Automatically fetches the historical price for the order date.
 	"""
 	users_file = settings.DATA_DIR / "users.json"
 	users = StorageService.load_json(users_file, default={})
@@ -261,6 +296,27 @@ async def create_order(order_data: OrderCreate, current_user: User = Depends(get
 	# Generate unique order ID
 	order_id = str(uuid.uuid4())
 
+	# Fetch historical price if not provided
+	price_per_share = order_data.price_per_share
+	price_currency = order_data.price_currency
+	price_date = order_data.price_date
+
+	if price_per_share is None:
+		logger.info(f"Fetching historical price for {order_data.isin} on {order_data.date}")
+		price_data = await HistoricalPriceService.get_price_on_date(order_data.isin, order_data.date)
+
+		if price_data:
+			price_per_share = price_data["price"]
+			price_currency = price_data["currency"]
+			price_date = price_data["date"]
+			logger.info(f"Retrieved historical price: {price_per_share} {price_currency} on {price_date}")
+		else:
+			# Fallback to calculated price
+			price_per_share = order_data.amount_eur / order_data.shares
+			price_currency = "EUR"
+			price_date = order_data.date
+			logger.warning(f"Could not fetch historical price, using calculated: {price_per_share:.4f} EUR")
+
 	# Create order with ID and timestamp
 	new_order = {
 		"id": order_id,
@@ -269,6 +325,9 @@ async def create_order(order_data: OrderCreate, current_user: User = Depends(get
 		"ticker": order_data.ticker,
 		"amount_eur": order_data.amount_eur,
 		"shares": order_data.shares,
+		"price_per_share": price_per_share,
+		"price_currency": price_currency,
+		"price_date": price_date,
 		"order_type": order_data.order_type,
 		"status": order_data.status,
 		"notes": order_data.notes,
@@ -349,6 +408,32 @@ async def update_order(
 	)
 
 	return OrderResponse(**order)
+
+
+@router.delete("/all", status_code=204)
+async def delete_all_orders(current_user: User = Depends(get_current_user)):
+	"""Delete all orders for the current user."""
+	users_file = settings.DATA_DIR / "users.json"
+	users = StorageService.load_json(users_file, default={})
+
+	if current_user.username not in users:
+		raise HTTPException(status_code=404, detail="User not found")
+
+	# Clear all orders
+	users[current_user.username]["orders"] = []
+
+	# Save
+	StorageService.save_json(users_file, users)
+
+	# Broadcast update via WebSocket
+	manager = get_websocket_manager()
+	await manager.broadcast_to_user(
+		current_user.username,
+		{
+			"type": "orders_cleared",
+			"timestamp": datetime.now(UTC).isoformat(),
+		},
+	)
 
 
 @router.delete("/{order_id}", status_code=204)

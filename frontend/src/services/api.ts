@@ -92,7 +92,60 @@ class APIClient {
     const response = await this.client.get('/api/portfolio/geographic-exposure')
     return response.data
   }
+
+  // Orders endpoints
+  async getOrders(params?: {
+    isin?: string
+    ticker?: string
+    order_type?: string
+    status?: string
+    date_from?: string
+    date_to?: string
+    sort_by?: string
+    sort_order?: string
+    limit?: number
+    offset?: number
+  }) {
+    const response = await this.client.get('/api/orders/', { params })
+    return response.data
+  }
+
+  async importCSV(file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await this.client.post('/api/orders/import-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  }
+
+  async deleteOrder(orderId: string) {
+    const response = await this.client.delete(`/api/orders/${orderId}`)
+    return response.data
+  }
+
+  async deleteAllOrders() {
+    const response = await this.client.delete('/api/orders/all')
+    return response.data
+  }
+
+  async updateOrder(orderId: string, orderData: any) {
+    const response = await this.client.put(`/api/orders/${orderId}`, orderData)
+    return response.data
+  }
+
+  // Prices endpoints
+  async fetchPrices() {
+    const response = await this.client.post('/api/prices/fetch')
+    return response.data
+  }
+
+  async getPriceStatus() {
+    const response = await this.client.get('/api/prices/status')
+    return response.data
+  }
 }
+
 
 export const apiClient = new APIClient()
 export default apiClient

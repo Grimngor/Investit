@@ -14,7 +14,7 @@ class ComputeService:
 		Calculate current position for a specific ISIN from order history.
 
 		Args:
-			orders: List of order dicts with date, isin, shares, amount_eur, status
+			orders: List of order dicts with date, isin, shares, amount_eur, status, price_per_share, order_type
 			isin: ISIN code to calculate position for
 
 		Returns:
@@ -26,22 +26,35 @@ class ComputeService:
 			return {"total_shares": 0.0, "average_cost": 0.0, "total_invested": 0.0}
 
 		total_shares = Decimal("0")
-		total_invested = Decimal("0")
+		total_cost = Decimal("0")  # Use actual cost (shares * price_per_share)
 
 		for order in relevant_orders:
 			shares = Decimal(str(order.get("shares", 0)))
-			amount = Decimal(str(order.get("amount_eur", 0)))
+			order_type = order.get("order_type", "buy").lower()
 
-			total_shares += shares
-			total_invested += amount
+			# Use price_per_share if available (more accurate), otherwise fall back to calculated
+			if "price_per_share" in order and order["price_per_share"] is not None:
+				price = Decimal(str(order["price_per_share"]))
+				cost = shares * price
+			else:
+				# Fallback to amount_eur (less accurate for historical orders)
+				cost = Decimal(str(order.get("amount_eur", 0)))
+
+			# Handle buy vs sell orders
+			if order_type == "sell":
+				total_shares -= shares
+				total_cost -= cost
+			else:  # buy
+				total_shares += shares
+				total_cost += cost
 
 		# Calculate average cost per share
-		avg_cost = float(total_invested / total_shares) if total_shares > 0 else 0.0
+		avg_cost = float(total_cost / total_shares) if total_shares > 0 else 0.0
 
 		return {
 			"total_shares": float(total_shares),
 			"average_cost": avg_cost,
-			"total_invested": float(total_invested),
+			"total_invested": float(total_cost),
 		}
 
 	@staticmethod
@@ -158,7 +171,7 @@ class ComputeService:
 		sorted_orders = sorted(orders, key=lambda x: x.get("date", ""))
 
 		time_series = []
-		cumulative_invested = 0.0
+		cumulative_invested = Decimal("0")
 		positions: dict[str, Decimal] = {}  # ISIN -> shares
 
 		for order in sorted_orders:
@@ -168,13 +181,23 @@ class ComputeService:
 			date = order.get("date")
 			isin = order.get("isin")
 			shares = Decimal(str(order.get("shares", 0)))
-			amount = Decimal(str(order.get("amount_eur", 0)))
+			order_type = order.get("order_type", "buy").lower()
 
-			# Update cumulative invested
-			cumulative_invested += float(amount)
+			# Calculate actual cost using price_per_share if available
+			if "price_per_share" in order and order["price_per_share"] is not None:
+				price_per_share = Decimal(str(order["price_per_share"]))
+				cost = shares * price_per_share
+			else:
+				# Fallback to amount_eur
+				cost = Decimal(str(order.get("amount_eur", 0)))
 
-			# Update position
-			positions[isin] = positions.get(isin, Decimal("0")) + shares
+			# Handle buy vs sell orders
+			if order_type == "sell":
+				cumulative_invested -= cost
+				positions[isin] = positions.get(isin, Decimal("0")) - shares
+			else:  # buy
+				cumulative_invested += cost
+				positions[isin] = positions.get(isin, Decimal("0")) + shares
 
 			# Calculate current value with current prices
 			current_value = 0.0
@@ -185,7 +208,7 @@ class ComputeService:
 			time_series.append(
 				{
 					"date": date,
-					"invested_value": cumulative_invested,
+					"invested_value": float(cumulative_invested),
 					"current_value": current_value,
 				}
 			)

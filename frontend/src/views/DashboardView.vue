@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto px-6 py-10">
+  <div class="w-full mx-auto px-6 py-10 max-w-[1600px]">
     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
       <div>
         <h1 class="page-title">Dashboard</h1>
@@ -32,13 +32,15 @@
 
     <!-- KPI Cards -->
     <div class="grid gap-4 md:grid-cols-3 mb-10">
-      <SummaryCard label="Total Cost" :value="totalCost" prefix="€" />
-      <SummaryCard label="Total Value" :value="totalValue" prefix="€" />
+      <SummaryCard label="Total Invested" :value="totalCost" suffix="€" />
+      <SummaryCard label="Current Value" :value="totalValue" suffix="€" />
       <SummaryCard
-        label="Gain/Loss"
+        label="Gain / Loss"
         :value="totalGainLoss"
-        prefix="€"
+        suffix="€"
         :value-class="gainLossClass"
+        :show-sign="true"
+        :percentage="gainLossPercentageNum"
       />
     </div>
 
@@ -65,7 +67,7 @@
         <h2 class="text-lg font-semibold mb-6 text-gray-800 dark:text-gray-200">
           Asset Allocation
         </h2>
-        <div class="grid md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
           <PieAllocations
             :allocations="allocations?.by_instrument"
             type="instrument"
@@ -139,6 +141,13 @@ const totalValue = computed(() => portfolioStore.totalValue)
 const totalGainLoss = computed(() => portfolioStore.totalGainLoss)
 const gainLossClass = computed(() => (totalGainLoss.value >= 0 ? 'text-green-600' : 'text-red-600'))
 
+// Percentage gain/loss relative to total invested (as number for component prop)
+const gainLossPercentageNum = computed(() => {
+  const invested = totalCost.value || 0
+  if (!invested || invested === 0) return 0
+  return (totalGainLoss.value / invested) * 100
+})
+
 const loading = computed(() => dashboardStore.loading)
 const timeSeries = computed(() => dashboardStore.timeSeries)
 const allocations = computed(() => dashboardStore.allocations)
@@ -147,7 +156,10 @@ const staleCount = computed(() => dashboardStore.priceStatus?.stale_count || 0)
 const staleInstruments = computed(() => dashboardStore.staleInstruments)
 
 onMounted(async () => {
-  await dashboardStore.fetchAll()
+  await Promise.all([
+    portfolioStore.fetchPortfolio(),
+    dashboardStore.fetchAll()
+  ])
 })
 </script>
 

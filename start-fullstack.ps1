@@ -4,20 +4,57 @@
 Write-Host "Starting Investit Full-Stack Application..." -ForegroundColor Green
 Write-Host ""
 
+# Kill any existing Python processes to avoid conflicts
+Write-Host "Checking for existing Python processes..." -ForegroundColor Cyan
+$pythonProcesses = Get-Process | Where-Object { $_.ProcessName -like "*python*" }
+if ($pythonProcesses) {
+	Write-Host "Found $($pythonProcesses.Count) Python process(es). Stopping them..." -ForegroundColor Yellow
+	$pythonProcesses | Stop-Process -Force -ErrorAction SilentlyContinue
+	Start-Sleep -Seconds 1
+	Write-Host "Stopped existing Python processes." -ForegroundColor Green
+} else {
+	Write-Host "No existing Python processes found." -ForegroundColor Green
+}
+Write-Host ""
+
 # Get the script directory (project root)
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Launch Backend in new PowerShell window
+<# Enhanced full-stack launcher:
+ - Ensures backend venv and installs requirements if missing
+ - Ensures frontend node_modules installed
+ - Uses venv python explicitly
+ - Launches in separate windows
+#>
+
+# Ensure backend venv
+$venvPython = Join-Path $projectRoot "venv\Scripts\python.exe"
+if (-not (Test-Path $venvPython)) {
+	Write-Host "Virtual environment missing. Creating..." -ForegroundColor Yellow
+	python -m venv (Join-Path $projectRoot 'venv')
+	& $venvPython -m pip install --upgrade pip | Out-Null
+	if (Test-Path (Join-Path $projectRoot 'requirements.txt')) {
+		Write-Host "Installing backend requirements..." -ForegroundColor Cyan
+		& $venvPython -m pip install -r (Join-Path $projectRoot 'requirements.txt')
+	}
+}
+
+# Ensure frontend dependencies
+$frontendPath = Join-Path $projectRoot "frontend"
+if (-not (Test-Path (Join-Path $frontendPath 'node_modules'))) {
+	Write-Host "Installing frontend dependencies (npm install)..." -ForegroundColor Cyan
+	Start-Process -Wait -WorkingDirectory $frontendPath npm -ArgumentList 'install'
+}
+
+# Launch Backend in new PowerShell window using venv python
 Write-Host "Launching Backend Server..." -ForegroundColor Cyan
 $backendPath = Join-Path $projectRoot "backend"
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; `$env:PYTHONUNBUFFERED='1'; & '$venvPython' -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
 
 # Wait a moment for backend to initialize
 Start-Sleep -Seconds 2
 
-# Launch Frontend in new PowerShell window
 Write-Host "Launching Frontend Server..." -ForegroundColor Cyan
-$frontendPath = Join-Path $projectRoot "frontend"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$frontendPath'; npm run dev"
 
 # Wait for frontend to start, then open browser

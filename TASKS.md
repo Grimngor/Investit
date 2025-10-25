@@ -1,6 +1,6 @@
 # InvestIt - Task Tracker
 
-**Last Updated:** October 24, 2025
+**Last Updated:** October 25, 2025
 
 ### 1. Project Cleanup & File Review
 - [x] 1.1. Review and remove obsolete files
@@ -40,6 +40,14 @@
 - [x] 5.7. WebSocket real-time updates
 - [x] 5.8. Stale price indicators
 - [x] 5.9. Backend logging infrastructure
+- [x] 5.10. Yahoo Finance price fetching service
+- [x] 5.11. Automatic price caching (24-hour TTL)
+- [x] 5.12. Price fetch endpoint with background tasks
+- [x] 5.13. Historical price tracking for accurate gain/loss
+- [x] 5.14. Automatic scheduled task registration
+- [x] 5.15. Morningstar integration for fund metadata
+- [x] 5.16. YahooQuery integration for sector allocations
+- [x] 5.17. Hybrid metadata sourcing (Morningstar primary, YahooQuery fallback)
 
 ### 6. Code Quality
 - [x] 6.1. Format Python files (Ruff with tabs)
@@ -63,17 +71,42 @@
 - [x] 7.12. Pagination controls
 - [x] 7.13. Chart.js integration with dark mode
 - [x] 7.14. Frontend logging infrastructure
+- [ ] 7.15. CSV import preview/confirmation modal with edit capability
 
 ### 8. Documentation
 - [x] 8.1. Update README.md
 - [x] 8.2. Update CONTRIBUTING.md
 - [x] 8.3. Update USER_GUIDE.md
 - [x] 8.4. OpenAPI/Swagger docs at /docs
-- [ ] 8.5. Document data migration process
-- [ ] 8.6. Create GitHub issue templates (optional)
-- [ ] 8.7. Create GitHub PR template (optional)
+- [x] 8.5. Document historical price implementation (HISTORICAL_PRICE_IMPLEMENTATION.md)
+- [ ] 8.6. Document data migration process
+- [ ] 8.7. Create GitHub issue templates (optional)
+- [ ] 8.8. Create GitHub PR template (optional)
 
-### 9. Final Review & Validation
+### 9. Code Quality & Refactoring
+- [ ] 10.1. Refactor large price-fetch function (prices.fetch_and_update_prices)
+- [ ] 10.2. Extract startup_event helpers to reduce complexity
+- [ ] 10.3. Fix lint warnings (PLR0915: too many statements, PLR0912: too many branches)
+- [ ] 10.4. Add direct /api/instruments/refresh endpoint combining all metadata sources
+- [ ] 10.5. Normalize geographic regions into country roll-ups for dashboard
+- [ ] 10.6. Suppress or handle asyncio.exceptions.CancelledError on dev reloads
+
+### 10. Resilience & Production Readiness
+- [ ] 11.1. Add cache warming task on startup
+- [ ] 11.2. Add resilience around Morningstar rate-limiting (retry with exponential backoff)
+- [ ] 11.3. Add retry logic for YahooQuery API failures
+- [ ] 11.4. Add circuit breaker pattern for external API calls
+- [ ] 11.5. Add health check endpoint with dependency status
+- [ ] 11.6. Add metrics collection (API latency, cache hit rate, error rate)
+
+### 11. Data Quality & Validation
+- [ ] 12.1. Add price validation (compare historical vs calculated, flag discrepancies)
+- [ ] 12.2. Add data integrity checks (detect missing ISINs, invalid dates)
+- [ ] 12.3. Create admin endpoint to trigger price backfill for specific users/ISINs
+- [ ] 12.4. Add instrument metadata validation (check for missing sectors/regions)
+- [ ] 12.5. Create data quality dashboard/report
+
+### 12. Final Review & Validation
 - [ ] 9.1. Manual walkthrough of all features
 - [x] 9.2. Verify all tests pass (130 backend tests)
 - [ ] 9.3. Add frontend E2E tests
@@ -87,7 +120,9 @@
 
 ## Current Stats
 
-- **Backend:** 33+ Python files, 130 passing tests, 72% coverage
+- **Backend:** 35+ Python files, 130 passing tests, 72% coverage
 - **Frontend:** 80+ Vue/TypeScript files with Chart.js integration
-- **API Endpoints:** 20+ (auth, portfolio, orders, dashboard, websocket)
-- **Status:** Section 7 & 8 mostly complete, Section 9 in progress
+- **API Endpoints:** 25+ (auth, portfolio, orders, dashboard, prices, instruments, websocket)
+- **Data Sources:** yfinance (prices + historical), mstarpy (Morningstar metadata), yahooquery (sector allocations)
+- **Status:** Core features complete (Sections 1-7), refactoring & resilience pending (Sections 10-12)
+

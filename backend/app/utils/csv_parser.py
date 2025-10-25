@@ -30,13 +30,21 @@ class SpanishOrderCSVParser:
 	EXPECTED_HEADERS: ClassVar[list[str]] = [
 		"Fecha de la orden",
 		"ISIN",
-		"Importe estimado",
+		"Importe neto",  # Changed from "Importe estimado" - use actual net amount
 		"Nº de participaciones",
 		"Estado",
 	]
 
+	# Alternative headers to check (fallback if main headers not found)
+	ALTERNATIVE_AMOUNT_HEADERS: ClassVar[list[str]] = [
+		"Importe neto",
+		"Importe estimado",
+		"Importe",
+	]
+
 	HEADER_VARIATIONS: ClassVar[dict[str, list[str]]] = {
 		"Nº de participaciones": ["Nº de participaciones", "NÂº de participaciones", "N° de participaciones"],
+		"Importe neto": ["Importe neto", "Importe estimado", "Importe"],
 	}
 
 	ISIN_LENGTH: ClassVar[int] = 12
@@ -123,7 +131,7 @@ class SpanishOrderCSVParser:
 			row_num: Row number for error reporting
 
 		Returns:
-			Shares as float
+			Shares as float (absolute value)
 
 		Raises:
 			CSVParseError: If shares format is invalid
@@ -135,9 +143,8 @@ class SpanishOrderCSVParser:
 
 		try:
 			shares = float(shares_str)
-			if shares <= 0:
-				raise CSVParseError(f"Row {row_num}: Shares must be positive, got {shares}")
-			return shares
+			# Return absolute value - sign is determined by amount field
+			return abs(shares)
 		except ValueError as exc:
 			raise CSVParseError(f"Row {row_num}: Invalid shares format '{shares_str}'") from exc
 
@@ -211,7 +218,7 @@ class SpanishOrderCSVParser:
 						continue
 
 					# Parse amount
-					amount_str = row.get("Importe estimado", "").strip()
+					amount_str = row.get("Importe neto", "").strip()
 					if not amount_str:
 						errors.append(f"Row {row_num}: Missing amount")
 						continue

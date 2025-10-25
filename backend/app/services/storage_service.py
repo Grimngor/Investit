@@ -150,6 +150,39 @@ class StorageService:
 
 		return updated_data
 
+	# ===== Instrument Metadata Helpers =====
+
+	def _instruments_file(self) -> Path:
+		"""Return path to instruments.json in data directory."""
+		from app.config import settings
+
+		return settings.DATA_DIR / "instruments.json"
+
+	def load_instruments(self) -> list[dict[str, Any]]:
+		"""Load instruments metadata list."""
+		file_path = self._instruments_file()
+		return self.load_json(file_path, default=[])
+
+	def save_instruments(self, instruments: list[dict[str, Any]]) -> None:
+		"""Persist instruments metadata list atomically."""
+		file_path = self._instruments_file()
+		self.save_json(file_path, instruments)
+
+	def upsert_instrument(self, isin: str, metadata: dict[str, Any]) -> dict[str, Any]:
+		"""Upsert a single instrument's metadata using ISIN key."""
+		instruments = self.load_instruments()
+		idx = next((i for i, inst in enumerate(instruments) if inst.get("isin") == isin), None)
+		if idx is not None:
+			# Merge preserving existing keys unless overridden
+			instruments[idx].update({k: v for k, v in metadata.items() if v is not None})
+			updated = instruments[idx]
+		else:
+			new_inst = {"isin": isin, **metadata}
+			instruments.append(new_inst)
+			updated = new_inst
+		self.save_instruments(instruments)
+		return updated
+
 
 # Convenience functions for common operations
 def load_users() -> dict[str, Any]:

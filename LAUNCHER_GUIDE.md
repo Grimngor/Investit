@@ -8,13 +8,13 @@ This guide explains all the launcher scripts available for the InvestIt project.
 ```powershell
 .\start-fullstack.ps1
 ```
-This launches both backend and frontend servers in separate terminal windows.
+This launches both backend and frontend servers in separate terminal windows and **automatically kills any existing Python processes** to avoid conflicts.
 
 ## Available Scripts
 
 ### PowerShell Scripts (.ps1)
 
-#### `start-fullstack.ps1` - Full Stack Launcher
+#### `start-fullstack.ps1` - Full Stack Launcher ⭐ RECOMMENDED
 Launches both backend and frontend servers in separate PowerShell windows.
 
 **Usage:**
@@ -23,10 +23,12 @@ Launches both backend and frontend servers in separate PowerShell windows.
 ```
 
 **What it does:**
-1. Opens new terminal for backend server
-2. Starts FastAPI with uvicorn on `http://localhost:8000`
-3. Opens new terminal for frontend server
-4. Starts Vite dev server on `http://localhost:5173`
+1. **Kills any existing Python processes** (prevents conflicts from stale servers)
+2. Opens new terminal for backend server
+3. Starts FastAPI with uvicorn on `http://localhost:8000`
+4. Opens new terminal for frontend server
+5. Starts Vite dev server on `http://localhost:5173`
+6. Opens browser automatically
 
 **Access points:**
 - Backend API: http://localhost:8000
@@ -35,9 +37,49 @@ Launches both backend and frontend servers in separate PowerShell windows.
 
 ---
 
+#### `start-backend.ps1` - Backend Only (PowerShell)
+Starts only the FastAPI backend server.
+
+**Usage:**
+```powershell
+.\start-backend.ps1
+```
+
+**What it does:**
+1. **Kills any existing Python processes** (prevents port conflicts)
+2. Activates virtual environment
+3. Starts FastAPI backend on port 8000
+
+**Benefits over .bat version:**
+- Better error messages
+- Automatic cleanup of stale processes
+- Color-coded output
+
+---
+
+#### `stop-all.ps1` - Stop All Servers
+Stops all running backend and frontend servers.
+
+**Usage:**
+```powershell
+.\stop-all.ps1
+```
+
+**What it does:**
+1. Kills all Python processes (backend)
+2. Kills all Node.js processes (frontend)
+3. Shows count of stopped processes
+
+**Use this when:**
+- You want to clean up before restarting
+- Servers are not responding
+- You have multiple instances running
+
+---
+
 ### Batch Scripts (.bat)
 
-#### `start-backend.bat` - Backend Only
+#### `start-backend.bat` - Backend Only (Batch)
 Starts only the FastAPI backend server.
 
 **Usage:**
@@ -45,9 +87,12 @@ Starts only the FastAPI backend server.
 start-backend.bat
 ```
 
-**Details:**
-- Navigates to `backend/` directory
-- Runs: `python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+**What it does:**
+1. **Checks for and kills existing Python processes**
+2. Navigates to `backend/` directory
+3. Runs: `python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+
+**Note:** Consider using `start-backend.ps1` instead for better output and error handling.
 - Auto-reloads on code changes
 - Accessible at http://localhost:8000
 
@@ -233,6 +278,81 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
    - Starts Vite dev server
    - Window stays open
 5. Both servers run independently
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### "Port 8000 is already in use"
+**Cause:** Another Python/backend process is still running from a previous session.
+
+**Solution:**
+```powershell
+# Option 1: Use stop-all script
+.\stop-all.ps1
+
+# Option 2: Manual cleanup
+Get-Process | Where-Object { $_.ProcessName -like "*python*" } | Stop-Process -Force
+
+# Then restart
+.\start-fullstack.ps1
+```
+
+**Prevention:** Always use `start-fullstack.ps1` or `start-backend.ps1` - they automatically kill old processes!
+
+---
+
+#### "Frontend shows 404 or 'Not Found' errors"
+**Cause:** Backend was started with old code before routes were registered.
+
+**Solution:**
+```powershell
+# 1. Stop all servers
+.\stop-all.ps1
+
+# 2. Verify no Python processes running
+Get-Process | Where-Object { $_.ProcessName -like "*python*" } | Measure-Object
+
+# 3. Start fresh
+.\start-fullstack.ps1
+
+# 4. Hard refresh browser (Ctrl+F5)
+```
+
+---
+
+#### Multiple Backend Instances Running
+**Symptom:** Routes not working, old data showing, inconsistent behavior.
+
+**Check:**
+```powershell
+# Count Python processes
+Get-Process | Where-Object { $_.ProcessName -like "*python*" } | Measure-Object
+```
+
+**Fix:**
+```powershell
+.\stop-all.ps1
+.\start-fullstack.ps1
+```
+
+---
+
+#### Verification Script to Check Routes
+After starting backend, verify routes are registered:
+
+```powershell
+# Run this in a NEW terminal (don't close backend terminal!)
+.\check_routes.ps1
+```
+
+Look for these critical routes:
+- `/api/prices/fetch`
+- `/api/prices/status`
+- `/api/orders/all`
+- `/api/dashboard/kpis`
 
 ---
 

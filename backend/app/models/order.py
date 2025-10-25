@@ -16,6 +16,9 @@ class Order(BaseModel):
 	ticker: str | None = Field(None, description="Optional ticker symbol")
 	amount_eur: float = Field(..., gt=0, description="Order amount in EUR")
 	shares: float = Field(..., gt=0, description="Number of shares/units")
+	price_per_share: float | None = Field(None, description="Price per share at order execution")
+	price_currency: str | None = Field(None, description="Currency of the price")
+	price_date: str | None = Field(None, description="Date of the price used")
 	order_type: str = Field("buy", description="Order type: buy or sell")
 	status: str = Field("Finalizada", description="Order status: Finalizada or Rechazada")
 	notes: str = Field("", description="Optional notes")
@@ -30,6 +33,9 @@ class OrderCreate(BaseModel):
 	ticker: str | None = None
 	amount_eur: float = Field(..., gt=0)
 	shares: float = Field(..., gt=0)
+	price_per_share: float | None = None
+	price_currency: str | None = None
+	price_date: str | None = None
 	order_type: str = "buy"
 	status: str = "Finalizada"
 	notes: str = ""
@@ -43,6 +49,9 @@ class OrderUpdate(BaseModel):
 	ticker: str | None = None
 	amount_eur: float | None = None
 	shares: float | None = None
+	price_per_share: float | None = None
+	price_currency: str | None = None
+	price_date: str | None = None
 	order_type: str | None = None
 	status: str | None = None
 	notes: str | None = None
