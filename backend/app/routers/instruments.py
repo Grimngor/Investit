@@ -174,45 +174,11 @@ async def refresh_instrument_metadata(current_user: User = Depends(get_current_u
 
 	for isin in unique_isins:
 		try:
-			logger.info(f"Refreshing metadata for {isin}")
-
-			# Get Yahoo ticker first
-			ticker_result = await yfinance.get_ticker_from_isin(isin)
-			if not ticker_result:
-				errors.append(f"{isin}: Could not resolve ticker")
-				continue
-
-			symbol = ticker_result.get("symbol", isin)
-
-			# Try Morningstar first (best regional data)
-			instrument_data = {"isin": isin, "symbol": symbol}
-			mstar_metadata = await morningstar.get_fund_metadata(isin)
-
-			if mstar_metadata:
-				logger.info(f"Got Morningstar data for {isin}")
-				if mstar_metadata.get("name"):
-					instrument_data["name"] = mstar_metadata["name"]
-				if mstar_metadata.get("sector_allocation"):
-					instrument_data["sector_allocation"] = mstar_metadata["sector_allocation"]
-				if mstar_metadata.get("regional_allocation"):
-					instrument_data["geo_allocation"] = mstar_metadata["regional_allocation"]
-				instrument_data["type"] = "Fund"
-
-			# Fallback to yahooquery for missing data
-			if not instrument_data.get("sector_allocation") or not instrument_data.get("geo_allocation"):
-				logger.info(f"Fetching YahooQuery data for {symbol} ({isin})")
-				yq_metadata = await yahooquery.get_fund_metadata(symbol)
-
-				if yq_metadata:
-					if not instrument_data.get("sector_allocation") and yq_metadata.get("sector_allocation"):
-						instrument_data["sector_allocation"] = yq_metadata["sector_allocation"]
-					if not instrument_data.get("geo_allocation") and yq_metadata.get("geo_allocation"):
-						instrument_data["geo_allocation"] = yq_metadata["geo_allocation"]
-
-			# Save to instruments.json
-			storage.upsert_instrument(instrument_data)
-			updated_count += 1
-
+			success = await _refresh_single_instrument(isin, storage, morningstar, yahooquery, yfinance)
+			if success:
+				updated_count += 1
+			else:
+				errors.append(f"{isin}: Could not fetch complete metadata")
 		except Exception as e:
 			logger.error(f"Error refreshing {isin}: {e}")
 			errors.append(f"{isin}: {e!s}")
@@ -224,3 +190,50 @@ async def refresh_instrument_metadata(current_user: User = Depends(get_current_u
 		"total": len(unique_isins),
 		"errors": errors,
 	}
+
+
+async def _refresh_single_instrument(
+	isin: str,
+	storage: StorageService,
+	morningstar: MorningstarService,
+	yahooquery: YahooQueryService,
+	yfinance: YahooFinanceService,
+) -> bool:
+	"""Fetch and persist metadata for a single ISIN."""
+	logger.info(f"Refreshing metadata for {isin}")
+
+	# Get Yahoo ticker first
+	ticker_result = await yfinance.get_ticker_from_isin(isin)
+	if not ticker_result:
+		return False
+
+	symbol = ticker_result.get("symbol", isin)
+
+	# Try Morningstar first (best regional data)
+	instrument_data = {"isin": isin, "symbol": symbol}
+	mstar_metadata = await morningstar.get_fund_metadata(isin)
+
+	if mstar_metadata:
+		logger.info(f"Got Morningstar data for {isin}")
+		if mstar_metadata.get("name"):
+			instrument_data["name"] = mstar_metadata["name"]
+		if mstar_metadata.get("sector_allocation"):
+			instrument_data["sector_allocation"] = mstar_metadata["sector_allocation"]
+		if mstar_metadata.get("regional_allocation"):
+			instrument_data["geo_allocation"] = mstar_metadata["regional_allocation"]
+		instrument_data["type"] = "Fund"
+
+	# Fallback to yahooquery for missing data
+	if not instrument_data.get("sector_allocation") or not instrument_data.get("geo_allocation"):
+		logger.info(f"Fetching YahooQuery data for {symbol} ({isin})")
+		yq_metadata = await yahooquery.get_fund_metadata(symbol)
+
+		if yq_metadata:
+			if not instrument_data.get("sector_allocation") and yq_metadata.get("sector_allocation"):
+				instrument_data["sector_allocation"] = yq_metadata["sector_allocation"]
+			if not instrument_data.get("geo_allocation") and yq_metadata.get("geo_allocation"):
+				instrument_data["geo_allocation"] = yq_metadata["geo_allocation"]
+
+	# Save to instruments.json
+	storage.upsert_instrument(instrument_data)
+	return True

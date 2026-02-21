@@ -49,7 +49,7 @@ if (-not (Test-Path (Join-Path $frontendPath 'node_modules'))) {
 # Launch Backend in new PowerShell window using venv python
 Write-Host "Launching Backend Server..." -ForegroundColor Cyan
 $backendPath = Join-Path $projectRoot "backend"
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; `$env:PYTHONUNBUFFERED='1'; & '$venvPython' -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; `$env:PYTHONUNBUFFERED='1'; & '$venvPython' -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8100"
 
 # Wait a moment for backend to initialize
 Start-Sleep -Seconds 2
@@ -58,16 +58,17 @@ Write-Host "Launching Frontend Server..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$frontendPath'; npm run dev"
 
 # Wait for frontend to start, then open browser
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 4
 Write-Host "Opening browser..." -ForegroundColor Cyan
-Start-Process "http://localhost:5173"
+# Frontend auto-selects port 5174 when 5173 is busy
+Start-Process "http://localhost:5174"
 
 Write-Host ""
 Write-Host "Full-stack application launched!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Backend:  http://localhost:8000" -ForegroundColor Yellow
-Write-Host "API Docs: http://localhost:8000/docs" -ForegroundColor Yellow
-Write-Host "Frontend: http://localhost:5173" -ForegroundColor Yellow
+Write-Host "Backend:  http://localhost:8100" -ForegroundColor Yellow
+Write-Host "API Docs: http://localhost:8100/docs" -ForegroundColor Yellow
+Write-Host "Frontend: http://localhost:5174" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Tip: Close the terminal windows to stop the servers" -ForegroundColor Gray
 Write-Host ""

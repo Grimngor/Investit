@@ -33,7 +33,7 @@
             <RotateCcw class="h-4 w-4 mr-2" />
             Try Again
           </Button>
-          
+
           <Button @click="goHome" variant="outline">
             <Home class="h-4 w-4 mr-2" />
             Go Home

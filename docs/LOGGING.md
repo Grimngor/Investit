@@ -67,7 +67,7 @@ logger.error('API request failed', { error: err.message })
 1. **Be Specific**: Include relevant context in log messages
 2. **Log Errors**: Always log errors with stack traces
 3. **Avoid Sensitive Data**: Never log passwords, tokens, or PII
-4. **Use Appropriate Levels**: 
+4. **Use Appropriate Levels**:
    - DEBUG for detailed tracing
    - INFO for normal operations
    - WARN for recoverable issues

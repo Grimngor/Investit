@@ -26,34 +26,44 @@ class ComputeService:
 			return {"total_shares": 0.0, "average_cost": 0.0, "total_invested": 0.0}
 
 		total_shares = Decimal("0")
-		total_cost = Decimal("0")  # Use actual cost (shares * price_per_share)
+		total_cost = Decimal("0")  # Cumulative cost basis
+		average_cost = Decimal("0")  # Running average cost per share
 
 		for order in relevant_orders:
 			shares = Decimal(str(order.get("shares", 0)))
 			order_type = order.get("order_type", "buy").lower()
 
-			# Use price_per_share if available (more accurate), otherwise fall back to calculated
-			if "price_per_share" in order and order["price_per_share"] is not None:
-				price = Decimal(str(order["price_per_share"]))
-				cost = shares * price
-			else:
-				# Fallback to amount_eur (less accurate for historical orders)
-				cost = Decimal(str(order.get("amount_eur", 0)))
-
-			# Handle buy vs sell orders
 			if order_type == "sell":
-				total_shares -= shares
-				total_cost -= cost
+				# For sells: reduce shares and reduce cost by (shares sold * current average cost)
+				# This maintains the cost basis correctly
+				if total_shares > 0 and average_cost > 0:
+					cost_reduction = shares * average_cost
+					total_shares -= shares
+					total_cost -= cost_reduction
+					# average_cost stays the same (cost basis per share doesn't change)
+				else:
+					# Edge case: selling without any prior buys (shouldn't happen, but handle gracefully)
+					total_shares -= shares
+					# Don't modify total_cost if we don't have a cost basis
 			else:  # buy
+				# Prioritize amount_eur as the actual cost basis if available
+				amount_eur = order.get("amount_eur")
+				if amount_eur is not None and amount_eur > 0:
+					cost = Decimal(str(amount_eur))
+				elif "price_per_share" in order and order["price_per_share"] is not None:
+					price = Decimal(str(order["price_per_share"]))
+					cost = shares * price
+				else:
+					cost = Decimal("0")
+
 				total_shares += shares
 				total_cost += cost
-
-		# Calculate average cost per share
-		avg_cost = float(total_cost / total_shares) if total_shares > 0 else 0.0
+				# Recalculate average cost after each buy
+				average_cost = total_cost / total_shares if total_shares > 0 else Decimal("0")
 
 		return {
 			"total_shares": float(total_shares),
-			"average_cost": avg_cost,
+			"average_cost": float(average_cost),
 			"total_invested": float(total_cost),
 		}
 
@@ -173,6 +183,7 @@ class ComputeService:
 		time_series = []
 		cumulative_invested = Decimal("0")
 		positions: dict[str, Decimal] = {}  # ISIN -> shares
+		average_costs: dict[str, Decimal] = {}  # ISIN -> average cost per share
 
 		for order in sorted_orders:
 			if order.get("status", "").lower() != "finalizada":
@@ -183,21 +194,37 @@ class ComputeService:
 			shares = Decimal(str(order.get("shares", 0)))
 			order_type = order.get("order_type", "buy").lower()
 
-			# Calculate actual cost using price_per_share if available
-			if "price_per_share" in order and order["price_per_share"] is not None:
-				price_per_share = Decimal(str(order["price_per_share"]))
-				cost = shares * price_per_share
-			else:
-				# Fallback to amount_eur
-				cost = Decimal(str(order.get("amount_eur", 0)))
-
-			# Handle buy vs sell orders
 			if order_type == "sell":
-				cumulative_invested -= cost
-				positions[isin] = positions.get(isin, Decimal("0")) - shares
+				# For sells: reduce shares and cost by (shares sold * average cost)
+				if isin in positions and positions[isin] > 0 and isin in average_costs:
+					cost_reduction = shares * average_costs[isin]
+					cumulative_invested -= cost_reduction
+					positions[isin] = positions.get(isin, Decimal("0")) - shares
+				else:
+					# Edge case: selling without prior buys
+					positions[isin] = positions.get(isin, Decimal("0")) - shares
 			else:  # buy
+				# Calculate actual cost using price_per_share if available
+				if "price_per_share" in order and order["price_per_share"] is not None:
+					price_per_share = Decimal(str(order["price_per_share"]))
+					cost = shares * price_per_share
+				else:
+					# Fallback to amount_eur
+					cost = Decimal(str(order.get("amount_eur", 0)))
+
 				cumulative_invested += cost
-				positions[isin] = positions.get(isin, Decimal("0")) + shares
+				old_shares = positions.get(isin, Decimal("0"))
+				new_shares = old_shares + shares
+
+				# Update average cost for this ISIN
+				if isin in average_costs and old_shares > 0:
+					old_cost = old_shares * average_costs[isin]
+					new_cost = old_cost + cost
+					average_costs[isin] = new_cost / new_shares
+				else:
+					average_costs[isin] = cost / shares if shares > 0 else Decimal("0")
+
+				positions[isin] = new_shares
 
 			# Calculate current value with current prices
 			current_value = 0.0

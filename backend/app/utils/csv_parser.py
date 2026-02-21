@@ -1,11 +1,14 @@
 """CSV parser for Spanish bank format order imports."""
 
 import csv
+import logging
 import re
 import uuid
 from datetime import datetime
 from io import StringIO
 from typing import Any, ClassVar
+
+logger = logging.getLogger(__name__)
 
 
 class CSVParseError(Exception):
@@ -259,6 +262,117 @@ class SpanishOrderCSVParser:
 			errors.append(f"CSV parsing error: {e!s}")
 
 		return orders, errors
+
+
+class CryptoExchangeCSVParser:
+	"""Parser for crypto exchange purchase history CSV.
+
+	Expected headers:
+	Date(UTC+1);Method;Spend Amount;Receive Amount;Fee;Price;Status;Transaction ID
+
+	Mappings:
+	- Date: timestamp -> YYYY-MM-DD
+	- Spend Amount: e.g. '50.00 EUR' -> amount_eur (gross before fee) minus Fee? We'll store net = spend amount
+	- Receive Amount: '0.00279397 BTC' -> shares + symbol
+	- Fee: '1.00 EUR' (ignored for now; could subtract from amount)
+	- Price: '17537.76883789 BTC/EUR' -> price_per_share, currency
+	- Status: Successful -> Finalizada else Rechazada
+	- Transaction ID -> notes
+
+	All rows assumed BUY orders.
+	"""
+
+	def parse_csv(self, csv_content: str) -> tuple[list[dict[str, Any]], list[str]]:
+		"""Parse crypto exchange CSV content."""
+		orders: list[dict[str, Any]] = []
+		errors: list[str] = []
+		RAW_MIN_COLUMNS = 8
+
+		# Remove BOM if present (common in Windows UTF-8 files)
+		csv_content = csv_content.lstrip("\ufeff")
+
+		lines = [line for line in csv_content.splitlines() if line.strip()]
+		logger.debug(f"CryptoExchangeCSVParser: Processing {len(lines)} lines")
+		if not lines:
+			return orders, ["Empty CSV content"]
+
+		delimiter = ";" if ";" in lines[0] else ","
+		header = lines[0].split(delimiter)
+		if len(header) < RAW_MIN_COLUMNS:
+			errors.append("Missing headers for crypto CSV")
+			return orders, errors
+
+		for row_num, line in enumerate(lines[1:], start=2):
+			parts = line.split(delimiter)
+			if len(parts) < RAW_MIN_COLUMNS:
+				errors.append(f"Row {row_num}: Incomplete row")
+				continue
+
+			result = self._parse_row(parts, row_num)
+			if isinstance(result, str):
+				errors.append(result)
+			elif result:
+				orders.append(result)
+
+		return orders, errors
+
+	def _parse_row(self, parts: list[str], row_num: int) -> dict[str, Any] | str | None:
+		"""Process a single row from the crypto CSV."""
+		RAW_MIN_COLUMNS = 8
+		date_raw, _method, spend_raw, receive_raw, fee_raw, price_raw, status_raw, tx_id = (p.strip() for p in parts[:RAW_MIN_COLUMNS])
+
+		if not date_raw and not spend_raw:
+			return None
+
+		try:
+			from datetime import datetime as _dt
+
+			date_part = date_raw.split()[0]
+			parsed_dt = _dt.strptime(date_part, "%d/%m/%Y") if "/" in date_part else _dt.strptime(date_part, "%Y-%m-%d")
+			date_iso = parsed_dt.strftime("%Y-%m-%d")
+		except Exception:
+			return f"Row {row_num}: Invalid date '{date_raw}'"
+
+		try:
+			amt_value, _amt_curr = spend_raw.split()
+			amount_eur = float(amt_value)
+		except Exception:
+			return f"Row {row_num}: Invalid spend amount '{spend_raw}'"
+
+		try:
+			fee_value = float(fee_raw.split()[0]) if fee_raw else 0.0
+		except Exception:
+			fee_value = 0.0
+
+		try:
+			recv_value, recv_symbol = receive_raw.split()
+			shares = float(recv_value)
+		except Exception:
+			return f"Row {row_num}: Invalid receive amount '{receive_raw}'"
+
+		try:
+			price_val, pair = price_raw.split()
+			price_per_share = float(price_val)
+			_base_sym, fiat = pair.split("/")
+		except Exception:
+			return f"Row {row_num}: Invalid price '{price_raw}'"
+
+		status = "Finalizada" if status_raw.lower().startswith("success") else "Rechazada"
+		return {
+			"id": str(uuid.uuid4()),
+			"date": date_iso,
+			"isin": recv_symbol.upper(),
+			"amount_eur": amount_eur,
+			"shares": shares,
+			"order_type": "buy",
+			"status": status,
+			"price_per_share": price_per_share,
+			"price_currency": fiat.upper(),
+			"price_date": date_iso,
+			"asset_type": "Crypto",
+			"notes": f"Fee {fee_value} EUR | Tx {tx_id}",
+			"created_at": _dt.now().isoformat(),
+		}
 
 
 def parse_spanish_csv(csv_content: str, encoding: str = "utf-8") -> tuple[list[dict[str, Any]], list[str]]:

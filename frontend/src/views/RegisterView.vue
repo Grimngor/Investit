@@ -2,7 +2,7 @@
   <div class="container mx-auto px-4 py-8">
     <div class="max-w-md mx-auto">
       <h1 class="text-3xl font-bold mb-6 text-center">Register</h1>
-      
+
       <form @submit.prevent="handleRegister" class="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
         <div>
           <label for="username" class="block text-sm font-medium mb-1">Username</label>
@@ -15,7 +15,7 @@
             class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        
+
         <div>
           <label for="email" class="block text-sm font-medium mb-1">Email</label>
           <input
@@ -26,7 +26,7 @@
             class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        
+
         <div>
           <label for="full_name" class="block text-sm font-medium mb-1">Full Name (Optional)</label>
           <input
@@ -36,7 +36,7 @@
             class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        
+
         <div>
           <label for="password" class="block text-sm font-medium mb-1">Password</label>
           <input
@@ -48,7 +48,7 @@
             class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        
+
         <button
           type="submit"
           :disabled="loading"
@@ -57,7 +57,7 @@
           {{ loading ? 'Registering...' : 'Register' }}
         </button>
       </form>
-      
+
       <p class="mt-4 text-center">
         Already have an account?
         <router-link to="/login" class="text-blue-600 hover:underline">Login</router-link>
@@ -89,7 +89,7 @@ async function handleRegister() {
     full_name: fullName.value || undefined
   })
   loading.value = false
-  
+
   if (success) {
     router.push('/login')
   }

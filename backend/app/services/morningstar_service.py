@@ -59,67 +59,12 @@ class MorningstarService:
 			# Get regional breakdown
 			logger.debug(f"Fetching regional data for {isin}")
 			regional_data = await loop.run_in_executor(None, fund.regionalSector)
+			self._parse_regional_data(regional_data, metadata, isin)
 
-			if regional_data and "fundPortfolio" in regional_data:
-				portfolio = regional_data["fundPortfolio"]
-				logger.debug(f"Regional portfolio data: {portfolio}")
-				# Extract regional percentages
-				regional_allocation = {}
-
-				# Map Morningstar region names to cleaner display names
-				region_map = {
-					"northAmerica": "North America",
-					"europeDeveloped": "Europe (Developed)",
-					"europeEmerging": "Europe (Emerging)",
-					"unitedKingdom": "United Kingdom",
-					"japan": "Japan",
-					"australasia": "Australasia",
-					"asiaDeveloped": "Asia (Developed)",
-					"asiaEmerging": "Asia (Emerging)",
-					"africaMiddleEast": "Africa/Middle East",
-					"latinAmerica": "Latin America",
-				}
-
-				for mstar_key, display_name in region_map.items():
-					if mstar_key in portfolio and portfolio[mstar_key] > 0:
-						# Convert to decimal (Morningstar returns percentages)
-						regional_allocation[display_name] = portfolio[mstar_key] / 100.0
-
-				if regional_allocation:
-					metadata["regional_allocation"] = regional_allocation
-					logger.info(f"Morningstar: Got {len(regional_allocation)} regions for {isin}")
-				else:
-					logger.warning(f"Morningstar: No regional data found for {isin}")
-
-			# Get sector breakdown (same as what we get from yahooquery, but from Morningstar)
+			# Get sector breakdown
 			logger.debug(f"Fetching sector data for {isin}")
 			sector_data = await loop.run_in_executor(None, fund.sector)
-			if sector_data and "EQUITY" in sector_data:
-				equity_sectors = sector_data["EQUITY"].get("fundPortfolio", {})
-
-				# Map to clean sector names
-				sector_map = {
-					"basicMaterials": "Basic Materials",
-					"consumerCyclical": "Consumer Cyclical",
-					"financialServices": "Financial Services",
-					"realEstate": "Real Estate",
-					"communicationServices": "Communication Services",
-					"energy": "Energy",
-					"industrials": "Industrials",
-					"technology": "Technology",
-					"consumerDefensive": "Consumer Defensive",
-					"healthcare": "Healthcare",
-					"utilities": "Utilities",
-				}
-
-				sector_allocation = {}
-				for mstar_key, display_name in sector_map.items():
-					if mstar_key in equity_sectors and equity_sectors[mstar_key] > 0:
-						# Convert to decimal
-						sector_allocation[display_name] = equity_sectors[mstar_key] / 100.0
-
-				if sector_allocation:
-					metadata["sector_allocation"] = sector_allocation
+			self._parse_sector_data(sector_data, metadata)
 
 			# Cache and return
 			self.cache[isin] = metadata
@@ -130,6 +75,66 @@ class MorningstarService:
 		except Exception as e:
 			logger.warning(f"Could not fetch Morningstar data for {isin}: {e!s}")
 			return None
+
+	def _parse_regional_data(self, regional_data: dict[str, Any], metadata: dict[str, Any], isin: str) -> None:
+		"""Parse regional allocation data from Morningstar."""
+		if not (regional_data and "fundPortfolio" in regional_data):
+			return
+
+		portfolio = regional_data["fundPortfolio"]
+		logger.debug(f"Regional portfolio data: {portfolio}")
+
+		region_map = {
+			"northAmerica": "North America",
+			"europeDeveloped": "Europe (Developed)",
+			"europeEmerging": "Europe (Emerging)",
+			"unitedKingdom": "United Kingdom",
+			"japan": "Japan",
+			"australasia": "Australasia",
+			"asiaDeveloped": "Asia (Developed)",
+			"asiaEmerging": "Asia (Emerging)",
+			"africaMiddleEast": "Africa/Middle East",
+			"latinAmerica": "Latin America",
+		}
+
+		regional_allocation = {}
+		for mstar_key, display_name in region_map.items():
+			if mstar_key in portfolio and portfolio[mstar_key] > 0:
+				regional_allocation[display_name] = portfolio[mstar_key] / 100.0
+
+		if regional_allocation:
+			metadata["regional_allocation"] = regional_allocation
+			logger.info(f"Morningstar: Got {len(regional_allocation)} regions for {isin}")
+		else:
+			logger.warning(f"Morningstar: No regional data found for {isin}")
+
+	def _parse_sector_data(self, sector_data: dict[str, Any], metadata: dict[str, Any]) -> None:
+		"""Parse sector allocation data from Morningstar."""
+		if not (sector_data and "EQUITY" in sector_data):
+			return
+
+		equity_sectors = sector_data["EQUITY"].get("fundPortfolio", {})
+		sector_map = {
+			"basicMaterials": "Basic Materials",
+			"consumerCyclical": "Consumer Cyclical",
+			"financialServices": "Financial Services",
+			"realEstate": "Real Estate",
+			"communicationServices": "Communication Services",
+			"energy": "Energy",
+			"industrials": "Industrials",
+			"technology": "Technology",
+			"consumerDefensive": "Consumer Defensive",
+			"healthcare": "Healthcare",
+			"utilities": "Utilities",
+		}
+
+		sector_allocation = {}
+		for mstar_key, display_name in sector_map.items():
+			if mstar_key in equity_sectors and equity_sectors[mstar_key] > 0:
+				sector_allocation[display_name] = equity_sectors[mstar_key] / 100.0
+
+		if sector_allocation:
+			metadata["sector_allocation"] = sector_allocation
 
 	def clear_cache(self):
 		"""Clear the metadata cache."""

@@ -7,7 +7,7 @@
     <div v-else-if="error" class="text-center text-red-500 p-4">
       {{ error }}
     </div>
-    <div v-else-if="hasData" class="chart-container">
+    <div v-else-if="hasData" class="chart-container h-72 w-full max-w-[400px] mx-auto">
       <Pie :data="chartData" :options="chartOptions" />
       <div class="mt-4 text-sm text-muted-foreground text-center">
         Based on fund holdings and company headquarters
@@ -31,10 +31,13 @@ import {
 import type { ChartOptions } from 'chart.js'
 import { apiClient } from '@/services/api'
 import { useCurrencyStore } from '@/stores/currency'
+import { useThemeStore } from '@/stores/theme'
 import LoadingSpinner from '../LoadingSpinner.vue'
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend)
+
+const themeStore = useThemeStore()
 
 const currencyStore = useCurrencyStore()
 
@@ -106,45 +109,57 @@ const chartData = computed(() => {
 })
 
 // Chart options
-const chartOptions = computed<ChartOptions<'pie'>>(() => ({
-  responsive: true,
-  maintainAspectRatio: true,
-  plugins: {
-    legend: {
-      position: 'right',
-      labels: {
-        padding: 10,
-        font: {
-          size: 11
-        },
-        generateLabels: (chart) => {
-          const data = chart.data
-          if (data.labels && data.datasets.length) {
-            return data.labels.map((label, i) => {
-              const value = data.datasets[0].data[i] as number
-              return {
-                text: `${label}: ${value.toFixed(1)}%`,
-                fillStyle: data.datasets[0].backgroundColor?.[i] as string,
-                hidden: false,
-                index: i
-              }
-            })
+const chartOptions = computed<ChartOptions<'pie'>>(() => {
+  const textColor = themeStore.isDark ? '#f3f4f6' : '#374151' // gray-100 for dark, gray-700 for light
+
+  return {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: {
+      legend: {
+        position: 'right',
+        labels: {
+          color: textColor,
+          padding: 10,
+          font: {
+            size: 11
+          },
+          generateLabels: (chart) => {
+            const data = chart.data
+            if (data.labels && data.datasets.length) {
+              return data.labels.map((label, i) => {
+                const value = data.datasets[0].data[i] as number
+                const bgColors = data.datasets[0].backgroundColor as string[]
+                return {
+                  text: `${label}: ${value.toFixed(1)}%`,
+                  fillStyle: bgColors[i],
+                  fontColor: textColor,
+                  hidden: false,
+                  index: i
+                }
+              })
+            }
+            return []
           }
-          return []
         }
-      }
-    },
-    tooltip: {
-      callbacks: {
-        label: (context) => {
-          const label = context.label || ''
-          const value = context.parsed || 0
-          return `${label}: ${value.toFixed(2)}%`
+      },
+      tooltip: {
+        backgroundColor: themeStore.isDark ? '#1f2937' : '#ffffff',
+        titleColor: textColor,
+        bodyColor: textColor,
+        borderColor: themeStore.isDark ? '#374151' : '#e5e7eb',
+        borderWidth: 1,
+        callbacks: {
+          label: (context) => {
+            const label = context.label || ''
+            const value = context.parsed || 0
+            return `${label}: ${value.toFixed(2)}%`
+          }
         }
       }
     }
   }
-}))
+})
 
 async function loadGeographicExposure() {
   loading.value = true
@@ -177,6 +192,8 @@ defineExpose({
 }
 
 .chart-container {
-  @apply max-w-2xl mx-auto;
+  position: relative;
+  height: 340px;
+  width: 100%;
 }
 </style>

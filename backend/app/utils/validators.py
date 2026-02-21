@@ -7,6 +7,8 @@ from typing import Any
 ISIN_LENGTH = 12
 MAX_SYMBOL_LENGTH = 20
 CURRENCY_CODE_LENGTH = 3
+CRYPTO_MIN_LEN = 3
+CRYPTO_MAX_LEN = 5
 
 
 def validate_isin(isin: str) -> bool:
@@ -154,6 +156,47 @@ def validate_symbol(symbol: str) -> bool:
 		return False
 	# Allow alphanumeric, dots, and hyphens
 	return bool(re.match(r"^[A-Z0-9.-]+$", symbol.upper()))
+
+
+def is_crypto_symbol(identifier: str) -> bool:
+	"""Return True if identifier looks like a cryptocurrency symbol (e.g., BTC, ETH).
+
+	Rules (heuristic):
+	- Length between 3 and 5 characters
+	- All uppercase letters
+	- Not a valid ISIN (to avoid clashes when user enters an ISIN)
+
+	Args:
+		identifier: Potential crypto symbol
+
+	Returns:
+		True if matches crypto symbol pattern, otherwise False
+	"""
+	if not identifier:
+		return False
+	identifier = identifier.strip().upper()
+	# Exclude valid ISINs
+	if validate_isin(identifier):
+		return False
+	if not (CRYPTO_MIN_LEN <= len(identifier) <= CRYPTO_MAX_LEN and identifier.isalpha() and identifier.isupper()):
+		return False
+
+	# Exclude a small set of well-known equity tickers (heuristic)
+	exclusions = {"AAPL", "MSFT", "GOOG", "AMZN", "TSLA", "META", "NVDA"}
+	return identifier not in exclusions
+
+
+def get_crypto_yfinance_symbol(crypto_symbol: str, currency: str = "EUR") -> str:
+	"""Convert a raw crypto symbol (BTC) to yfinance pair symbol (BTC-EUR).
+
+	Args:
+		crypto_symbol: Base crypto symbol (e.g., 'BTC')
+		currency: Fiat currency code (default EUR)
+
+	Returns:
+		Yahoo Finance formatted symbol (e.g., 'BTC-EUR')
+	"""
+	return f"{crypto_symbol.strip().upper()}-{currency.strip().upper()}"
 
 
 def validate_currency(currency: str) -> bool:

@@ -45,7 +45,7 @@ Register-ScheduledTask `
 ### General Tab
 - **Name**: `InvestIt Monthly Price Update`
 - **Description**: `Automatically fetch fund prices and metadata on the 1st of each month`
-- **Security options**: 
+- **Security options**:
   - ☑ Run only when user is logged on
   - ☑ Run with highest privileges
 
@@ -62,7 +62,7 @@ Register-ScheduledTask `
 - Click **New...**
 - **Action**: Start a program
 - **Program/script**: `PowerShell.exe`
-- **Add arguments**: 
+- **Add arguments**:
   ```
   -NoProfile -ExecutionPolicy Bypass -File "E:\JaviProyects\Proyects\Programming\Investit\scripts\monthly_price_update.ps1"
   ```
@@ -141,7 +141,7 @@ This ensures the backend is always running for the monthly update task.
 
 ### Task runs but nothing happens
 - Check PowerShell execution policy: `Get-ExecutionPolicy`
-- Should be `RemoteSigned` or `Bypass` 
+- Should be `RemoteSigned` or `Bypass`
 - Set with: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
 ### "Backend not running" error

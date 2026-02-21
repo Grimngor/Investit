@@ -30,10 +30,10 @@ export const useCurrencyStore = defineStore('currency', () => {
 
   function convert(amount: number, from: string, to: string): number {
     if (from === to) return amount
-    
+
     // Convert to EUR first (base currency)
     const eurAmount = amount / (rates.value[from] || 1)
-    
+
     // Convert from EUR to target currency
     return eurAmount * (rates.value[to] || 1)
   }

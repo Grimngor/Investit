@@ -12,6 +12,46 @@ from app.services.compute_service import ComputeService
 from app.services.storage_service import StorageService
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+ISIN_PREFIX_LENGTH = 2
+
+COUNTRY_NAMES = {
+	"US": "United States",
+	"CA": "Canada",
+	"GB": "United Kingdom",
+	"DE": "Germany",
+	"FR": "France",
+	"ES": "Spain",
+	"IT": "Italy",
+	"IE": "Ireland",
+	"NL": "Netherlands",
+	"JP": "Japan",
+	"CN": "China",
+	"HK": "Hong Kong",
+	"SG": "Singapore",
+	"AU": "Australia",
+	"CH": "Switzerland",
+	"SE": "Sweden",
+	"DK": "Denmark",
+	"NO": "Norway",
+	"FI": "Finland",
+	"BE": "Belgium",
+	"AT": "Austria",
+	"KR": "South Korea",
+	"TW": "Taiwan",
+	"IN": "India",
+	"BR": "Brazil",
+	"MX": "Mexico",
+	"ZA": "South Africa",
+	"North America": "North America",
+	"Europe Developed": "Europe (Developed)",
+	"Europe Emerging": "Europe (Emerging)",
+	"Asia Developed": "Asia (Developed)",
+	"Asia Emerging": "Asia (Emerging)",
+	"Latin America": "Latin America",
+	"Middle East": "Middle East",
+	"Africa": "Africa",
+	"Oceania": "Oceania",
+}
 
 
 @router.get("/kpis")
@@ -117,61 +157,65 @@ async def get_time_series(current_user: User = Depends(get_current_user)) -> dic
 	return {"time_series": time_series}
 
 
-@router.get("/allocations")
-async def get_allocations(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
-	"""Get allocation data for pie charts."""
-	users_file = settings.DATA_DIR / "users.json"
-	users = StorageService.load_json(users_file, default={})
+def _normalize_geo_keys(geo: dict[str, float]) -> dict[str, float]:
+	"""Normalize geography keys to ISO country codes where possible."""
+	if not geo:
+		return {}
 
-	if current_user.username not in users:
-		raise HTTPException(status_code=404, detail="User not found")
+	# mapping of common full names to codes
+	name_to_iso = {
+		"United States": "US",
+		"USA": "US",
+		"Canada": "CA",
+		"Germany": "DE",
+		"France": "FR",
+		"Spain": "ES",
+		"Italy": "IT",
+		"Ireland": "IE",
+		"Netherlands": "NL",
+		"United Kingdom": "GB",
+		"UK": "GB",
+		"Japan": "JP",
+		"China": "CN",
+		"Hong Kong": "HK",
+		"Singapore": "SG",
+		"Australia": "AU",
+	}
+	normalized: dict[str, float] = {}
+	for k, v in geo.items():
+		code = name_to_iso.get(k, k)
+		# Only keep simple tokens (avoid long region descriptions)
+		normalized[code] = normalized.get(code, 0.0) + float(v)
+	return normalized
 
-	user_data = users[current_user.username]
-	orders = user_data.get("orders", [])
-	prices = user_data.get("prices", {})
 
-	# Filter finalized orders
-	finalized_orders = [o for o in orders if o.get("status", "").lower() == "finalizada"]
+def _get_fallback_geo_alloc(isin: str) -> dict[str, float]:
+	"""Infer country from ISIN prefix if no metadata available."""
+	# fallback country inference from ISIN prefix
+	country_code = isin[:ISIN_PREFIX_LENGTH] if len(isin) >= ISIN_PREFIX_LENGTH else "XX"
+	fallback_geo_map = {
+		"IE": "IE",
+		"DE": "DE",
+		"FR": "FR",
+		"NL": "NL",
+		"ES": "ES",
+		"IT": "IT",
+		"GB": "GB",
+		"US": "US",
+		"CA": "CA",
+		"JP": "JP",
+		"CN": "CN",
+		"HK": "HK",
+		"SG": "SG",
+		"AU": "AU",
+	}
+	return {fallback_geo_map.get(country_code, "Other"): 1.0}
 
-	# Get unique ISINs
-	unique_isins = set(o.get("isin") for o in finalized_orders if o.get("isin"))
 
-	# Load global instrument metadata (persisted from price fetches / manual overrides)
-	storage = StorageService()
-	instruments_list = storage.load_instruments()
-	instrument_map = {inst.get("isin"): inst for inst in instruments_list}
-
-	def _normalize_geo_keys(geo: dict[str, float]) -> dict[str, float]:
-		"""Normalize geography keys to ISO country codes where possible."""
-		if not geo:
-			return {}
-			# mapping of common full names to codes
-		name_to_iso = {
-			"United States": "US",
-			"USA": "US",
-			"Canada": "CA",
-			"Germany": "DE",
-			"France": "FR",
-			"Spain": "ES",
-			"Italy": "IT",
-			"Ireland": "IE",
-			"Netherlands": "NL",
-			"United Kingdom": "GB",
-			"UK": "GB",
-			"Japan": "JP",
-			"China": "CN",
-			"Hong Kong": "HK",
-			"Singapore": "SG",
-			"Australia": "AU",
-		}
-		normalized: dict[str, float] = {}
-		for k, v in geo.items():
-			code = name_to_iso.get(k, k)
-			# Only keep simple tokens (avoid long region descriptions)
-			normalized[code] = normalized.get(code, 0.0) + float(v)
-		return normalized
-
-	# Build holdings enriched with instrument metadata
+def _build_enriched_holdings(
+	unique_isins: set[str], finalized_orders: list[dict[str, Any]], prices: dict[str, Any], instrument_map: dict[str, Any]
+) -> list[dict[str, Any]]:
+	"""Build positions with enriched metadata (asset type, sector, geography)."""
 	holdings: list[dict[str, Any]] = []
 	for isin in unique_isins:
 		position = ComputeService.calculate_position(finalized_orders, isin)
@@ -187,27 +231,10 @@ async def get_allocations(current_user: User = Depends(get_current_user)) -> dic
 		asset_type = meta.get("type") or price_data.get("asset_type") or "Fund"
 		sector_alloc = meta.get("sector_allocation") or price_data.get("sector_allocation") or {"Diversified": 1.0}
 		geo_alloc_raw = meta.get("geo_allocation") or price_data.get("geo_allocation") or {}
-		geo_alloc = _normalize_geo_keys(geo_alloc_raw) if geo_alloc_raw else {}
+		geo_alloc = _normalize_geo_keys(geo_alloc_raw)
+
 		if not geo_alloc:
-			# fallback country inference from ISIN prefix
-			country_code = isin[:2] if len(isin) >= 2 else "XX"
-			fallback_geo_map = {
-				"IE": "IE",
-				"DE": "DE",
-				"FR": "FR",
-				"NL": "NL",
-				"ES": "ES",
-				"IT": "IT",
-				"GB": "GB",
-				"US": "US",
-				"CA": "CA",
-				"JP": "JP",
-				"CN": "CN",
-				"HK": "HK",
-				"SG": "SG",
-				"AU": "AU",
-			}
-			geo_alloc = {fallback_geo_map.get(country_code, "Other"): 1.0}
+			geo_alloc = _get_fallback_geo_alloc(isin)
 
 		holdings.append(
 			{
@@ -219,95 +246,102 @@ async def get_allocations(current_user: User = Depends(get_current_user)) -> dic
 				"geo_allocation": geo_alloc,
 			}
 		)
+	return holdings
 
-	# Calculate allocations by different dimensions
+
+def _calculate_allocations(holdings: list[dict[str, Any]], total_value: float) -> dict[str, Any]:
+	"""Helper to calculate allocations by instrument, geography, sector, and asset type."""
 	by_instrument = {}
 	by_geography = {}
 	by_sector = {}
 	by_asset_type = {}
+	crypto_value = 0.0
 
-	total_value = sum(h["current_value"] for h in holdings)
+	if total_value <= 0:
+		return {
+			"by_instrument": {},
+			"by_geography": {},
+			"by_sector": {},
+			"by_asset_type": {},
+			"crypto_value": 0.0,
+		}
 
-	if total_value > 0:
-		# By instrument
-		for h in holdings:
-			name = h["name"]
-			value = h["current_value"]
+	crypto_total = 0.0
+	for h in holdings:
+		name = h["name"]
+		value = h["current_value"]
+		asset_type = h.get("asset_type", "Unknown")
+
+		# By instrument (collapse crypto into "Crypto")
+		if asset_type == "Crypto":
+			crypto_total += value
+		else:
 			by_instrument[name] = value
 
-		# By geography - weighted by fund's internal allocation
-		for h in holdings:
+		# By asset type
+		by_asset_type[asset_type] = by_asset_type.get(asset_type, 0.0) + value
+		if asset_type == "Crypto":
+			crypto_value += value
+
+		# Weighted geography/sector (exclude crypto)
+		if asset_type != "Crypto":
 			geo_alloc = h.get("geo_allocation", {})
-			value = h["current_value"]
 			for geo, weight in geo_alloc.items():
 				by_geography[geo] = by_geography.get(geo, 0.0) + (value * weight)
 
-		# By sector - weighted by fund's internal allocation
-		for h in holdings:
 			sector_alloc = h.get("sector_allocation", {})
-			value = h["current_value"]
 			for sector, weight in sector_alloc.items():
 				by_sector[sector] = by_sector.get(sector, 0.0) + (value * weight)
 
-		# By asset type
-		for h in holdings:
-			asset_type = h.get("asset_type", "Unknown")
-			value = h["current_value"]
-			by_asset_type[asset_type] = by_asset_type.get(asset_type, 0.0) + value
-
-	# Sort all allocations by value (descending) for better chart visualization
+	# Transform and sort
 	by_instrument = dict(sorted(by_instrument.items(), key=lambda x: x[1], reverse=True))
-	by_geography = dict(sorted(by_geography.items(), key=lambda x: x[1], reverse=True))
+	if crypto_total > 0:
+		by_instrument["Crypto"] = crypto_total
+
+	by_geography_named = {COUNTRY_NAMES.get(code, code): value for code, value in by_geography.items()}
+	by_geography_named = dict(sorted(by_geography_named.items(), key=lambda x: x[1], reverse=True))
 	by_sector = dict(sorted(by_sector.items(), key=lambda x: x[1], reverse=True))
 	by_asset_type = dict(sorted(by_asset_type.items(), key=lambda x: x[1], reverse=True))
-
-	# Convert country codes to full names
-	country_names = {
-		"US": "United States",
-		"CA": "Canada",
-		"GB": "United Kingdom",
-		"DE": "Germany",
-		"FR": "France",
-		"ES": "Spain",
-		"IT": "Italy",
-		"IE": "Ireland",
-		"NL": "Netherlands",
-		"JP": "Japan",
-		"CN": "China",
-		"HK": "Hong Kong",
-		"SG": "Singapore",
-		"AU": "Australia",
-		"CH": "Switzerland",
-		"SE": "Sweden",
-		"DK": "Denmark",
-		"NO": "Norway",
-		"FI": "Finland",
-		"BE": "Belgium",
-		"AT": "Austria",
-		"KR": "South Korea",
-		"TW": "Taiwan",
-		"IN": "India",
-		"BR": "Brazil",
-		"MX": "Mexico",
-		"ZA": "South Africa",
-		"North America": "North America",
-		"Europe Developed": "Europe (Developed)",
-		"Europe Emerging": "Europe (Emerging)",
-		"Asia Developed": "Asia (Developed)",
-		"Asia Emerging": "Asia (Emerging)",
-		"Latin America": "Latin America",
-		"Middle East": "Middle East",
-		"Africa": "Africa",
-		"Oceania": "Oceania",
-	}
-
-	by_geography_named = {country_names.get(code, code): value for code, value in by_geography.items()}
 
 	return {
 		"by_instrument": by_instrument,
 		"by_geography": by_geography_named,
 		"by_sector": by_sector,
 		"by_asset_type": by_asset_type,
+		"crypto_value": crypto_value,
+	}
+
+
+@router.get("/allocations")
+async def get_allocations(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
+	"""Get allocation data for pie charts."""
+	users_file = settings.DATA_DIR / "users.json"
+	users = StorageService.load_json(users_file, default={})
+
+	if current_user.username not in users:
+		raise HTTPException(status_code=404, detail=f"User {current_user.username} not found")
+
+	user_data = users[current_user.username]
+	orders = user_data.get("orders", [])
+	prices = user_data.get("prices", {})
+
+	# Filter finalized orders and get unique ISINs
+	finalized_orders = [o for o in orders if o.get("status", "").lower() == "finalizada"]
+	unique_isins = {o.get("isin") for o in finalized_orders if o.get("isin")}
+
+	# Load global instrument metadata
+	storage = StorageService()
+	instrument_map = {inst.get("isin"): inst for inst in storage.load_instruments()}
+
+	# Build holdings enriched with instrument metadata
+	holdings = _build_enriched_holdings(unique_isins, finalized_orders, prices, instrument_map)
+
+	total_value = sum(h["current_value"] for h in holdings)
+	allocs = _calculate_allocations(holdings, total_value)
+
+	return {
+		**allocs,
+		"crypto_pct": (allocs["crypto_value"] / total_value * 100.0) if total_value > 0 else 0.0,
 	}
 
 

@@ -44,20 +44,20 @@ foreach ($p in $existing) {
 		}
 	} catch { }
 }
-Write-Host "" 
+Write-Host ""
 
 # Environment variables
 $env:PYTHONUNBUFFERED = '1'
 $env:UVICORN_WORKERS = '1'
 
-Write-Host "Starting FastAPI: http://localhost:8000" -ForegroundColor Green
-Write-Host "API Docs:     http://localhost:8000/docs" -ForegroundColor Green
+Write-Host "Starting FastAPI: http://localhost:8100" -ForegroundColor Green
+Write-Host "API Docs:     http://localhost:8100/docs" -ForegroundColor Green
 Write-Host "Press Ctrl+C to stop." -ForegroundColor DarkGray
 Write-Host ""
 
 Set-Location (Join-Path $projectRoot 'backend')
 try {
-	& $venvPython -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+	& $venvPython -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8100
 } finally {
 	Write-Host "Backend server stopped." -ForegroundColor Yellow
 }

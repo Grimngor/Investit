@@ -32,19 +32,23 @@
         </p>
       </div>
 
-      <!-- ISIN -->
+      <!-- ISIN or Crypto Symbol -->
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          ISIN <span class="text-red-500">*</span>
+          {{ isCrypto ? 'Crypto Symbol' : 'ISIN' }} <span class="text-red-500">*</span>
         </label>
         <input
           v-model="formData.isin"
           type="text"
           required
-          placeholder="e.g., IE00BYX5NX33"
-          maxlength="12"
+          :placeholder="isCrypto ? 'BTC' : 'IE00BYX5NX33'"
+          :maxlength="isCrypto ? 5 : 12"
+          @input="onIsinInput"
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
+        <p class="mt-1 text-xs" :class="isCrypto ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'">
+          {{ isCrypto ? 'Detected crypto asset. Symbol will resolve via Yahoo Finance (e.g., BTC-EUR).' : 'Enter 12-character ISIN (e.g., IE00BYX5NX33).' }}
+        </p>
       </div>
 
       <!-- Amount (EUR) -->
@@ -133,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import axios from 'axios'
 import { useToastStore } from '@/stores/toast'
 
@@ -176,6 +180,14 @@ const formData = ref<OrderFormData>({
   status: 'Finalizada',
   notes: '',
 })
+
+const isCrypto = computed(() => /^(?=.{3,5}$)[A-Z]+$/.test(formData.value.isin) && formData.value.isin.length !== 12)
+
+function onIsinInput(e: Event) {
+  const target = e.target as HTMLInputElement
+  target.value = target.value.toUpperCase()
+  formData.value.isin = target.value.trim().toUpperCase()
+}
 
 // Watch for order prop changes (for editing)
 watch(

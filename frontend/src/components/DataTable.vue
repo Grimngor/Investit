@@ -12,7 +12,7 @@
             class="pl-10 w-full sm:w-64"
           />
         </div>
-        
+
         <div class="relative">
           <select
             v-model="typeFilter"
@@ -194,7 +194,7 @@
               </Button>
             </div>
           </div>
-          
+
           <div class="grid grid-cols-2 gap-2 text-sm">
             <div>
               <span class="text-muted-foreground">Quantity:</span>
@@ -217,7 +217,7 @@
               </span>
             </div>
           </div>
-          
+
           <div
             class="text-sm"
             :class="(item.gain_loss || 0) >= 0 ? 'text-green-600' : 'text-red-600'"
@@ -237,7 +237,7 @@
           <div class="text-sm text-muted-foreground">
             Showing {{ startItem }} to {{ endItem }} of {{ filteredAndSortedData.length }} results
           </div>
-          
+
           <div class="flex items-center gap-2">
             <Button
               variant="outline"
@@ -255,7 +255,7 @@
             >
               <ChevronLeft class="h-4 w-4" />
             </Button>
-            
+
             <div class="flex gap-1">
               <Button
                 v-for="page in visiblePages"
@@ -268,7 +268,7 @@
                 {{ page }}
               </Button>
             </div>
-            
+
             <Button
               variant="outline"
               size="sm"
@@ -380,14 +380,14 @@ const filteredAndSortedData = computed(() => {
     filtered = [...filtered].sort((a, b) => {
       const aVal = a[sortKey.value]
       const bVal = b[sortKey.value]
-      
+
       let comparison = 0
       if (typeof aVal === 'number' && typeof bVal === 'number') {
         comparison = aVal - bVal
       } else {
         comparison = String(aVal).localeCompare(String(bVal))
       }
-      
+
       return sortOrder.value === 'asc' ? comparison : -comparison
     })
   }
@@ -395,7 +395,7 @@ const filteredAndSortedData = computed(() => {
   return filtered
 })
 
-const totalPages = computed(() => 
+const totalPages = computed(() =>
   Math.ceil(filteredAndSortedData.value.length / props.pageSize)
 )
 
@@ -405,11 +405,11 @@ const paginatedData = computed(() => {
   return filteredAndSortedData.value.slice(start, end)
 })
 
-const startItem = computed(() => 
+const startItem = computed(() =>
   filteredAndSortedData.value.length === 0 ? 0 : (currentPage.value - 1) * props.pageSize + 1
 )
 
-const endItem = computed(() => 
+const endItem = computed(() =>
   Math.min(currentPage.value * props.pageSize, filteredAndSortedData.value.length)
 )
 
@@ -417,7 +417,7 @@ const visiblePages = computed(() => {
   const pages: (number | string)[] = []
   const total = totalPages.value
   const current = currentPage.value
-  
+
   if (total <= 7) {
     for (let i = 1; i <= total; i++) {
       pages.push(i)
@@ -441,7 +441,7 @@ const visiblePages = computed(() => {
       pages.push('...', total)
     }
   }
-  
+
   return pages.filter((p, index) => p !== '...' || pages.indexOf(p) === index) as (number | string)[]
 })
 
@@ -472,7 +472,7 @@ function exportData() {
       }).join(',')
     )
   ].join('\n')
-  
+
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

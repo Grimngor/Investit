@@ -7,7 +7,7 @@
     <div v-else-if="error" class="text-center text-red-500 p-4">
       {{ error }}
     </div>
-    <div v-else-if="hasData" class="chart-container">
+    <div v-else-if="hasData" class="chart-container h-72 w-full max-w-[400px] mx-auto">
       <Doughnut :data="chartData" :options="chartOptions" />
     </div>
     <div v-else class="text-center text-muted-foreground p-8">
@@ -144,6 +144,8 @@ const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
 }
 
 .chart-container {
-  @apply max-w-md mx-auto;
+  position: relative;
+  height: 340px;
+  width: 100%;
 }
 </style>

@@ -44,11 +44,11 @@ echo.
 
 set PYTHONUNBUFFERED=1
 set UVICORN_WORKERS=1
-echo Starting FastAPI backend at http://localhost:8000 (Press Ctrl+C to stop)...
-echo API Docs: http://localhost:8000/docs
+echo Starting FastAPI backend at http://localhost:8100 (Press Ctrl+C to stop)...
+echo API Docs: http://localhost:8100/docs
 echo.
 cd /d "%ROOT%backend"
-call "%ROOT%venv\Scripts\python.exe" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+call "%ROOT%venv\Scripts\python.exe" -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8100
 REM When uvicorn exits
 echo Server stopped.
 ENDLOCAL

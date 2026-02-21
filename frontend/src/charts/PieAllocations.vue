@@ -1,7 +1,12 @@
 <template>
-  <div class="chart-container">
-    <div v-if="title" class="flex justify-between items-center mb-4">
-      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ title }}</h3>
+  <div>
+        <div v-if="title" class="flex justify-between items-center mb-4">
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+            {{ title }}
+            <span v-if="showCryptoBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+              Crypto {{ cryptoPctDisplay }}
+            </span>
+          </h3>
       <button
         v-if="type === 'geography' && canCollapseEU"
         @click="toggleEUCollapse"
@@ -11,9 +16,11 @@
       </button>
     </div>
 
-  <Pie v-if="chartData" :data="chartData" :options="chartOptions" />
-    <div v-else class="flex items-center justify-center h-48 text-gray-500 dark:text-gray-400">
-      <p class="text-sm">No {{ type }} data available</p>
+    <div class="chart-container">
+      <Pie v-if="chartData" :data="chartData" :options="chartOptions" />
+      <div v-else class="flex items-center justify-center h-48 text-gray-500 dark:text-gray-400">
+        <p class="text-sm">No {{ type }} data available</p>
+      </div>
     </div>
   </div>
 </template>
@@ -29,9 +36,12 @@ import {
 	type ChartData,
 	type ChartOptions,
 } from 'chart.js'
+import { useThemeStore } from '@/stores/theme'
 
 // Register Chart.js components
 ChartJS.register(ArcElement, Tooltip, Legend)
+
+const themeStore = useThemeStore()
 
 interface AllocationData {
   [key: string]: number
@@ -42,13 +52,18 @@ interface Props {
   type?: 'instrument' | 'geography' | 'sector' | 'asset_type'
   title?: string
   loading?: boolean
+  cryptoPct?: number // overall portfolio crypto percentage (0-100)
 }
 
 const props = withDefaults(defineProps<Props>(), {
   allocations: () => ({}),
   type: 'instrument',
   loading: false,
+  cryptoPct: 0,
 })
+
+const showCryptoBadge = computed(() => props.type === 'asset_type' && props.cryptoPct > 0)
+const cryptoPctDisplay = computed(() => `${props.cryptoPct.toFixed(1)}%`)
 
 const collapseEU = ref(false)
 
@@ -164,16 +179,25 @@ const chartData = computed<ChartData<'pie'> | null>(() => {
 
 // Chart options with dark mode support
 const chartOptions = computed<ChartOptions<'pie'>>(() => {
-  const isDark = document.documentElement.classList.contains('dark')
-  const textColor = isDark ? '#d1d5db' : '#374151'
+  const textColor = themeStore.isDark ? '#f3f4f6' : '#374151' // gray-100 for dark, gray-700 for light
 
   return {
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: {
+        right: 0,
+        left: 20,
+        top: 0,
+        bottom: 0
+      }
+    },
     plugins: {
       legend: {
         display: true,
         position: 'right',
+        align: 'center',
+        maxWidth: 200,
         labels: {
           color: textColor,
           font: {
@@ -193,6 +217,7 @@ const chartOptions = computed<ChartOptions<'pie'>>(() => {
                 return {
                   text: `${label}: ${percentage}%`,
                   fillStyle: bgColors[i],
+                  fontColor: textColor,
                   hidden: false,
                   index: i,
                 }
@@ -203,10 +228,10 @@ const chartOptions = computed<ChartOptions<'pie'>>(() => {
         },
       },
       tooltip: {
-        backgroundColor: isDark ? '#1f2937' : '#ffffff',
+        backgroundColor: themeStore.isDark ? '#1f2937' : '#ffffff',
         titleColor: textColor,
         bodyColor: textColor,
-        borderColor: isDark ? '#374151' : '#e5e7eb',
+        borderColor: themeStore.isDark ? '#374151' : '#e5e7eb',
         borderWidth: 1,
         padding: 12,
         callbacks: {

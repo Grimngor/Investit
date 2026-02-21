@@ -20,7 +20,7 @@
         <!-- Basic Information -->
         <div class="space-y-4">
           <h4 class="text-md font-medium">Basic Information</h4>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium mb-2">
@@ -66,7 +66,7 @@
         <!-- Purchase Details -->
         <div class="space-y-4">
           <h4 class="text-md font-medium">Purchase Details</h4>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium mb-2">
@@ -168,7 +168,7 @@
               Additional Information (Optional)
             </Button>
           </div>
-          
+
           <div v-if="showAdditionalInfo" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -309,7 +309,7 @@ function handleQuantityInput(event: Event) {
   const target = event.target as HTMLInputElement
   const value = parseDecimalInput(target.value)
   formData.value.quantity = value
-  
+
   // Update total when both quantity and price are available
   if (value > 0 && formData.value.purchase_price > 0) {
     totalInvestmentInput.value = totalInvestment.value
@@ -320,7 +320,7 @@ function handlePriceInput(event: Event) {
   const target = event.target as HTMLInputElement
   const value = parseDecimalInput(target.value)
   formData.value.purchase_price = value
-  
+
   // Update total when both quantity and price are available
   if (value > 0 && formData.value.quantity > 0) {
     totalInvestmentInput.value = totalInvestment.value
@@ -335,12 +335,12 @@ function handleTotalAmountInput(event: Event) {
   const value = parseDecimalInput(target.value)
   totalInvestmentInput.value = value
   isEditingTotal.value = true
-  
+
   // Calculate quantity from total amount if price is set
   if (formData.value.purchase_price > 0) {
     formData.value.quantity = value / formData.value.purchase_price
   }
-  
+
   // Reset the editing flag after a short delay
   setTimeout(() => {
     isEditingTotal.value = false

@@ -48,51 +48,110 @@
       <div class="px-6 py-4 border-b border-softblue-200 dark:border-gray-700">
         <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">Current Holdings</h2>
       </div>
-      <table class="w-full text-sm">
-        <thead class="bg-softblue-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
-          <tr class="divide-x divide-gray-200 dark:divide-gray-700">
-            <th class="px-4 py-3 text-left font-medium">Symbol</th>
-            <th class="px-4 py-3 text-left font-medium">Name</th>
-            <th class="px-4 py-3 text-right font-medium">Quantity</th>
-            <th class="px-4 py-3 text-right font-medium">Purchase</th>
-            <th class="px-4 py-3 text-right font-medium">Current</th>
-            <th class="px-4 py-3 text-right font-medium">Value</th>
-            <th class="px-4 py-3 text-right font-medium">Gain/Loss</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-softblue-200 dark:divide-gray-700">
-          <tr
-            v-for="holding in holdings"
-            :key="holding.id"
-            class="hover:bg-softblue-50 dark:hover:bg-gray-700/40 transition"
-          >
-            <td class="px-4 py-3 font-medium">{{ holding.resolved_symbol || holding.symbol }}</td>
-            <td class="px-4 py-3">{{ holding.name }}</td>
-            <td class="px-4 py-3 text-right">{{ holding.quantity }}</td>
-            <td class="px-4 py-3 text-right">{{ holding.purchase_price.toFixed(2) }} €</td>
-            <td class="px-4 py-3 text-right">
-              {{ (holding.current_price || holding.purchase_price).toFixed(2) }} €
-            </td>
-            <td class="px-4 py-3 text-right">
-              {{
-                (holding.quantity * (holding.current_price || holding.purchase_price)).toFixed(2)
-              }} €
-            </td>
-            <td class="px-4 py-3 text-right">
-              <span
-                :class="[
-                  'inline-flex flex-col items-end px-2 py-1 rounded text-xs font-semibold',
-                  getBadgeClass(holding),
-                ]"
-              >
-                <span>{{ formatGainLoss(holding) }}</span>
-                <span class="text-[10px] mt-0.5">{{ formatGainLossPercentage(holding) }}</span>
-              </span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="!holdings || holdings.length === 0" class="p-12 text-center">
+
+      <!-- Index Funds Section -->
+      <div v-if="fundHoldings.length > 0">
+        <div class="px-6 py-2 bg-softblue-50 dark:bg-gray-800/40">
+          <h3 class="text-sm font-semibold text-softblue-600 dark:text-softblue-400">Index Funds</h3>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="bg-softblue-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
+            <tr class="divide-x divide-gray-200 dark:divide-gray-700">
+              <th class="px-4 py-3 text-left font-medium">Symbol</th>
+              <th class="px-4 py-3 text-left font-medium">Name</th>
+              <th class="px-4 py-3 text-right font-medium">Quantity</th>
+              <th class="px-4 py-3 text-right font-medium">Purchase</th>
+              <th class="px-4 py-3 text-right font-medium">Current</th>
+              <th class="px-4 py-3 text-right font-medium">Value</th>
+              <th class="px-4 py-3 text-right font-medium">Gain/Loss</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-softblue-200 dark:divide-gray-700">
+            <tr
+              v-for="holding in fundHoldings"
+              :key="holding.id"
+              class="hover:bg-softblue-50 dark:hover:bg-gray-700/40 transition"
+            >
+              <td class="px-4 py-3 font-medium">{{ holding.resolved_symbol || holding.symbol }}</td>
+              <td class="px-4 py-3">{{ holding.name }}</td>
+              <td class="px-4 py-3 text-right">{{ holding.quantity }}</td>
+              <td class="px-4 py-3 text-right">{{ holding.purchase_price.toFixed(2) }} €</td>
+              <td class="px-4 py-3 text-right">
+                {{ (holding.current_price || holding.purchase_price).toFixed(2) }} €
+              </td>
+              <td class="px-4 py-3 text-right">
+                {{
+                  (holding.quantity * (holding.current_price || holding.purchase_price)).toFixed(2)
+                }} €
+              </td>
+              <td class="px-4 py-3 text-right">
+                <span
+                  :class="[
+                    'inline-flex flex-col items-end px-2 py-1 rounded text-xs font-semibold',
+                    getBadgeClass(holding),
+                  ]"
+                >
+                  <span>{{ formatGainLoss(holding) }}</span>
+                  <span class="text-[10px] mt-0.5">{{ formatGainLossPercentage(holding) }}</span>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Crypto Section -->
+      <div v-if="cryptoHoldings.length > 0" class="mt-6">
+        <div class="px-6 py-2 bg-purple-50 dark:bg-purple-900/20">
+          <h3 class="text-sm font-semibold text-purple-600 dark:text-purple-400">Cryptocurrency</h3>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="bg-purple-100 dark:bg-purple-900/30 text-gray-700 dark:text-gray-300">
+            <tr class="divide-x divide-gray-200 dark:divide-gray-700">
+              <th class="px-4 py-3 text-left font-medium">Symbol</th>
+              <th class="px-4 py-3 text-left font-medium">Name</th>
+              <th class="px-4 py-3 text-right font-medium">Quantity</th>
+              <th class="px-4 py-3 text-right font-medium">Purchase</th>
+              <th class="px-4 py-3 text-right font-medium">Current</th>
+              <th class="px-4 py-3 text-right font-medium">Value</th>
+              <th class="px-4 py-3 text-right font-medium">Gain/Loss</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-purple-200 dark:divide-purple-900/40">
+            <tr
+              v-for="holding in cryptoHoldings"
+              :key="holding.id"
+              class="hover:bg-purple-50 dark:hover:bg-purple-900/20 transition"
+            >
+              <td class="px-4 py-3 font-medium">{{ holding.resolved_symbol || holding.symbol }}</td>
+              <td class="px-4 py-3">{{ holding.name }}</td>
+              <td class="px-4 py-3 text-right">{{ holding.quantity }}</td>
+              <td class="px-4 py-3 text-right">{{ holding.purchase_price.toFixed(2) }} €</td>
+              <td class="px-4 py-3 text-right">
+                {{ (holding.current_price || holding.purchase_price).toFixed(2) }} €
+              </td>
+              <td class="px-4 py-3 text-right">
+                {{
+                  (holding.quantity * (holding.current_price || holding.purchase_price)).toFixed(2)
+                }} €
+              </td>
+              <td class="px-4 py-3 text-right">
+                <span
+                  :class="[
+                    'inline-flex flex-col items-end px-2 py-1 rounded text-xs font-semibold',
+                    getBadgeClass(holding),
+                  ]"
+                >
+                  <span>{{ formatGainLoss(holding) }}</span>
+                  <span class="text-[10px] mt-0.5">{{ formatGainLossPercentage(holding) }}</span>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-if="!fundHoldings.length && !cryptoHoldings.length" class="p-12 text-center">
         <div class="text-gray-400 dark:text-gray-500 mb-2">No investments yet</div>
         <p class="text-xs text-gray-500 dark:text-gray-600">
           Import a CSV or add your first manual order below.
@@ -127,6 +186,28 @@ const toastStore = useToastStore()
 const fetchingPrices = ref(false)
 
 const holdings = computed(() => portfolioStore.portfolio?.holdings || [])
+
+// Separate and sort holdings by type and amount
+const fundHoldings = computed(() => {
+  return holdings.value
+    .filter(h => !h.symbol || h.symbol.length > 5) // Exclude crypto (3-5 chars)
+    .sort((a, b) => {
+      const amountA = a.quantity * a.purchase_price
+      const amountB = b.quantity * b.purchase_price
+      return amountB - amountA // Descending
+    })
+})
+
+const cryptoHoldings = computed(() => {
+  return holdings.value
+    .filter(h => h.symbol && h.symbol.length >= 3 && h.symbol.length <= 5)
+    .sort((a, b) => {
+      const amountA = a.quantity * a.purchase_price
+      const amountB = b.quantity * b.purchase_price
+      return amountB - amountA // Descending
+    })
+})
+
 const loading = computed(() => portfolioStore.loading)
 const totalCost = computed(() => portfolioStore.totalCost)
 const totalValue = computed(() => portfolioStore.totalValue)

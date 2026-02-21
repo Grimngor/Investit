@@ -15,134 +15,122 @@ from app.services.morningstar_service import MorningstarService
 from app.services.storage_service import StorageService
 from app.services.yahoo_finance import YahooFinanceService
 from app.services.yahooquery_service import YahooQueryService
+from app.utils.validators import is_crypto_symbol
 
 router = APIRouter(prefix="/api/prices", tags=["prices"])
 logger = logging.getLogger(__name__)
 
 
+def _is_fresh(prices: dict[str, Any], isin: str, yahoo: YahooFinanceService) -> bool:
+	existing = prices.get(isin)
+	if not existing:
+		return False
+	return not yahoo.is_price_stale(existing.get("timestamp", ""))
+
+
+async def _fetch_crypto(isin: str, yahoo: YahooFinanceService) -> dict[str, Any] | None:
+	quote = await yahoo.get_crypto_quote(isin, currency="EUR")
+	if not quote:
+		return None
+	return {
+		"price": quote["price"],
+		"currency": quote["currency"],
+		"timestamp": quote["timestamp"],
+		"name": quote.get("name", f"{isin} Cryptocurrency"),
+		"symbol": quote.get("symbol", isin),
+		"asset_type": "Crypto",
+	}
+
+
+async def _fetch_traditional(
+	isin: str,
+	yahoo: YahooFinanceService,
+	yahooquery: YahooQueryService,
+	morningstar: MorningstarService,
+	storage: StorageService,
+) -> dict[str, Any] | None:
+	suffixes = ["", ".PA", ".AS", ".DE", ".MI"]
+	for idx, suffix in enumerate(suffixes):
+		symbol = f"{isin}{suffix}"
+		quote = await yahoo.get_quote(symbol)
+		if quote:
+			resolved = quote.get("symbol", symbol)
+			data = {
+				"price": quote["price"],
+				"currency": quote["currency"],
+				"timestamp": quote["timestamp"],
+				"name": quote.get("name", isin),
+				"symbol": resolved,
+			}
+			# Metadata enrichment
+			mstar = await morningstar.get_fund_metadata(isin)
+			instrument_data = {"name": data["name"], "symbol": resolved}
+			if mstar:
+				instrument_data["name"] = mstar.get("name") or instrument_data["name"]
+				if mstar.get("sector_allocation"):
+					instrument_data["sector_allocation"] = mstar["sector_allocation"]
+				if mstar.get("regional_allocation"):
+					instrument_data["geo_allocation"] = mstar["regional_allocation"]
+				if mstar.get("morningstar_code"):
+					instrument_data["type"] = "Fund"
+			if not mstar or not instrument_data.get("sector_allocation"):
+				yq = await yahooquery.get_fund_metadata(resolved)
+				if yq:
+					if not instrument_data.get("sector_allocation") and yq.get("sector_allocation"):
+						instrument_data["sector_allocation"] = yq["sector_allocation"]
+					if not instrument_data.get("geo_allocation") and yq.get("geo_allocation"):
+						instrument_data["geo_allocation"] = yq["geo_allocation"]
+					if not instrument_data.get("type") and yq.get("asset_type"):
+						instrument_data["type"] = yq["asset_type"]
+			storage.upsert_instrument(isin, instrument_data)
+			return data
+		# Delay between attempts
+		if idx < len(suffixes) - 1:
+			await asyncio.sleep(0.3)
+	return None
+
+
 async def fetch_and_update_prices(username: str, isins: list[str]):
-	"""
-	Background task to fetch prices for ISINs and update user data.
-
-	Args:
-		username: Username to update prices for
-		isins: List of ISINs to fetch prices for
-	"""
-	yahoo = YahooFinanceService()
-	users_file = settings.DATA_DIR / "users.json"
-	users = StorageService.load_json(users_file, default={})
-
-	if username not in users:
-		logger.error(f"User not found for price update: {username}")
-		return
-
-	user_data = users[username]
-	prices = user_data.get("prices", {})
-
-	# For each ISIN, try to find the Yahoo symbol
-	# Try common European exchange suffixes, but stop after first success
+	"""Background task to fetch prices for given ISINs/crypto symbols."""
 	yahoo = YahooFinanceService()
 	yahooquery = YahooQueryService()
 	morningstar = MorningstarService()
-
-	updated_count = 0
 	storage = StorageService()
+	users_file = settings.DATA_DIR / "users.json"
+	users = StorageService.load_json(users_file, default={})
+	if username not in users:
+		logger.error(f"User not found for price update: {username}")
+		return
+	user_data = users[username]
+	prices: dict[str, Any] = user_data.get("prices", {})
+	updated = 0
 	for isin in isins:
-		# Skip if we already have a recent price
-		if isin in prices:
-			existing_price = prices[isin]
-			if not yahoo.is_price_stale(existing_price.get("timestamp", "")):
-				logger.info(f"Using cached price for {isin}")
-				updated_count += 1
-				continue
-
-		# Try common suffixes for European ETFs/funds (most common first)
-		# Stop at first successful fetch to minimize requests
-		suffixes = ["", ".PA", ".AS", ".DE", ".MI"]  # Reduced from 6 to 5, ordered by likelihood
-		quote_data = None
-
-		for suffix in suffixes:
-			symbol = f"{isin}{suffix}"
-			quote_data = await yahoo.get_quote(symbol)
-
-			if quote_data:
-				# Found a working symbol, save basic price data
-				# Use the actual Yahoo ticker symbol (not ISIN) for metadata fetching
-				resolved_symbol = quote_data.get("symbol", symbol)
-
-				prices[isin] = {
-					"price": quote_data["price"],
-					"currency": quote_data["currency"],
-					"timestamp": quote_data["timestamp"],
-					"name": quote_data.get("name", isin),
-					"symbol": resolved_symbol,  # Store the resolved Yahoo ticker
-				}
-				updated_count += 1
-				logger.info(f"Updated price for {isin}: {quote_data['price']} {quote_data['currency']} (symbol: {resolved_symbol})")
-
-				# Fetch comprehensive metadata - try Morningstar first (best regional data)
-				mstar_metadata = await morningstar.get_fund_metadata(isin)
-
-				instrument_data = {
-					"name": quote_data.get("name", isin),
-					"symbol": resolved_symbol,
-				}
-
-				# Use Morningstar data if available (preferred for geography + sectors)
-				if mstar_metadata:
-					instrument_data["name"] = mstar_metadata.get("name") or instrument_data["name"]
-
-					if mstar_metadata.get("sector_allocation"):
-						instrument_data["sector_allocation"] = mstar_metadata["sector_allocation"]
-
-					if mstar_metadata.get("regional_allocation"):
-						instrument_data["geo_allocation"] = mstar_metadata["regional_allocation"]
-
-					if mstar_metadata.get("morningstar_code"):
-						instrument_data["type"] = "Fund"
-
-				# Fallback to yahooquery if Morningstar didn't provide data
-				if not mstar_metadata or not instrument_data.get("sector_allocation"):
-					yq_metadata = await yahooquery.get_fund_metadata(resolved_symbol)
-
-					if yq_metadata:
-						if not instrument_data.get("sector_allocation") and yq_metadata.get("sector_allocation"):
-							instrument_data["sector_allocation"] = yq_metadata["sector_allocation"]
-
-						if not instrument_data.get("geo_allocation") and yq_metadata.get("geo_allocation"):
-							instrument_data["geo_allocation"] = yq_metadata["geo_allocation"]
-
-						if not instrument_data.get("type") and yq_metadata.get("asset_type"):
-							instrument_data["type"] = yq_metadata["asset_type"]
-
-				# Persist to instruments.json
-				storage.upsert_instrument(isin, instrument_data)
-				sector_count = len(instrument_data.get("sector_allocation", {}))
-				geo_count = len(instrument_data.get("geo_allocation", {}))
-				source = "Morningstar" if mstar_metadata else "YahooQuery"
-				logger.info(f"Stored metadata for {isin} ({source}): sectors={sector_count}, geo={geo_count}")
-
-				break
-
-			# Small delay between suffix attempts
-			await asyncio.sleep(0.3)
-
-		if not quote_data:
-			logger.warning(f"Could not fetch price for {isin} after trying {len(suffixes)} symbols")
-
+		if _is_fresh(prices, isin, yahoo):
+			logger.info(f"Using cached price for {isin}")
+			updated += 1
+			continue
+		quote = await (
+			_fetch_crypto(isin, yahoo)
+			if is_crypto_symbol(isin)
+			else _fetch_traditional(
+				isin,
+				yahoo,
+				yahooquery,
+				morningstar,
+				storage,
+			)
+		)
+		if quote:
+			prices[isin] = quote
+			updated += 1
+		else:
+			logger.warning(f"Price fetch failed for {isin}")
 	users[username]["prices"] = prices
 	StorageService.save_json(users_file, users)
-
-	logger.info(f"Price update complete: {updated_count}/{len(isins)} ISINs updated")
-
-	# Broadcast update via WebSocket
+	logger.info(f"Price update complete: {updated}/{len(isins)} instruments updated")
 	await websocket_manager.broadcast_to_user(
 		username,
-		{
-			"type": "prices_updated",
-			"count": updated_count,
-			"timestamp": datetime.now(UTC).isoformat(),
-		},
+		{"type": "prices_updated", "count": updated, "timestamp": datetime.now(UTC).isoformat()},
 	)
 
 

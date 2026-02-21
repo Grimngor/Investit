@@ -7,6 +7,8 @@ from typing import Any
 
 import yfinance as yf
 
+from app.utils.validators import get_crypto_yfinance_symbol, is_crypto_symbol
+
 logger = logging.getLogger(__name__)
 
 
@@ -16,7 +18,7 @@ class HistoricalPriceService:
 	@staticmethod
 	async def get_price_on_date(isin: str, date: str) -> dict[str, Any] | None:
 		"""
-		Fetch the closing price for a fund on a specific date.
+		Fetch the closing price for an instrument (fund/stock/crypto) on a specific date.
 
 		Args:
 			isin: Fund ISIN code
@@ -33,9 +35,12 @@ class HistoricalPriceService:
 			start_date = target_date - timedelta(days=3)
 			end_date = target_date + timedelta(days=3)
 
+			# Normalize symbol: if looks like crypto base symbol (BTC) convert to BTC-EUR
+			resolved_symbol = get_crypto_yfinance_symbol(isin, "EUR") if is_crypto_symbol(isin) else isin
+
 			# Run yfinance in thread pool
 			loop = asyncio.get_event_loop()
-			ticker = await loop.run_in_executor(None, yf.Ticker, isin)
+			ticker = await loop.run_in_executor(None, yf.Ticker, resolved_symbol)
 			hist = await loop.run_in_executor(
 				None,
 				lambda: ticker.history(start=start_date.strftime("%Y-%m-%d"), end=end_date.strftime("%Y-%m-%d")),
@@ -59,7 +64,7 @@ class HistoricalPriceService:
 				if "currency" in info:
 					currency = info["currency"]
 
-				logger.info(f"Found historical price for {isin} on {date}: {price} {currency}")
+				logger.info(f"Found historical price for {resolved_symbol} on {date}: {price} {currency}")
 
 				return {
 					"price": price,
@@ -84,7 +89,7 @@ class HistoricalPriceService:
 			if "currency" in info:
 				currency = info["currency"]
 
-			logger.info(f"No exact match for {isin} on {date}, using {closest_date}: {price} {currency}")
+			logger.info(f"No exact match for {resolved_symbol} on {date}, using {closest_date}: {price} {currency}")
 
 			return {
 				"price": price,

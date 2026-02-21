@@ -4,32 +4,29 @@ from pydantic import BaseModel, Field
 
 
 class Order(BaseModel):
-	"""
-	Represents a buy/sell order for an investment instrument.
-
-	Based on PRD Section 3: Order-based data model.
-	"""
+	"""Represents a buy/sell order for an investment instrument (fund/stock/crypto)."""
 
 	id: str | None = None
 	date: str = Field(..., description="Order execution date in YYYY-MM-DD format")
-	isin: str = Field(..., min_length=12, max_length=12, description="ISIN code (12 characters)")
-	ticker: str | None = Field(None, description="Optional ticker symbol")
+	isin: str = Field(..., min_length=3, max_length=12, description="ISIN code (12 chars) or crypto symbol (3-5 chars)")
+	ticker: str | None = Field(None, description="Optional resolved ticker symbol (Yahoo)")
 	amount_eur: float = Field(..., gt=0, description="Order amount in EUR")
-	shares: float = Field(..., gt=0, description="Number of shares/units")
-	price_per_share: float | None = Field(None, description="Price per share at order execution")
-	price_currency: str | None = Field(None, description="Currency of the price")
+	shares: float = Field(..., gt=0, description="Number of shares/units/coins")
+	price_per_share: float | None = Field(None, description="Price per unit at order execution")
+	price_currency: str | None = Field(None, description="Currency of the executed price")
 	price_date: str | None = Field(None, description="Date of the price used")
 	order_type: str = Field("buy", description="Order type: buy or sell")
 	status: str = Field("Finalizada", description="Order status: Finalizada or Rechazada")
+	asset_type: str | None = Field(None, description="Derived asset type: Fund, ETF, Stock, Crypto, Bond")
 	notes: str = Field("", description="Optional notes")
 	created_at: str | None = None
 
 
 class OrderCreate(BaseModel):
-	"""Schema for creating a new order manually."""
+	"""Schema for creating a new order manually (supports crypto symbols)."""
 
 	date: str
-	isin: str = Field(..., min_length=12, max_length=12)
+	isin: str = Field(..., min_length=3, max_length=12)
 	ticker: str | None = None
 	amount_eur: float = Field(..., gt=0)
 	shares: float = Field(..., gt=0)
@@ -38,6 +35,7 @@ class OrderCreate(BaseModel):
 	price_date: str | None = None
 	order_type: str = "buy"
 	status: str = "Finalizada"
+	asset_type: str | None = None
 	notes: str = ""
 
 
@@ -45,15 +43,16 @@ class OrderUpdate(BaseModel):
 	"""Schema for updating an existing order."""
 
 	date: str | None = None
-	isin: str | None = None
+	isin: str | None = Field(None, min_length=3, max_length=12)
 	ticker: str | None = None
-	amount_eur: float | None = None
-	shares: float | None = None
+	amount_eur: float | None = Field(None, gt=0)
+	shares: float | None = Field(None, gt=0)
 	price_per_share: float | None = None
 	price_currency: str | None = None
 	price_date: str | None = None
 	order_type: str | None = None
 	status: str | None = None
+	asset_type: str | None = None
 	notes: str | None = None
 
 
@@ -63,11 +62,12 @@ class OrderResponse(BaseModel):
 	id: str
 	date: str
 	isin: str
-	ticker: str | None
+	ticker: str | None = None
 	amount_eur: float
 	shares: float
 	order_type: str
 	status: str
+	asset_type: str | None = None
 	notes: str
 	created_at: str
 

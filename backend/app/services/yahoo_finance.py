@@ -177,3 +177,21 @@ class YahooFinanceService:
 		"""Clear the price cache."""
 		self.cache.clear()
 		logger.info("Yahoo Finance price cache cleared")
+
+	async def get_crypto_quote(self, symbol: str, currency: str = "EUR") -> dict[str, Any] | None:
+		"""Fetch current quote for a cryptocurrency using base symbol (e.g., BTC)."""
+		from app.utils.validators import get_crypto_yfinance_symbol
+
+		yf_symbol = get_crypto_yfinance_symbol(symbol, currency)
+		quote = await self.get_quote(yf_symbol)
+		if quote:
+			quote["asset_type"] = "Crypto"
+		return quote
+
+	async def get_crypto_historical_price(self, symbol: str, date: str, currency: str = "EUR") -> dict[str, Any] | None:
+		"""Fetch historical price for a cryptocurrency on a specific date."""
+		from app.services.historical_price_service import HistoricalPriceService
+		from app.utils.validators import get_crypto_yfinance_symbol
+
+		yf_symbol = get_crypto_yfinance_symbol(symbol, currency)
+		return await HistoricalPriceService.get_price_on_date(yf_symbol, date)

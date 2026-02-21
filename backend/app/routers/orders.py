@@ -14,7 +14,8 @@ from app.routers.auth import get_current_user
 from app.routers.websocket import manager as websocket_manager
 from app.services.historical_price_service import HistoricalPriceService
 from app.services.storage_service import StorageService
-from app.utils.csv_parser import SpanishOrderCSVParser
+from app.utils.csv_parser import CryptoExchangeCSVParser, SpanishOrderCSVParser
+from app.utils.validators import is_crypto_symbol
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 logger = logging.getLogger(__name__)
@@ -51,11 +52,39 @@ def _filter_orders(
 	return filtered
 
 
+def _parse_date_for_sorting(date_str: str) -> str:
+	"""
+	Convert date to sortable format (YYYY-MM-DD).
+
+	Handles both DD/MM/YYYY and YYYY-MM-DD formats.
+	"""
+	ISO_LEN = 10
+	DATE_PARTS = 3
+	if not date_str:
+		return ""
+
+	# Check if already in YYYY-MM-DD format
+	if len(date_str) == ISO_LEN and date_str[4] == "-":
+		return date_str
+
+	# Convert DD/MM/YYYY to YYYY-MM-DD
+	if "/" in date_str:
+		parts = date_str.split("/")
+		if len(parts) == DATE_PARTS:
+			return f"{parts[2]}-{parts[1]}-{parts[0]}"
+
+	return date_str
+
+
 def _sort_orders(orders: list[dict[str, Any]], sort_by: str, sort_order: str) -> None:
 	"""In-place sort of orders by given field and order."""
 	if sort_by in {"date", "amount_eur", "shares"}:
 		reverse = sort_order.lower() == "desc"
-		orders.sort(key=lambda x: x.get(sort_by, 0 if sort_by != "date" else ""), reverse=reverse)
+		if sort_by == "date":
+			# Special handling for dates to support both DD/MM/YYYY and YYYY-MM-DD
+			orders.sort(key=lambda x: _parse_date_for_sorting(x.get("date", "")), reverse=reverse)
+		else:
+			orders.sort(key=lambda x: x.get(sort_by, 0), reverse=reverse)
 
 
 def _paginate_orders(orders: list[dict[str, Any]], offset: int, limit: int | None) -> list[dict[str, Any]]:
@@ -100,74 +129,24 @@ async def import_csv(
 		raise HTTPException(status_code=400, detail=f"Error reading file: {e!s}") from e
 
 	try:
-		# Parse CSV
-		parser = SpanishOrderCSVParser()
-		orders, errors = parser.parse_csv(content_str)
+		orders, errors = _detect_and_parse_csv(content_str)
 		logger.info(f"CSV parsed - Orders: {len(orders)}, Errors: {len(errors)}")
 
-		# Check for parsing errors
-		if errors:
-			logger.warning(f"CSV import completed with errors: {errors[:3]}")  # Log first 3 errors
-			# Return partial success with errors
+		if not orders and errors:
 			return {
-				"success": True,
-				"imported_count": len(orders),
-				"rejected_count": len([o for o in orders if o.get("status") == "rechazada"]),
+				"success": False,
+				"imported_count": 0,
+				"rejected_count": 0,
 				"errors": errors,
-				"message": f"Imported {len(orders)} orders with {len(errors)} errors",
+				"message": "No orders were imported due to errors",
 			}
 
-		# Store orders in user's data
-		def add_orders(user_data):
-			if "orders" not in user_data:
-				user_data["orders"] = []
-
-			# Detect duplicates: orders with same ISIN, date, and quantity
-			existing_orders = user_data["orders"]
-			new_count = 0
-			updated_count = 0
-
-			for order in orders:
-				# Create a unique key for the order
-				order_key = (order.get("isin"), order.get("date"), order.get("shares"))
-
-				# Check if order already exists
-				existing_idx = None
-				for idx, existing_order in enumerate(existing_orders):
-					existing_key = (
-						existing_order.get("isin"),
-						existing_order.get("date"),
-						existing_order.get("shares"),
-					)
-					if order_key == existing_key:
-						existing_idx = idx
-						break
-
-				if existing_idx is not None:
-					# Update existing order
-					existing_orders[existing_idx] = order
-					updated_count += 1
-				else:
-					# Add new order
-					existing_orders.append(order)
-					new_count += 1
-
-			# Sort by date (most recent first)
-			user_data["orders"].sort(key=lambda x: x.get("date", ""), reverse=True)
-
-			logger.info(f"CSV import: {new_count} new orders, {updated_count} updated orders")
-			return user_data, new_count, updated_count
-
 		users_file = settings.DATA_DIR / "users.json"
-		users = StorageService.load_json(users_file, default={})
+		new_count, updated_count = StorageService.update_user_data(
+			current_user.username, lambda data: _merge_orders(data, orders), users_file
+		)
 
-		if current_user.username not in users:
-			logger.error(f"User not found during CSV import: {current_user.username}")
-			raise HTTPException(status_code=404, detail="User not found")
-
-		users[current_user.username], new_count, updated_count = add_orders(users[current_user.username])
-		StorageService.save_json(users_file, users)
-		logger.info(f"CSV import completed successfully - User: {current_user.username}, " f"New: {new_count}, Updated: {updated_count}")
+		logger.info(f"CSV import completed successfully - User: {current_user.username}, New: {new_count}, Updated: {updated_count}")
 
 		# Broadcast update via WebSocket
 		manager = get_websocket_manager()
@@ -185,12 +164,63 @@ async def import_csv(
 			"imported_count": new_count,
 			"updated_count": updated_count,
 			"rejected_count": len([o for o in orders if o.get("status") == "rechazada"]),
-			"errors": [],
+			"errors": errors,
 			"message": f"Successfully imported {new_count} new orders and updated {updated_count} existing orders",
 		}
 
 	except Exception as e:
+		logger.error(f"Unexpected error in import_csv: {e}")
 		raise HTTPException(status_code=500, detail=f"Error processing CSV: {e!s}") from e
+
+
+def _detect_and_parse_csv(content_str: str) -> tuple[list[dict[str, Any]], list[str]]:
+	"""Detect CSV type and parse accordingly."""
+	content_str = content_str.lstrip("\ufeff")
+	first_line = content_str.splitlines()[0] if content_str else ""
+
+	# Crypto CSV detection
+	is_crypto_csv = "Date(UTC" in first_line and "Spend Amount" in first_line
+
+	if is_crypto_csv:
+		logger.info("Detected crypto exchange CSV format")
+		parser = CryptoExchangeCSVParser()
+		return parser.parse_csv(content_str)
+	else:
+		logger.info("Detected Spanish bank CSV format")
+		parser = SpanishOrderCSVParser()
+		return parser.parse_csv(content_str)
+
+
+def _merge_orders(user_data: dict[str, Any], new_orders: list[dict[str, Any]]) -> tuple[int, int]:
+	"""Merge new orders into user data, updating duplicates."""
+	if "orders" not in user_data:
+		user_data["orders"] = []
+
+	existing_orders = user_data["orders"]
+	new_count = 0
+	updated_count = 0
+
+	for order in new_orders:
+		# Detect duplicates: orders with same ISIN, date, and shares
+		order_key = (order.get("isin"), order.get("date"), order.get("shares"))
+
+		existing_idx = None
+		for idx, existing in enumerate(existing_orders):
+			existing_key = (existing.get("isin"), existing.get("date"), existing.get("shares"))
+			if order_key == existing_key:
+				existing_idx = idx
+				break
+
+		if existing_idx is not None:
+			existing_orders[existing_idx] = order
+			updated_count += 1
+		else:
+			existing_orders.append(order)
+			new_count += 1
+
+	# Sort by date (most recent first)
+	user_data["orders"].sort(key=lambda x: x.get("date", ""), reverse=True)
+	return new_count, updated_count
 
 
 @router.get("/")
@@ -318,6 +348,8 @@ async def create_order(order_data: OrderCreate, current_user: User = Depends(get
 			logger.warning(f"Could not fetch historical price, using calculated: {price_per_share:.4f} EUR")
 
 	# Create order with ID and timestamp
+	derived_asset_type = "Crypto" if is_crypto_symbol(order_data.isin) else None
+
 	new_order = {
 		"id": order_id,
 		"date": order_data.date,
@@ -330,6 +362,7 @@ async def create_order(order_data: OrderCreate, current_user: User = Depends(get
 		"price_date": price_date,
 		"order_type": order_data.order_type,
 		"status": order_data.status,
+		"asset_type": derived_asset_type,
 		"notes": order_data.notes,
 		"created_at": datetime.now(UTC).isoformat(),
 	}
@@ -388,6 +421,10 @@ async def update_order(
 	for key, value in update_dict.items():
 		if value is not None:
 			order[key] = value
+
+	# Auto-derive asset_type if missing and isin suggests crypto
+	if not order.get("asset_type") and is_crypto_symbol(order.get("isin", "")):
+		order["asset_type"] = "Crypto"
 
 	# Re-sort if date changed
 	if "date" in update_dict:
