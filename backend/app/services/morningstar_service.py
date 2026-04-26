@@ -7,17 +7,48 @@ from typing import Any
 
 import mstarpy
 
+from app.config import settings
+from app.utils.retry import async_retry
+
 logger = logging.getLogger(__name__)
 
 
 class MorningstarService:
 	"""Service for fetching fund metadata from Morningstar using mstarpy."""
 
+	_REGION_MAP: dict[str, str] = {
+		"northAmerica": "North America",
+		"europeDeveloped": "Europe (Developed)",
+		"europeEmerging": "Europe (Emerging)",
+		"unitedKingdom": "United Kingdom",
+		"japan": "Japan",
+		"australasia": "Australasia",
+		"asiaDeveloped": "Asia (Developed)",
+		"asiaEmerging": "Asia (Emerging)",
+		"africaMiddleEast": "Africa/Middle East",
+		"latinAmerica": "Latin America",
+	}
+
+	_SECTOR_MAP: dict[str, str] = {
+		"basicMaterials": "Basic Materials",
+		"consumerCyclical": "Consumer Cyclical",
+		"financialServices": "Financial Services",
+		"realEstate": "Real Estate",
+		"communicationServices": "Communication Services",
+		"energy": "Energy",
+		"industrials": "Industrials",
+		"technology": "Technology",
+		"consumerDefensive": "Consumer Defensive",
+		"healthcare": "Healthcare",
+		"utilities": "Utilities",
+	}
+
 	def __init__(self):
 		"""Initialize Morningstar service with cache."""
 		self.cache: dict[str, dict[str, Any]] = {}
-		self.cache_duration = timedelta(days=30)
+		self.cache_duration = timedelta(days=settings.METADATA_CACHE_DAYS)
 
+	@async_retry(retries=2, base_delay=2.0, exceptions=(Exception,))
 	async def get_fund_metadata(self, isin: str) -> dict[str, Any] | None:
 		"""
 		Fetch comprehensive fund metadata from Morningstar.
@@ -84,21 +115,8 @@ class MorningstarService:
 		portfolio = regional_data["fundPortfolio"]
 		logger.debug(f"Regional portfolio data: {portfolio}")
 
-		region_map = {
-			"northAmerica": "North America",
-			"europeDeveloped": "Europe (Developed)",
-			"europeEmerging": "Europe (Emerging)",
-			"unitedKingdom": "United Kingdom",
-			"japan": "Japan",
-			"australasia": "Australasia",
-			"asiaDeveloped": "Asia (Developed)",
-			"asiaEmerging": "Asia (Emerging)",
-			"africaMiddleEast": "Africa/Middle East",
-			"latinAmerica": "Latin America",
-		}
-
 		regional_allocation = {}
-		for mstar_key, display_name in region_map.items():
+		for mstar_key, display_name in self._REGION_MAP.items():
 			if mstar_key in portfolio and portfolio[mstar_key] > 0:
 				regional_allocation[display_name] = portfolio[mstar_key] / 100.0
 
@@ -114,22 +132,8 @@ class MorningstarService:
 			return
 
 		equity_sectors = sector_data["EQUITY"].get("fundPortfolio", {})
-		sector_map = {
-			"basicMaterials": "Basic Materials",
-			"consumerCyclical": "Consumer Cyclical",
-			"financialServices": "Financial Services",
-			"realEstate": "Real Estate",
-			"communicationServices": "Communication Services",
-			"energy": "Energy",
-			"industrials": "Industrials",
-			"technology": "Technology",
-			"consumerDefensive": "Consumer Defensive",
-			"healthcare": "Healthcare",
-			"utilities": "Utilities",
-		}
-
 		sector_allocation = {}
-		for mstar_key, display_name in sector_map.items():
+		for mstar_key, display_name in self._SECTOR_MAP.items():
 			if mstar_key in equity_sectors and equity_sectors[mstar_key] > 0:
 				sector_allocation[display_name] = equity_sectors[mstar_key] / 100.0
 

@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.config import settings
 from app.main import app
 from app.services.storage_service import StorageService
+from tests.conftest import make_auth_headers
 
 client = TestClient(app)
 
@@ -13,25 +14,7 @@ client = TestClient(app)
 @pytest.fixture
 def auth_headers():
 	"""Get authentication headers for test user."""
-	username = "test_order_history"
-	password = "testpass123"
-
-	# Try to register
-	reg_response = client.post(
-		"/api/auth/register", json={"username": username, "email": "test_order_history@example.com", "password": password}
-	)
-
-	# If registration failed because user exists, that's OK
-	# Otherwise check if it was successful
-	if reg_response.status_code not in (200, 201, 400):
-		raise Exception(f"Unexpected registration response: {reg_response.status_code} - {reg_response.json()}")
-
-	# Login
-	response = client.post("/api/auth/login", data={"username": username, "password": password})
-
-	assert response.status_code == 200, f"Login failed: {response.json()}"
-	token = response.json()["access_token"]
-	return {"Authorization": f"Bearer {token}"}
+	return make_auth_headers(client, username="test_order_history", email="test_order_history@example.com")
 
 
 @pytest.fixture(autouse=True)

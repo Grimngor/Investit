@@ -10,6 +10,7 @@ Real-time events emitted by the backend (all JSON include ISO UTC `timestamp`).
 | order_updated     | A manual order was updated                      | type, order_id, timestamp                        |
 | order_deleted     | A manual order was deleted                      | type, order_id, timestamp                        |
 | orders_imported   | Bulk import completed (CSV)                     | type, count, timestamp                           |
+| prices_updated    | Background price fetch completed                | type, count, timestamp                           |
 
 ## Usage Notes
 - Subscribe with a valid JWT using `ws://<host>/ws?token=<access_token>`.

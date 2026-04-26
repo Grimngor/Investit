@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.config import settings
 from app.main import app
 from app.services.storage_service import StorageService
+from tests.conftest import make_auth_headers
 
 client = TestClient(app)
 
@@ -13,18 +14,7 @@ client = TestClient(app)
 @pytest.fixture
 def auth_headers():
 	"""Get authentication headers for test user."""
-	username = "test_dashboard_kpis"
-	password = "testpass123"
-
-	# Try to register
-	client.post("/api/auth/register", json={"username": username, "email": "dashboard@example.com", "password": password})
-
-	# Login
-	response = client.post("/api/auth/login", data={"username": username, "password": password})
-
-	assert response.status_code == 200
-	token = response.json()["access_token"]
-	return {"Authorization": f"Bearer {token}"}
+	return make_auth_headers(client, username="test_dashboard_kpis", email="dashboard@example.com")
 
 
 @pytest.fixture

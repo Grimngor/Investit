@@ -12,6 +12,11 @@ class Settings(BaseSettings):
 	FINNHUB_API_KEY: str
 	DATA_DIR: Path = BASE_DIR / "data"
 
+	# Price caching thresholds
+	PRICE_STALE_THRESHOLD_DAYS: int = 3
+	PRICE_CACHE_HOURS: int = 24
+	METADATA_CACHE_DAYS: int = 30
+
 	model_config = SettingsConfigDict(env_file=str(BASE_DIR / ".env"), env_file_encoding="utf-8", case_sensitive=True, extra="ignore")
 
 

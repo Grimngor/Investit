@@ -1,6 +1,6 @@
 """Authentication service."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -50,7 +50,7 @@ def authenticate_user(username: str, password: str) -> User | None:
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
 	"""Create a JWT access token."""
 	to_encode = data.copy()
-	expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=15))
+	expire = datetime.now(UTC) + (expires_delta if expires_delta else timedelta(minutes=15))
 	to_encode.update({"exp": expire})
 	return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 import time
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 BACKEND = ROOT / "backend"
 
 def run(cmd: list[str]) -> int:

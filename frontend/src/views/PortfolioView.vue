@@ -51,104 +51,68 @@
 
       <!-- Index Funds Section -->
       <div v-if="fundHoldings.length > 0">
-        <div class="px-6 py-2 bg-softblue-50 dark:bg-gray-800/40">
-          <h3 class="text-sm font-semibold text-softblue-600 dark:text-softblue-400">Index Funds</h3>
+        <button
+          @click="showIndexFunds = !showIndexFunds"
+          class="w-full px-6 py-4 flex items-center justify-between bg-softblue-50 dark:bg-gray-800/40 hover:bg-softblue-100 dark:hover:bg-gray-700/60 transition"
+        >
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-semibold text-softblue-700 dark:text-softblue-300">
+              Index Funds
+            </h3>
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-softblue-200 dark:bg-gray-700 text-softblue-800 dark:text-gray-300">
+              {{ fundHoldings.length }}
+            </span>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              {{ indexFundsValue.toFixed(2) }} €
+            </span>
+            <ChevronDown
+              class="w-5 h-5 text-gray-400 transition-transform duration-200"
+              :class="{ 'rotate-180': showIndexFunds }"
+            />
+          </div>
+        </button>
+        <div v-show="showIndexFunds">
+          <HoldingsTable
+            :holdings="fundHoldings"
+            theme="softblue"
+            :loading="loading || fetchingPrices"
+          />
         </div>
-        <table class="w-full text-sm">
-          <thead class="bg-softblue-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
-            <tr class="divide-x divide-gray-200 dark:divide-gray-700">
-              <th class="px-4 py-3 text-left font-medium">Symbol</th>
-              <th class="px-4 py-3 text-left font-medium">Name</th>
-              <th class="px-4 py-3 text-right font-medium">Quantity</th>
-              <th class="px-4 py-3 text-right font-medium">Purchase</th>
-              <th class="px-4 py-3 text-right font-medium">Current</th>
-              <th class="px-4 py-3 text-right font-medium">Value</th>
-              <th class="px-4 py-3 text-right font-medium">Gain/Loss</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-softblue-200 dark:divide-gray-700">
-            <tr
-              v-for="holding in fundHoldings"
-              :key="holding.id"
-              class="hover:bg-softblue-50 dark:hover:bg-gray-700/40 transition"
-            >
-              <td class="px-4 py-3 font-medium">{{ holding.resolved_symbol || holding.symbol }}</td>
-              <td class="px-4 py-3">{{ holding.name }}</td>
-              <td class="px-4 py-3 text-right">{{ holding.quantity }}</td>
-              <td class="px-4 py-3 text-right">{{ holding.purchase_price.toFixed(2) }} €</td>
-              <td class="px-4 py-3 text-right">
-                {{ (holding.current_price || holding.purchase_price).toFixed(2) }} €
-              </td>
-              <td class="px-4 py-3 text-right">
-                {{
-                  (holding.quantity * (holding.current_price || holding.purchase_price)).toFixed(2)
-                }} €
-              </td>
-              <td class="px-4 py-3 text-right">
-                <span
-                  :class="[
-                    'inline-flex flex-col items-end px-2 py-1 rounded text-xs font-semibold',
-                    getBadgeClass(holding),
-                  ]"
-                >
-                  <span>{{ formatGainLoss(holding) }}</span>
-                  <span class="text-[10px] mt-0.5">{{ formatGainLossPercentage(holding) }}</span>
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
 
       <!-- Crypto Section -->
-      <div v-if="cryptoHoldings.length > 0" class="mt-6">
-        <div class="px-6 py-2 bg-purple-50 dark:bg-purple-900/20">
-          <h3 class="text-sm font-semibold text-purple-600 dark:text-purple-400">Cryptocurrency</h3>
+      <div v-if="cryptoHoldings.length > 0" class="mt-2 lg:mt-6">
+        <button
+          @click="showCrypto = !showCrypto"
+          class="w-full px-6 py-4 flex items-center justify-between bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition"
+        >
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-semibold text-purple-700 dark:text-purple-300">
+              Cryptocurrency
+            </h3>
+            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-200 dark:bg-purple-800/60 text-purple-800 dark:text-purple-200">
+              {{ cryptoHoldings.length }}
+            </span>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              {{ cryptoValue.toFixed(2) }} €
+            </span>
+            <ChevronDown
+              class="w-5 h-5 text-gray-400 transition-transform duration-200"
+              :class="{ 'rotate-180': showCrypto }"
+            />
+          </div>
+        </button>
+        <div v-show="showCrypto">
+          <HoldingsTable
+            :holdings="cryptoHoldings"
+            theme="purple"
+            :loading="loading || fetchingPrices"
+          />
         </div>
-        <table class="w-full text-sm">
-          <thead class="bg-purple-100 dark:bg-purple-900/30 text-gray-700 dark:text-gray-300">
-            <tr class="divide-x divide-gray-200 dark:divide-gray-700">
-              <th class="px-4 py-3 text-left font-medium">Symbol</th>
-              <th class="px-4 py-3 text-left font-medium">Name</th>
-              <th class="px-4 py-3 text-right font-medium">Quantity</th>
-              <th class="px-4 py-3 text-right font-medium">Purchase</th>
-              <th class="px-4 py-3 text-right font-medium">Current</th>
-              <th class="px-4 py-3 text-right font-medium">Value</th>
-              <th class="px-4 py-3 text-right font-medium">Gain/Loss</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-purple-200 dark:divide-purple-900/40">
-            <tr
-              v-for="holding in cryptoHoldings"
-              :key="holding.id"
-              class="hover:bg-purple-50 dark:hover:bg-purple-900/20 transition"
-            >
-              <td class="px-4 py-3 font-medium">{{ holding.resolved_symbol || holding.symbol }}</td>
-              <td class="px-4 py-3">{{ holding.name }}</td>
-              <td class="px-4 py-3 text-right">{{ holding.quantity }}</td>
-              <td class="px-4 py-3 text-right">{{ holding.purchase_price.toFixed(2) }} €</td>
-              <td class="px-4 py-3 text-right">
-                {{ (holding.current_price || holding.purchase_price).toFixed(2) }} €
-              </td>
-              <td class="px-4 py-3 text-right">
-                {{
-                  (holding.quantity * (holding.current_price || holding.purchase_price)).toFixed(2)
-                }} €
-              </td>
-              <td class="px-4 py-3 text-right">
-                <span
-                  :class="[
-                    'inline-flex flex-col items-end px-2 py-1 rounded text-xs font-semibold',
-                    getBadgeClass(holding),
-                  ]"
-                >
-                  <span>{{ formatGainLoss(holding) }}</span>
-                  <span class="text-[10px] mt-0.5">{{ formatGainLossPercentage(holding) }}</span>
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
       </div>
 
       <div v-if="!fundHoldings.length && !cryptoHoldings.length" class="p-12 text-center">
@@ -180,6 +144,8 @@ import { apiClient } from '@/services/api'
 import SummaryCard from '@/components/SummaryCard.vue'
 import CSVImporter from '@/components/portfolio/CSVImporter.vue'
 import OrderForm from '@/components/portfolio/OrderForm.vue'
+import HoldingsTable from '@/components/portfolio/HoldingsTable.vue'
+import { ChevronDown } from 'lucide-vue-next'
 
 const portfolioStore = usePortfolioStore()
 const toastStore = useToastStore()
@@ -187,7 +153,6 @@ const fetchingPrices = ref(false)
 
 const holdings = computed(() => portfolioStore.portfolio?.holdings || [])
 
-// Separate and sort holdings by type and amount
 const fundHoldings = computed(() => {
   return holdings.value
     .filter(h => !h.symbol || h.symbol.length > 5) // Exclude crypto (3-5 chars)
@@ -196,6 +161,10 @@ const fundHoldings = computed(() => {
       const amountB = b.quantity * b.purchase_price
       return amountB - amountA // Descending
     })
+})
+
+const indexFundsValue = computed(() => {
+  return fundHoldings.value.reduce((acc, h) => acc + (h.quantity * (h.current_price || h.purchase_price)), 0)
 })
 
 const cryptoHoldings = computed(() => {
@@ -208,6 +177,13 @@ const cryptoHoldings = computed(() => {
     })
 })
 
+const cryptoValue = computed(() => {
+  return cryptoHoldings.value.reduce((acc, h) => acc + (h.quantity * (h.current_price || h.purchase_price)), 0)
+})
+
+const showIndexFunds = ref(true)
+const showCrypto = ref(true)
+
 const loading = computed(() => portfolioStore.loading)
 const totalCost = computed(() => portfolioStore.totalCost)
 const totalValue = computed(() => portfolioStore.totalValue)
@@ -219,29 +195,7 @@ const gainLossPercentage = computed(() => {
   return (totalGainLoss.value / totalCost.value) * 100
 })
 
-function getGainLoss(holding: Investment): number {
-  const currentPrice = holding.current_price || holding.purchase_price
-  return holding.quantity * (currentPrice - holding.purchase_price)
-}
 
-function getBadgeClass(holding: Investment): string {
-  return getGainLoss(holding) >= 0
-    ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-    : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-}
-
-function formatGainLoss(holding: Investment): string {
-  const v = getGainLoss(holding)
-  return `${v >= 0 ? '+' : ''}${v.toFixed(2)} €`
-}
-
-function formatGainLossPercentage(holding: Investment): string {
-  const totalCost = holding.quantity * holding.purchase_price
-  if (totalCost === 0) return '0.00%'
-  const gainLoss = getGainLoss(holding)
-  const percentage = (gainLoss / totalCost) * 100
-  return `${percentage >= 0 ? '+' : ''}${percentage.toFixed(2)}%`
-}
 
 async function refreshPortfolio() {
   await portfolioStore.fetchPortfolio()

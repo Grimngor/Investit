@@ -187,8 +187,9 @@ class SpanishOrderCSVParser:
 			reader = csv.DictReader(csv_file, delimiter=delimiter)
 
 			# Normalize headers
-			if reader.fieldnames:
-				reader.fieldnames = [self._normalize_header(h) for h in reader.fieldnames]
+			fieldnames = reader.fieldnames
+			if fieldnames:
+				reader.fieldnames = [self._normalize_header(h) for h in fieldnames]
 
 			# Validate headers
 			missing_headers = set(self.EXPECTED_HEADERS) - set(reader.fieldnames or [])
@@ -302,7 +303,9 @@ class CryptoExchangeCSVParser:
 			errors.append("Missing headers for crypto CSV")
 			return orders, errors
 
-		for row_num, line in enumerate(lines[1:], start=2):
+		for row_num, line in enumerate(lines):
+			if row_num == 0:  # Skip header
+				continue
 			parts = line.split(delimiter)
 			if len(parts) < RAW_MIN_COLUMNS:
 				errors.append(f"Row {row_num}: Incomplete row")
@@ -318,8 +321,20 @@ class CryptoExchangeCSVParser:
 
 	def _parse_row(self, parts: list[str], row_num: int) -> dict[str, Any] | str | None:
 		"""Process a single row from the crypto CSV."""
-		RAW_MIN_COLUMNS = 8
-		date_raw, _method, spend_raw, receive_raw, fee_raw, price_raw, status_raw, tx_id = (p.strip() for p in parts[:RAW_MIN_COLUMNS])
+		raw_min_columns = 8
+		# Extract first columns manually to avoid slice indexing issues with some linters
+		if len(parts) < raw_min_columns:
+			return f"Row {row_num}: Incomplete row"
+
+		# Take only the columns we need
+		date_raw = parts[0].strip()
+		_method = parts[1].strip()
+		spend_raw = parts[2].strip()
+		receive_raw = parts[3].strip()
+		fee_raw = parts[4].strip()
+		price_raw = parts[5].strip()
+		status_raw = parts[6].strip()
+		tx_id = parts[7].strip()
 
 		if not date_raw and not spend_raw:
 			return None

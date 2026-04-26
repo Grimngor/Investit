@@ -53,6 +53,34 @@ def validate_date(date_str: str, date_format: str = "%Y-%m-%d") -> bool:
 		return False
 
 
+def validate_price(price: Any) -> bool:
+	"""
+	Validate market price.
+
+	Args:
+		price: Price to validate
+
+	Returns:
+		True if valid (positive number and not ridiculously high), False otherwise
+	"""
+	try:
+		if not isinstance(price, int | float):
+			price = float(price)
+
+		# Price must be positive
+		if price <= 0:
+			return False
+
+		# Threshold for "crazy" prices (sanity check)
+		# 10 million per share/unit is a reasonable upper bound for now
+		if price > 10_000_000:
+			return False
+
+		return True
+	except (ValueError, TypeError):
+		return False
+
+
 def validate_amount(amount: float) -> bool:
 	"""
 	Validate monetary amount.

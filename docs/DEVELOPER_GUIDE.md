@@ -345,7 +345,7 @@ After starting backend, verify routes are registered:
 
 ```powershell
 # Run this in a NEW terminal (don't close backend terminal!)
-.\check_routes.ps1
+.\scripts\dev\check_routes.ps1
 ```
 
 Look for these critical routes:

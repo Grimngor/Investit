@@ -10,6 +10,9 @@
         <label for="password" class="block text-sm font-medium mb-1">Password</label>
         <input id="password" v-model="password" type="password" required class="input-base" />
       </div>
+      <div v-if="authStore.error" class="p-3 text-sm rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+        {{ authStore.error }}
+      </div>
       <button type="submit" :disabled="loading" class="btn-primary w-full">{{ loading ? 'Logging in...' : 'Login' }}</button>
     </form>
     <template #footer>

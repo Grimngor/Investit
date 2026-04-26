@@ -1,79 +1,86 @@
 [
   {
     "isin": "IE00BYX5NX33",
-    "name": "Fidelity MSCI World Index EUR P Acc",
+    "name": "Fidelity MSCI World Index Fund EUR P Acc",
     "sector_allocation": {
-      "Basic Materials": 0.0296959,
-      "Consumer Cyclical": 0.0994862,
-      "Financial Services": 0.15879379999999998,
-      "Real Estate": 0.0193352,
-      "Communication Services": 0.0897498,
-      "Energy": 0.0336436,
-      "Industrials": 0.10589639999999999,
-      "Technology": 0.2891995,
-      "Consumer Defensive": 0.0540747,
-      "Healthcare": 0.09407959999999999,
-      "Utilities": 0.0260453
+      "Basic Materials": 0.0345412,
+      "Consumer Cyclical": 0.094556,
+      "Financial Services": 0.16279419999999997,
+      "Real Estate": 0.0194728,
+      "Communication Services": 0.0870395,
+      "Energy": 0.038884,
+      "Industrials": 0.1182601,
+      "Technology": 0.2633702,
+      "Consumer Defensive": 0.0566046,
+      "Healthcare": 0.0975832,
+      "Utilities": 0.0268942
     },
     "geo_allocation": {
-      "North America": 0.75924,
-      "Europe (Developed)": 0.12263,
-      "Europe (Emerging)": 4e-05,
-      "United Kingdom": 0.0347859,
-      "Japan": 0.053869999999999994,
-      "Australasia": 0.01647,
-      "Asia (Developed)": 0.00931,
-      "Asia (Emerging)": 0.0005099999999999999,
-      "Africa/Middle East": 0.00187,
-      "Latin America": 0.00128
-    }
+      "North America": 0.73744,
+      "Europe (Developed)": 0.13205,
+      "Europe (Emerging)": 0.00014000000000000001,
+      "United Kingdom": 0.0376912,
+      "Japan": 0.05985,
+      "Australasia": 0.01766,
+      "Asia (Developed)": 0.00997,
+      "Asia (Emerging)": 0.00133,
+      "Africa/Middle East": 0.0023799999999999997,
+      "Latin America": 0.00148
+    },
+    "symbol": "IE00BYX5NX33.SG",
+    "type": "Fund"
   },
   {
     "isin": "IE0032126645",
-    "name": "Vanguard U.S. 500 Stk Idx € Acc",
+    "name": "Vanguard U.S. 500 Stock Index Fund EUR Acc",
     "sector_allocation": {
-      "Basic Materials": 0.0157897,
-      "Consumer Cyclical": 0.10668839999999999,
-      "Financial Services": 0.1319938,
-      "Real Estate": 0.0193639,
-      "Communication Services": 0.1047616,
-      "Energy": 0.028882500000000002,
-      "Industrials": 0.0751532,
-      "Technology": 0.356162,
-      "Consumer Defensive": 0.049081799999999995,
-      "Healthcare": 0.0886043,
-      "Utilities": 0.023489
+      "Basic Materials": 0.017757000000000002,
+      "Consumer Cyclical": 0.1061541,
+      "Financial Services": 0.1246935,
+      "Real Estate": 0.0185373,
+      "Communication Services": 0.11258430000000001,
+      "Energy": 0.0318103,
+      "Industrials": 0.0796563,
+      "Technology": 0.34159500000000004,
+      "Consumer Defensive": 0.0500992,
+      "Healthcare": 0.09458180000000001,
+      "Utilities": 0.0225304
     },
     "geo_allocation": {
-      "North America": 0.9956999999999999,
-      "Europe (Developed)": 0.00393,
-      "United Kingdom": 0.0003324
-    }
+      "North America": 0.9947400000000001,
+      "Europe (Developed)": 0.00381,
+      "United Kingdom": 0.0003443,
+      "Asia (Emerging)": 0.00111
+    },
+    "symbol": "0P00000SUJ.F",
+    "type": "Fund"
   },
   {
     "isin": "IE0031786696",
-    "name": "Vanguard Em Mkts Stk Idx € Acc",
+    "name": "Vanguard Emerging Markets Stock Index Fund EUR Acc",
     "sector_allocation": {
-      "Basic Materials": 0.06392350000000001,
-      "Consumer Cyclical": 0.13630979999999998,
-      "Financial Services": 0.22031610000000001,
-      "Real Estate": 0.0141868,
-      "Communication Services": 0.1059018,
-      "Energy": 0.039897800000000004,
-      "Industrials": 0.06755130000000001,
-      "Technology": 0.2543749,
-      "Consumer Defensive": 0.0375142,
-      "Healthcare": 0.0369906,
-      "Utilities": 0.023033199999999997
+      "Basic Materials": 0.0729986,
+      "Consumer Cyclical": 0.1137879,
+      "Financial Services": 0.21221489999999998,
+      "Real Estate": 0.0128994,
+      "Communication Services": 0.0885783,
+      "Energy": 0.0386837,
+      "Industrials": 0.07066410000000001,
+      "Technology": 0.30524660000000003,
+      "Consumer Defensive": 0.0322517,
+      "Healthcare": 0.0317973,
+      "Utilities": 0.020877500000000004
     },
     "geo_allocation": {
-      "North America": 0.00635,
-      "Europe (Developed)": 0.00697,
-      "Europe (Emerging)": 0.01924,
-      "Asia (Developed)": 0.30736,
-      "Asia (Emerging)": 0.49273000000000006,
-      "Africa/Middle East": 0.09664,
-      "Latin America": 0.07071
-    }
+      "North America": 0.00979,
+      "Europe (Developed)": 0.0064600000000000005,
+      "Europe (Emerging)": 0.02085,
+      "Asia (Developed)": 0.37845,
+      "Asia (Emerging)": 0.4202,
+      "Africa/Middle East": 0.08922000000000001,
+      "Latin America": 0.07503
+    },
+    "symbol": "0P00012I6A.F",
+    "type": "Fund"
   }
 ]

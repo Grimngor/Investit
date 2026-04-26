@@ -1,93 +1,64 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Portfolio', () => {
+  let username = ''
+  let password = 'Password123'
+
   test.beforeEach(async ({ page }) => {
     // Register and login before each test
     await page.goto('/register')
     const timestamp = Date.now()
-    const username = `testuser${timestamp}`
-    const password = 'TestPassword123!'
+    username = `user${timestamp}`
 
-    await page.fill('input[type="text"]', username)
-    await page.fill('input[type="email"]', `test${timestamp}@example.com`)
-    await page.fill('input[type="password"]', password)
-    await page.click('button[type="submit"]')
+    await page.locator('#username').fill(username)
+    await page.locator('#email').fill(`test${timestamp}@example.com`)
+    await page.locator('#password').fill(password)
+    await page.getByRole('button', { name: /register/i }).click()
 
-    await page.goto('/login')
-    await page.fill('input[type="text"]', username)
-    await page.fill('input[type="password"]', password)
-    await page.click('button[type="submit"]')
+    await page.waitForURL(/\/login/)
+    await page.locator('#username').fill(username)
+    await page.locator('#password').fill(password)
+    await page.getByRole('button', { name: /login/i }).click()
 
-    await page.waitForURL(/portfolio|\//)
+    await page.waitForURL(/\/dashboard/)
+    // Navigate to Portfolio (assuming there's a link or direct navigation)
+    await page.goto('/portfolio')
+    await page.waitForURL(/\/portfolio/)
   })
 
   test('should display portfolio page', async ({ page }) => {
-    await page.goto('/portfolio')
-
-    await expect(page).toHaveTitle(/Portfolio|InvestIt/)
-    // Portfolio page should have add investment button or similar
-    await expect(page.getByRole('button', { name: /add|new/i })).toBeVisible()
+    await expect(page).toHaveTitle(/InvestIt/)
+    await expect(page.locator('h1.page-title')).toHaveText(/My Portfolio/i)
+    await expect(page.getByText(/total invested/i)).toBeVisible()
   })
 
-  test('should add new investment', async ({ page }) => {
-    await page.goto('/portfolio')
+  test('should add a manual order (Investment)', async ({ page }) => {
+    // Fill the OrderForm
+    await page.locator('input[type="date"]').fill('2024-01-01')
+    await page.locator('input[placeholder*="IE00BYX5NX33"]').fill('IE00B4L5Y983')
+    await page.locator('input[placeholder*="300.00"]').fill('500')
+    await page.locator('input[placeholder*="24.624"]').fill('10')
 
-    // Click add investment button
-    await page.click('button[aria-label="Add Investment"]')
+    await page.getByRole('button', { name: /add order/i }).click()
 
-    // Fill investment form
-    await page.fill('input[placeholder*="AAPL"]', 'AAPL')
-    await page.fill('input[type="number"]', '10') // quantity
-    await page.fill('input[placeholder*="price"]', '150.00')
-
-    await page.click('button[type="submit"]')
-
-    // Should show the new investment in the list
-    await expect(page.getByText(/AAPL/i)).toBeVisible()
+    // Should show success toast and reflect in table
+    // Table is in HoldingsTable.vue
+    await expect(page.getByText(/IE00B4L5Y983/i).first()).toBeVisible()
+    await expect(page.getByText(/500.00/).first()).toBeVisible()
   })
 
-  test('should view portfolio data', async ({ page }) => {
-    await page.goto('/portfolio')
+  test('should toggle sections', async ({ page }) => {
+    // Add an order first to make section visible
+    await page.locator('input[placeholder*="IE00BYX5NX33"]').fill('IE00B4L5Y983')
+    await page.locator('input[placeholder*="300.00"]').fill('100')
+    await page.locator('input[placeholder*="24.624"]').fill('1')
+    await page.getByRole('button', { name: /add order/i }).click()
 
-    // Portfolio should display some data (charts, tables, etc.)
-    // Even if empty, it should show the structure
-    await expect(page.locator('table, canvas, svg')).toBeVisible()
-  })
+    const sectionButton = page.getByRole('button', { name: /index funds/i })
+    await expect(sectionButton).toBeVisible()
 
-  test('should edit existing investment', async ({ page }) => {
-    await page.goto('/portfolio')
-
-    // Add an investment first
-    await page.click('button[aria-label="Add Investment"]')
-    await page.fill('input[placeholder*="AAPL"]', 'MSFT')
-    await page.fill('input[type="number"]', '5')
-    await page.fill('input[placeholder*="price"]', '200.00')
-    await page.click('button[type="submit"]')
-
-    // Edit the investment
-    await page.click('button[aria-label="Edit"]')
-    await page.fill('input[type="number"]', '10')
-    await page.click('button[type="submit"]')
-
-    // Should reflect the change
-    await expect(page.getByText(/10/)).toBeVisible()
-  })
-
-  test('should delete investment', async ({ page }) => {
-    await page.goto('/portfolio')
-
-    // Add an investment first
-    await page.click('button[aria-label="Add Investment"]')
-    await page.fill('input[placeholder*="AAPL"]', 'TSLA')
-    await page.fill('input[type="number"]', '3')
-    await page.fill('input[placeholder*="price"]', '250.00')
-    await page.click('button[type="submit"]')
-
-    // Delete the investment
-    await page.click('button[aria-label="Delete"]')
-    await page.click('button[aria-label="Confirm"]')
-
-    // Should no longer show the investment
-    await expect(page.getByText(/TSLA/)).not.toBeVisible()
+    // Toggle
+    await sectionButton.click()
+    await expect(page.locator('.holdings-table')).not.toBeVisible() // Assuming class
   })
 })

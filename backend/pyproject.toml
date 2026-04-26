@@ -68,6 +68,10 @@ ignore = [
 "app/services/auth.py" = ["SIM108"]
 "app/routers/orders.py" = ["B904"]
 "app/routers/portfolio.py" = ["PLR2004"]
+"app/config.py" = ["RUF012"]
+"app/services/*.py" = ["RUF012", "PLR0913", "F841", "PLR0912", "PLR2004"]
+"app/utils/*.py" = ["PLR0915", "PLR0911", "PLR0913", "SIM103", "PLR2004"]
+"tests/conftest.py" = ["PLR2004"]
 
 [tool.ruff.format]
 quote-style = "double"

@@ -1,42 +1,34 @@
-"""Tests for orders router (CSV import and CRUD)."""
+"""Tests for orders router (CSV import and get/list operations)."""
 
-import json
 import tempfile
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import settings
 from app.main import app
-from app.models.persistence import get_all_users, save_user_data
-from app.services.auth import get_password_hash
+from tests.conftest import make_auth_headers
 
 client = TestClient(app)
 
 
 @pytest.fixture
-def test_user():
-	"""Create a test user for orders tests."""
-	username = "test_orders_user"
-	password = "testpass123"
-	user_data = {"username": username, "hashed_password": get_password_hash(password), "is_active": True, "holdings": [], "orders": []}
-	save_user_data(username, user_data)
-	yield {"username": username, "password": password}
-	# Cleanup: remove user
-	users = get_all_users()
-	if username in users:
-		del users[username]
-		with open(settings.DATA_DIR / "users.json", "w", encoding="utf-8") as f:
-			json.dump(users, f, indent=2)
+def auth_token():
+	"""Get authentication token for orders tests."""
+	headers = make_auth_headers(client, username="test_orders_user")
+	return headers["Authorization"].removeprefix("Bearer ")
 
 
-@pytest.fixture
-def auth_token(test_user):
-	"""Get authentication token."""
-	response = client.post("/api/auth/login", data={"username": test_user["username"], "password": test_user["password"]})
-	assert response.status_code == 200
-	return response.json()["access_token"]
+@pytest.fixture(autouse=True)
+def cleanup_orders(auth_token):
+	"""Clean up orders before and after each test."""
+	yield
+	# Delete all orders after each test
+	headers = {"Authorization": f"Bearer {auth_token}"}
+	response = client.get("/api/orders/", headers=headers)
+	if response.status_code == 200:
+		for order in response.json().get("orders", []):
+			client.delete(f"/api/orders/{order['id']}", headers=headers)
 
 
 def test_import_csv_success(auth_token):
@@ -57,12 +49,11 @@ def test_import_csv_success(auth_token):
 				headers={"Authorization": f"Bearer {auth_token}"},
 			)
 
-		print(f"Response: {response.status_code}, {response.text}")
 		assert response.status_code == 200
 		data = response.json()
 		assert data["success"] is True
 		assert data["imported_count"] == 2
-		assert data["rejected_count"] == 0
+		assert data["updated_count"] == 0
 		assert len(data["errors"]) == 0
 	finally:
 		tmp_path.unlink(missing_ok=True)
@@ -146,7 +137,6 @@ def test_get_orders_empty(auth_token):
 
 def test_get_orders_after_import(auth_token):
 	"""Test getting orders after CSV import."""
-	# First import some orders
 	csv_content = """Fecha de la orden,ISIN,Importe estimado,Nº de participaciones,Estado
 15/01/2024,IE00B4L5Y983,500.00 EUR,5.0,Finalizada"""
 
@@ -164,7 +154,6 @@ def test_get_orders_after_import(auth_token):
 	finally:
 		tmp_path.unlink(missing_ok=True)
 
-	# Now get orders
 	response = client.get(
 		"/api/orders/",
 		headers={"Authorization": f"Bearer {auth_token}"},
@@ -179,7 +168,6 @@ def test_get_orders_after_import(auth_token):
 
 def test_get_order_by_id(auth_token):
 	"""Test getting specific order by ID."""
-	# First import an order
 	csv_content = """Fecha de la orden,ISIN,Importe estimado,Nº de participaciones,Estado
 15/01/2024,IE00B4L5Y983,500.00 EUR,5.0,Finalizada"""
 
@@ -197,26 +185,21 @@ def test_get_order_by_id(auth_token):
 	finally:
 		tmp_path.unlink(missing_ok=True)
 
-	# Get all orders first to get an order ID
 	orders_response = client.get("/api/orders/", headers={"Authorization": f"Bearer {auth_token}"})
 	data = orders_response.json()
 	assert data["total"] > 0
 
 	order_id = data["orders"][0]["id"]
-
-	# Get specific order by ID
 	response = client.get(
 		f"/api/orders/{order_id}",
 		headers={"Authorization": f"Bearer {auth_token}"},
 	)
 
 	assert response.status_code == 200
-	data = response.json()
-	assert data["isin"] == "IE00B4L5Y983"
+	assert response.json()["isin"] == "IE00B4L5Y983"
 
 
 def test_get_order_not_found(auth_token):
 	"""Test getting non-existent order."""
 	response = client.get("/api/orders/999", headers={"Authorization": f"Bearer {auth_token}"})
-
 	assert response.status_code == 404

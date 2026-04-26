@@ -3,9 +3,13 @@
 import asyncio
 import logging
 import os
+import platform
+import sys
+import time
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
@@ -22,6 +26,8 @@ from app.routers import (
 from app.routers import (
 	prices as prices_router,
 )
+from app.services.metrics_service import metrics
+from app.services.price_service import PriceService
 from app.services.scheduled_task_service import ScheduledTaskService
 from app.services.storage_service import StorageService
 
@@ -65,6 +71,16 @@ app.include_router(prices_router.router)
 app.include_router(dashboard.router)
 app.include_router(websocket.router)
 app.include_router(debug.router)
+
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+	"""Middleware to track request latency and error rates."""
+	start_time = time.time()
+	response = await call_next(request)
+	process_time = time.time() - start_time
+	metrics.record_request(process_time, response.status_code)
+	return response
 
 
 @app.on_event("startup")
@@ -121,7 +137,7 @@ async def startup_event():
 
 						if unique_isins:
 							# Trigger background fetch asynchronously
-							task = asyncio.create_task(prices_router.fetch_and_update_prices(username, unique_isins))
+							task = asyncio.create_task(PriceService.fetch_and_update_prices(username, unique_isins))
 							background_tasks.add(task)
 							task.add_done_callback(background_tasks.discard)
 							logger.info(f"Started background price fetch for {len(unique_isins)} instruments ({username})")
@@ -139,6 +155,26 @@ async def root() -> dict[str, str]:
 
 
 @app.get("/health")
-async def health_check() -> dict[str, str]:
-	"""Health check endpoint."""
-	return {"status": "healthy"}
+async def health_check() -> dict[str, Any]:
+	"""Enhanced health check endpoint with system info and metrics."""
+	# Check storage writability
+	storage_ok = False
+	try:
+		test_file = settings.DATA_DIR / ".health_check"
+		test_file.write_text("ok")
+		test_file.unlink()
+		storage_ok = True
+	except Exception:
+		storage_ok = False
+
+	return {
+		"status": "healthy" if storage_ok else "unhealthy",
+		"timestamp": datetime.now(UTC).isoformat(),
+		"system": {
+			"python": sys.version.split()[0],
+			"os": platform.system(),
+			"cpus": os.cpu_count(),
+		},
+		"storage": {"writable": storage_ok},
+		"metrics": metrics.get_metrics(),
+	}

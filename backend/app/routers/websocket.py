@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from app.config import settings
+from app.services.metrics_service import metrics
 
 router = APIRouter(tags=["websocket"])
 
@@ -19,11 +20,13 @@ class WebSocketManager:
 
 	async def connect(self, username: str, websocket: WebSocket) -> None:
 		self._connections.setdefault(username, []).append(websocket)
+		metrics.increment_websockets()
 
 	async def disconnect(self, username: str, websocket: WebSocket) -> None:
 		conns = self._connections.get(username, [])
 		if websocket in conns:
 			conns.remove(websocket)
+			metrics.decrement_websockets()
 		if not conns:
 			self._connections.pop(username, None)
 

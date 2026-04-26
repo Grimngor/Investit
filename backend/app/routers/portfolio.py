@@ -15,8 +15,8 @@ from app.models.portfolio import (
 from app.models.user import User
 from app.services.auth import get_current_user
 from app.services.compute_service import ComputeService
-from app.services.finnhub import FinnhubService
 from app.services.isin_mapper import get_isin_mapper
+from app.services.yahoo_finance import YahooFinanceService
 
 ISIN_LENGTH = 12
 
@@ -51,8 +51,9 @@ async def get_current_price_for_symbol(
 	Returns:
 		Tuple of (price, resolved_symbol) or (None, None) if not found
 	"""
-	finnhub_service = FinnhubService()
+	# Removed finnhub reference
 	isin_mapper = get_isin_mapper()
+	yahoo_finance = YahooFinanceService()
 
 	# Check if it's an ISIN (12 characters, starts with 2 letters)
 	is_isin = len(original_symbol) == ISIN_LENGTH and original_symbol[:2].isalpha()
@@ -61,15 +62,15 @@ async def get_current_price_for_symbol(
 		# Try to resolve ISIN to ticker
 		ticker = isin_mapper.resolve_isin(original_symbol)
 		if ticker:
-			quote = await finnhub_service.get_quote(ticker)
-			if quote and quote.get("c"):
-				return quote["c"], ticker
+			quote = await yahoo_finance.get_quote(ticker)
+			if quote and quote.get("price"):
+				return quote["price"], ticker
 		return None, None
 	else:
 		# Direct ticker lookup
-		quote = await finnhub_service.get_quote(original_symbol)
-		if quote and quote.get("c"):
-			return quote["c"], original_symbol
+		quote = await yahoo_finance.get_quote(original_symbol)
+		if quote and quote.get("price"):
+			return quote["price"], original_symbol
 		return None, None
 
 

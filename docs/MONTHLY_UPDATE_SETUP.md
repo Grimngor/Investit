@@ -5,7 +5,7 @@ This guide explains how to configure Windows Task Scheduler to automatically fet
 ## Prerequisites
 
 - Backend API running on `localhost:8000`
-- PowerShell script: `scripts/monthly_price_update.ps1`
+- PowerShell script: `scripts/maintenance/monthly_price_update.ps1`
 - Administrator access to create scheduled tasks
 
 ## Option 1: Quick Setup (PowerShell)
@@ -15,7 +15,7 @@ Run this PowerShell command **as Administrator**:
 ```powershell
 $action = New-ScheduledTaskAction `
     -Execute "PowerShell.exe" `
-    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"E:\JaviProyects\Proyects\Programming\Investit\scripts\monthly_price_update.ps1`""
+    -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\scripts\maintenance\monthly_price_update.ps1`""
 
 $trigger = New-ScheduledTaskTrigger `
     -Monthly `
@@ -64,9 +64,9 @@ Register-ScheduledTask `
 - **Program/script**: `PowerShell.exe`
 - **Add arguments**:
   ```
-  -NoProfile -ExecutionPolicy Bypass -File "E:\JaviProyects\Proyects\Programming\Investit\scripts\monthly_price_update.ps1"
+  -NoProfile -ExecutionPolicy Bypass -File "C:\Path\To\Investit\scripts\maintenance\monthly_price_update.ps1"
   ```
-- **Start in**: `E:\JaviProyects\Proyects\Programming\Investit`
+- **Start in**: `C:\Path\To\Investit`
 
 ### Conditions Tab
 - ☐ Start the task only if the computer is on AC power
@@ -83,7 +83,7 @@ Before waiting a month, test the task manually:
 
 ```powershell
 # Run the script directly
-E:\JaviProyects\Proyects\Programming\Investit\scripts\monthly_price_update.ps1
+.\scripts\maintenance\monthly_price_update.ps1
 
 # OR trigger the scheduled task
 Start-ScheduledTask -TaskName "InvestIt Monthly Price Update"
@@ -91,7 +91,7 @@ Start-ScheduledTask -TaskName "InvestIt Monthly Price Update"
 
 Check the log file for results:
 ```powershell
-Get-Content E:\JaviProyects\Proyects\Programming\Investit\logs\monthly_price_update.log -Tail 50
+Get-Content .\backend\logs\app.log -Tail 50
 ```
 
 ## Important Notes
@@ -123,7 +123,7 @@ If you also want to auto-start the backend, create another scheduled task:
 ```powershell
 $action = New-ScheduledTaskAction `
     -Execute "PowerShell.exe" `
-    -Argument "-NoProfile -File `"E:\JaviProyects\Proyects\Programming\Investit\start-backend.ps1`""
+    -Argument "-NoProfile -File `"$PSScriptRoot\start-backend.ps1`""
 
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 

@@ -10,7 +10,6 @@ from app.routers.auth import get_current_user
 from app.services.morningstar_service import MorningstarService
 from app.services.storage_service import StorageService, load_users
 from app.services.yahoo_finance import YahooFinanceService
-from app.services.yahooquery_service import YahooQueryService
 
 router = APIRouter(prefix="/api/instruments", tags=["instruments"])
 logger = logging.getLogger(__name__)
@@ -166,7 +165,6 @@ async def refresh_instrument_metadata(current_user: User = Depends(get_current_u
 
 	storage = StorageService()
 	morningstar = MorningstarService()
-	yahooquery = YahooQueryService()
 	yfinance = YahooFinanceService()
 
 	updated_count = 0
@@ -174,7 +172,7 @@ async def refresh_instrument_metadata(current_user: User = Depends(get_current_u
 
 	for isin in unique_isins:
 		try:
-			success = await _refresh_single_instrument(isin, storage, morningstar, yahooquery, yfinance)
+			success = await _refresh_single_instrument(isin, storage, morningstar, yfinance)
 			if success:
 				updated_count += 1
 			else:
@@ -196,7 +194,6 @@ async def _refresh_single_instrument(
 	isin: str,
 	storage: StorageService,
 	morningstar: MorningstarService,
-	yahooquery: YahooQueryService,
 	yfinance: YahooFinanceService,
 ) -> bool:
 	"""Fetch and persist metadata for a single ISIN."""
@@ -226,7 +223,7 @@ async def _refresh_single_instrument(
 	# Fallback to yahooquery for missing data
 	if not instrument_data.get("sector_allocation") or not instrument_data.get("geo_allocation"):
 		logger.info(f"Fetching YahooQuery data for {symbol} ({isin})")
-		yq_metadata = await yahooquery.get_fund_metadata(symbol)
+		yq_metadata = await yfinance.get_fund_metadata(symbol)
 
 		if yq_metadata:
 			if not instrument_data.get("sector_allocation") and yq_metadata.get("sector_allocation"):
