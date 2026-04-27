@@ -1,27 +1,9 @@
 import { test, expect } from '@playwright/test'
+import { authenticateTestUser } from './helpers/auth'
 
 test.describe('Portfolio', () => {
-  let username = ''
-  let password = 'Password123'
-
-  test.beforeEach(async ({ page }) => {
-    // Register and login before each test
-    await page.goto('/register')
-    const timestamp = Date.now()
-    username = `user${timestamp}`
-
-    await page.locator('#username').fill(username)
-    await page.locator('#email').fill(`test${timestamp}@example.com`)
-    await page.locator('#password').fill(password)
-    await page.getByRole('button', { name: /register/i }).click()
-
-    await page.waitForURL(/\/login/)
-    await page.locator('#username').fill(username)
-    await page.locator('#password').fill(password)
-    await page.getByRole('button', { name: /login/i }).click()
-
-    await page.waitForURL(/\/dashboard/)
-    // Navigate to Portfolio (assuming there's a link or direct navigation)
+  test.beforeEach(async ({ page, request }, testInfo) => {
+    await authenticateTestUser(page, request, testInfo)
     await page.goto('/portfolio')
     await page.waitForURL(/\/portfolio/)
   })

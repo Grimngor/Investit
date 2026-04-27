@@ -19,6 +19,7 @@ from app.routers import (
 	auth,
 	dashboard,
 	debug,
+	instruments,
 	orders,
 	portfolio,
 	websocket,
@@ -69,6 +70,7 @@ app.include_router(portfolio.router)
 app.include_router(orders.router)
 app.include_router(prices_router.router)
 app.include_router(dashboard.router)
+app.include_router(instruments.router)
 app.include_router(websocket.router)
 app.include_router(debug.router)
 

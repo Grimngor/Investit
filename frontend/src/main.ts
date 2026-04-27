@@ -6,8 +6,10 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { logger } from './utils/logger'
+import { useAuthStore } from './stores/auth'
 
 const app = createApp(App)
+const pinia = createPinia()
 
 // Global error handler
 app.config.errorHandler = (err, instance, info) => {
@@ -30,15 +32,15 @@ if (import.meta.env.DEV) {
 	}
 }
 
-app.use(createPinia())
+app.use(pinia)
+
+// Initialize auth before installing the router so protected routes can hydrate from localStorage.
+const authStore = useAuthStore()
+authStore.initializeAuth()
+
 app.use(router)
 
 app.mount('#app')
-
-// Initialize auth on app start
-import { useAuthStore } from './stores/auth'
-const authStore = useAuthStore()
-authStore.initializeAuth()
 
 // Log app startup
 logger.info('InvestIt frontend started', {

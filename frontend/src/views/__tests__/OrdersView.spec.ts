@@ -1,10 +1,26 @@
-import { describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, it, expect, vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import OrdersView from '../OrdersView.vue'
 
+vi.mock('@/services/api', () => ({
+  apiClient: {
+    getOrders: vi.fn().mockResolvedValue({ orders: [], total: 0 }),
+    deleteOrder: vi.fn(),
+    deleteAllOrders: vi.fn(),
+  },
+}))
+
 describe('OrdersView', () => {
-  it('shows empty state when no orders', () => {
-    const wrapper = mount(OrdersView)
-    expect(wrapper.text()).toContain('No orders yet')
+  it('shows empty state when no orders', async () => {
+    const wrapper = mount(OrdersView, {
+      global: {
+        plugins: [createPinia()],
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No index fund orders yet')
   })
 })

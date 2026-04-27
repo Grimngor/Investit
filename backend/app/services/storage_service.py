@@ -3,6 +3,7 @@
 import json
 import os
 import tempfile
+from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,11 @@ import portalocker
 
 class StorageService:
 	"""Service for safe atomic JSON file operations with file locking."""
+
+	@staticmethod
+	def _sidecar_lock_path(file_path: Path) -> Path:
+		"""Return the sidecar lock path for a data file."""
+		return file_path.with_name(f".{file_path.name}.lock")
 
 	@staticmethod
 	@contextmanager
@@ -29,10 +35,9 @@ class StorageService:
 		mode = "r+b" if exclusive else "rb"
 		flags = portalocker.LOCK_EX if exclusive else portalocker.LOCK_SH
 
-		# Create file if it doesn't exist (for exclusive locks)
-		if exclusive and not file_path.exists():
+		if not file_path.exists():
 			file_path.parent.mkdir(parents=True, exist_ok=True)
-			file_path.write_text("{}", encoding="utf-8")
+			file_path.write_text("", encoding="utf-8")
 
 		with open(file_path, mode) as f:
 			portalocker.lock(f, flags)
@@ -53,12 +58,11 @@ class StorageService:
 		Returns:
 			Parsed JSON data or default value
 		"""
-		if not file_path.exists():
-			return default if default is not None else {}
-
 		try:
-			with cls._lock_file(file_path, exclusive=False) as f:
-				content = f.read()
+			with cls._lock_file(cls._sidecar_lock_path(file_path), exclusive=False):
+				if not file_path.exists():
+					return default if default is not None else {}
+				content = file_path.read_bytes()
 				if not content:
 					return default if default is not None else {}
 				return json.loads(content.decode("utf-8"))
@@ -81,6 +85,12 @@ class StorageService:
 			data: Data to serialize as JSON
 			indent: JSON indentation level (default: 2)
 		"""
+		with cls._lock_file(cls._sidecar_lock_path(file_path), exclusive=True):
+			cls._save_json_unlocked(file_path, data, indent=indent)
+
+	@staticmethod
+	def _save_json_unlocked(file_path: Path, data: Any, indent: int = 2) -> None:
+		"""Save JSON data atomically; caller must hold the sidecar lock."""
 		file_path.parent.mkdir(parents=True, exist_ok=True)
 
 		# Serialize to JSON
@@ -107,7 +117,7 @@ class StorageService:
 			raise
 
 	@classmethod
-	def update_json(cls, file_path: Path, update_fn, default: Any = None) -> Any:
+	def update_json(cls, file_path: Path, update_fn: Callable[[Any], Any], default: Any = None) -> Any:
 		"""
 		Update JSON file atomically using update function.
 
@@ -129,24 +139,15 @@ class StorageService:
 
 			StorageService.update_json(users_file, add_user)
 		"""
-		# Check if file exists before locking
-		file_exists = file_path.exists()
-
-		if file_exists:
-			# Acquire exclusive lock for reading
-			with cls._lock_file(file_path, exclusive=True) as f:
-				# Read current data
-				content = f.read()
+		with cls._lock_file(cls._sidecar_lock_path(file_path), exclusive=True):
+			if file_path.exists():
+				content = file_path.read_bytes()
 				data = json.loads(content.decode("utf-8")) if content else (default if default is not None else {})
-		else:
-			# File doesn't exist, use default
-			data = default if default is not None else {}
+			else:
+				data = default if default is not None else {}
 
-		# Apply update function
-		updated_data = update_fn(data)
-
-		# File lock is released here, now we can atomically save
-		cls.save_json(file_path, updated_data)
+			updated_data = update_fn(data)
+			cls._save_json_unlocked(file_path, updated_data)
 
 		return updated_data
 
@@ -214,3 +215,24 @@ def save_user_data(username: str, user_data: dict[str, Any]) -> None:
 		return data
 
 	StorageService.update_json(settings.DATA_DIR / "users.json", update, default={})
+
+
+def update_user_data(
+	username: str,
+	update_fn: Callable[[dict[str, Any]], dict[str, Any]],
+	default: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+	"""Update one user's data atomically and return the updated user data."""
+	from app.config import settings
+
+	updated_user: dict[str, Any] = {}
+
+	def update(users: dict[str, Any]) -> dict[str, Any]:
+		nonlocal updated_user
+		user_data = users.get(username, default.copy() if default else {})
+		updated_user = update_fn(user_data)
+		users[username] = updated_user
+		return users
+
+	StorageService.update_json(settings.DATA_DIR / "users.json", update, default={})
+	return updated_user

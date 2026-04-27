@@ -58,6 +58,8 @@ dist/
 data/users.json
 data/orders.json
 data/prices.json
+data/*.lock
+data/*.tmp
 
 # Logs
 *.log
@@ -68,7 +70,4 @@ logs/
 *.pyo
 
 # Other docs
-TASKS.md
-CLEANUP_PROGRESS.md
-PROJECT_COMPLETION_SUMMARY.md
-INVESTIT_PRD.md
+docs/INVESTIT_PRD.md

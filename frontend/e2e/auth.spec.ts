@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Authentication', () => {
+  function uniqueUsername(prefix: string, testInfo: { workerIndex: number }) {
+    return `${prefix}${testInfo.workerIndex}${Date.now()}`
+  }
+
   test('should display login page', async ({ page }) => {
     await page.goto('/login')
 
@@ -10,11 +14,11 @@ test.describe('Authentication', () => {
     await expect(page.locator('#password')).toBeVisible()
   })
 
-  test('should register new user', async ({ page }) => {
+  test('should register new user', async ({ page }, testInfo) => {
     await page.goto('/register')
 
     const timestamp = Date.now()
-    const username = `testuser${timestamp}`
+    const username = uniqueUsername('testuser', testInfo)
 
     await page.locator('#username').fill(username)
     await page.locator('#email').fill(`test${timestamp}@example.com`)
@@ -27,11 +31,11 @@ test.describe('Authentication', () => {
     await expect(page.getByRole('heading', { name: /login/i })).toBeVisible()
   })
 
-  test('should login with valid credentials', async ({ page }) => {
+  test('should login with valid credentials', async ({ page }, testInfo) => {
     // First register a test user
     await page.goto('/register')
     const timestamp = Date.now()
-    const username = `user${timestamp}`
+    const username = uniqueUsername('user', testInfo)
     const password = 'Password123'
 
     await page.locator('#username').fill(username)

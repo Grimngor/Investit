@@ -48,20 +48,7 @@ async def import_csv(
 				"message": "No orders were imported due to errors",
 			}
 
-		# Perform atomic merge (Note: merge_orders currently doesn't have an 'atomic' wrapper but let's assume it should)
-		# For now, we'll keep the manual save to match current implementation but inside the service ideally.
-		# Actually, let's just use the existing merge_orders logic but simplified in router.
-		from app.config import settings
-		from app.services.storage_service import StorageService
-
-		users_file = settings.DATA_DIR / "users.json"
-		users = StorageService.load_json(users_file, default={})
-
-		if current_user.username not in users:
-			users[current_user.username] = {}
-
-		new_count, updated_count = OrderService.merge_orders(users[current_user.username], orders)
-		StorageService.save_json(users_file, users)
+		new_count, updated_count = OrderService.import_orders_atomic(current_user.username, orders)
 
 		# Broadcast update
 		manager = get_websocket_manager()
@@ -124,7 +111,7 @@ async def get_order(order_id: str, current_user: User = Depends(get_current_user
 @router.post("/", status_code=201)
 async def create_order(order_data: OrderCreate, current_user: User = Depends(get_current_user)) -> OrderResponse:
 	"""Create a new order manually."""
-	new_order = await OrderService.create_manual_order_atomic(current_user.username, order_data)
+	new_order = OrderService.create_manual_order_atomic(current_user.username, order_data)
 
 	manager = get_websocket_manager()
 	await manager.broadcast_to_user(

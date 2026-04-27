@@ -1,56 +1,69 @@
 # InvestIt - Personal Portfolio Tracker
 
-InvestIt is a personal investing web application designed for tracking passive index funds, ETFs, and cryptocurrencies. It focuses on simplicity, privacy, and accurate performance metrics.
+InvestIt is a personal portfolio tracking application for funds, ETFs, stocks, and crypto. It imports Spanish bank CSV order history, stores data locally as JSON, calculates portfolio metrics, and refreshes prices/metadata from external market data providers.
 
-## 🚀 Quick Start
+## Stack
 
-### 1. Prerequistes
-- **Python 3.12+**
-- **Node.js 18+**
-- (Optional) **Windows** for scheduled task support
+- Backend: FastAPI, Python 3.12, JWT auth, JSON storage through `StorageService`
+- Frontend: Vue 3, TypeScript, Vite, Tailwind CSS, Pinia, Chart.js
+- Tests: Pytest, Vitest, Playwright
+- Data providers: Yahoo Finance (`yfinance`, `yahooquery`) and Morningstar (`mstarpy`)
 
-### 2. Installation
-```bash
-# Clone the repository
-git clone https://github.com/your-repo/investit.git
-cd investit
+## Quick Start
 
-# Setup Backend
-cd backend
-python -m venv venv
-./venv/Scripts/Activate.ps1  # Windows
-pip install -r requirements.txt
+Prerequisites:
 
-# Setup Frontend
-cd ../frontend
+- Python 3.12+
+- Node.js 18+
+- Windows PowerShell for the bundled launcher and scheduled-task scripts
+
+```powershell
+# Backend dependencies
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+
+# Frontend dependencies
+cd frontend
 npm install
+cd ..
 ```
 
-### 3. Launching
-Use the provided PowerShell scripts for a seamless experience:
-- `.\start-fullstack.ps1`: Launches both Backend and Frontend.
-- `.\stop-all.ps1`: Safely stops all servers.
+Run the app:
 
-## 🏗️ Architecture
+```powershell
+.\start-fullstack.ps1
+```
 
-- **Backend**: FastAPI (Python) - Handles complex calculations, price fetching, and WebSocket updates.
-- **Frontend**: Vue 3 + Vite + TailwindCSS - A responsive and dynamic dashboard.
-- **Database**: Server-side JSON with atomic writes (StorageService).
-- **Pricing**: Hybrid approach using `yfinance`, `mstarpy`, and `yahooquery`.
+Local URLs:
 
-## 📚 Documentation Index
+- Frontend: http://localhost:5174
+- Backend API: http://localhost:8000
+- API docs: http://localhost:8000/docs
 
-- [Developer Guide](docs/DEVELOPER_GUIDE.md): Script usage, testing, and formatting.
-- [PRD (v2)](INVESTIT_PRD.md): Detailed project requirements and data model.
-- [WebSocket Events](docs/README_WEBSOCKET_EVENTS.md): Real-time API documentation.
-- [Monthly Setup](MONTHLY_UPDATE_SETUP.md): Windows Task Scheduler configuration.
-- [Logging](docs/LOGGING.md): How logging works in both Backend and Frontend.
+Stop local servers:
 
-## 📊 Core Features
-- **CSV Import**: Support for Spanish bank CSV formats.
-- **Historical Tracking**: Accurate gain/loss based on execution-day market prices.
-- **Real-time Observability**: Built-in metrics and health monitoring (`/health`).
-- **Allocations**: Geographic and sector breakdowns for funds and ETFs.
+```powershell
+.\stop-all.ps1
+```
 
----
-*Created by [Javi] - Focus on private, reliable investing tracking.*
+## Documentation
+
+- [Product Requirements](docs/INVESTIT_PRD.md)
+- [Developer Guide](docs/DEVELOPER_GUIDE.md)
+- [Orders Management](docs/ORDERS_MANAGEMENT.md)
+- [Operations](docs/OPERATIONS.md)
+- [Roadmap](docs/ROADMAP.md)
+
+## Verification
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest backend\tests -q
+.\.venv\Scripts\python.exe -m ruff check backend
+.\.venv\Scripts\python.exe -m ruff format --check backend
+
+cd frontend
+npm run build
+npx vitest run
+npm run test:e2e
+```

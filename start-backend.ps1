@@ -1,6 +1,6 @@
 <#
 Enhanced Backend Launcher (PowerShell)
- - Ensures venv exists (creates if missing)
+ - Ensures .venv exists (creates if missing)
  - Installs requirements on first run
  - Kills only uvicorn processes related to this project (best effort)
  - Provides clear output & environment setup
@@ -11,12 +11,12 @@ Write-Host "Project Root: $(Split-Path -Parent $MyInvocation.MyCommand.Path)" -F
 Write-Host ""
 
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$venvPython = Join-Path $projectRoot "venv\Scripts\python.exe"
+$venvPython = Join-Path $projectRoot ".venv\Scripts\python.exe"
 
 # Ensure virtual environment
 if (-not (Test-Path $venvPython)) {
 	Write-Host "Virtual environment not found. Creating..." -ForegroundColor Yellow
-	python -m venv (Join-Path $projectRoot 'venv')
+	python -m venv (Join-Path $projectRoot '.venv')
 	if (-not (Test-Path $venvPython)) { Write-Host "Failed to create venv." -ForegroundColor Red; exit 1 }
 	Write-Host "Upgrading pip..." -ForegroundColor Cyan
 	& $venvPython -m pip install --upgrade pip | Out-Null
@@ -50,14 +50,14 @@ Write-Host ""
 $env:PYTHONUNBUFFERED = '1'
 $env:UVICORN_WORKERS = '1'
 
-Write-Host "Starting FastAPI: http://localhost:8100" -ForegroundColor Green
-Write-Host "API Docs:     http://localhost:8100/docs" -ForegroundColor Green
+Write-Host "Starting FastAPI: http://localhost:8000" -ForegroundColor Green
+Write-Host "API Docs:     http://localhost:8000/docs" -ForegroundColor Green
 Write-Host "Press Ctrl+C to stop." -ForegroundColor DarkGray
 Write-Host ""
 
 Set-Location (Join-Path $projectRoot 'backend')
 try {
-	& $venvPython -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8100
+	& $venvPython -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 } finally {
 	Write-Host "Backend server stopped." -ForegroundColor Yellow
 }

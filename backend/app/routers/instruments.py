@@ -8,8 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.models.user import User
 from app.routers.auth import get_current_user
 from app.services.morningstar_service import MorningstarService
+from app.services.price_service import PriceService
 from app.services.storage_service import StorageService, load_users
 from app.services.yahoo_finance import YahooFinanceService
+from app.utils.validators import is_crypto_symbol
 
 router = APIRouter(prefix="/api/instruments", tags=["instruments"])
 logger = logging.getLogger(__name__)
@@ -199,38 +201,42 @@ async def _refresh_single_instrument(
 	"""Fetch and persist metadata for a single ISIN."""
 	logger.info(f"Refreshing metadata for {isin}")
 
-	# Get Yahoo ticker first
-	ticker_result = await yfinance.get_ticker_from_isin(isin)
-	if not ticker_result:
-		return False
+	if is_crypto_symbol(isin):
+		storage.upsert_instrument(isin, {"name": isin, "symbol": isin, "type": "Crypto"})
+		return True
 
-	symbol = ticker_result.get("symbol", isin)
+	instrument_data: dict[str, Any] = {"symbol": isin}
 
-	# Try Morningstar first (best regional data)
-	instrument_data = {"isin": isin, "symbol": symbol}
+	# Try Yahoo quote resolution first so yahooquery metadata can use a tradable symbol.
+	suffixes = ["", ".PA", ".AS", ".DE", ".MI"]
+	for suffix in suffixes:
+		symbol = f"{isin}{suffix}"
+		quote = await yfinance.get_quote(symbol)
+		if quote:
+			instrument_data["symbol"] = quote.get("symbol", symbol)
+			instrument_data["name"] = quote.get("name", isin)
+			if quote.get("asset_type"):
+				instrument_data["type"] = quote["asset_type"]
+			if quote.get("sector_allocation"):
+				instrument_data["sector_allocation"] = quote["sector_allocation"]
+			if quote.get("geo_allocation"):
+				instrument_data["geo_allocation"] = quote["geo_allocation"]
+			break
+
 	mstar_metadata = await morningstar.get_fund_metadata(isin)
 
 	if mstar_metadata:
 		logger.info(f"Got Morningstar data for {isin}")
-		if mstar_metadata.get("name"):
-			instrument_data["name"] = mstar_metadata["name"]
-		if mstar_metadata.get("sector_allocation"):
-			instrument_data["sector_allocation"] = mstar_metadata["sector_allocation"]
-		if mstar_metadata.get("regional_allocation"):
-			instrument_data["geo_allocation"] = mstar_metadata["regional_allocation"]
-		instrument_data["type"] = "Fund"
+		PriceService._merge_metadata(instrument_data, mstar_metadata, None)
 
-	# Fallback to yahooquery for missing data
 	if not instrument_data.get("sector_allocation") or not instrument_data.get("geo_allocation"):
+		symbol = instrument_data.get("symbol", isin)
 		logger.info(f"Fetching YahooQuery data for {symbol} ({isin})")
 		yq_metadata = await yfinance.get_fund_metadata(symbol)
+		PriceService._merge_metadata(instrument_data, None, yq_metadata)
 
-		if yq_metadata:
-			if not instrument_data.get("sector_allocation") and yq_metadata.get("sector_allocation"):
-				instrument_data["sector_allocation"] = yq_metadata["sector_allocation"]
-			if not instrument_data.get("geo_allocation") and yq_metadata.get("geo_allocation"):
-				instrument_data["geo_allocation"] = yq_metadata["geo_allocation"]
+	if len(instrument_data) <= 1:
+		return False
 
-	# Save to instruments.json
-	storage.upsert_instrument(instrument_data)
+	storage.upsert_instrument(isin, instrument_data)
 	return True

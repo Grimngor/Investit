@@ -1,145 +1,75 @@
-# Orders Management Guide
+# Orders Management
 
 ## Overview
 
-The Orders tab provides complete management of your investment orders with support for editing, deleting, and bulk import via CSV files.
+Orders are the source of truth for holdings and dashboard calculations. Current holdings are recomputed from finalized buy and sell orders.
 
-## Viewing Orders
+## Manual Orders
 
-All your executed orders are displayed in a sortable table showing:
-- **Date**: Execution date (DD/MM/YYYY)
-- **ISIN**: 12-character instrument identifier
-- **Ticker**: Optional ticker symbol
-- **Shares**: Number of shares/units purchased
-- **Amount (EUR)**: Total order cost
-- **Price**: Calculated price per share
-- **Status**: Order status (Finalizada/Rechazada)
+Manual orders are created from the Portfolio page.
 
-## Editing Orders
+Required fields:
 
-To modify an existing order:
+- Date: `YYYY-MM-DD`
+- ISIN or crypto symbol
+- Amount in EUR
+- Shares or units
+- Status
 
-1. Click the **edit icon** (pencil) in the Actions column
-2. The Edit Order modal will open with the current order details
-3. Modify any of the following fields:
-   - Order Date (date picker)
-   - ISIN (12-character code)
-   - Ticker (optional)
-   - Amount in EUR
-   - Number of Shares
-   - Order Type (Buy/Sell)
-   - Status (Finalizada/Rechazada)
-   - Notes (optional text)
-4. The price per share is **automatically calculated** from amount ÷ shares
-5. Click **Save Changes** to update the order
-6. The order list will refresh automatically
+The backend stores `price_per_share` as `amount_eur / shares` when no explicit execution price is supplied.
 
-### Validation Rules
+## CSV Import
 
-- ISIN must be exactly 12 characters
-- Amount and Shares must be positive numbers
-- Date is required
+The Portfolio page supports importing Spanish bank CSV files with a preview step.
 
-## Deleting Orders
+Supported headers:
 
-### Single Order
-Click the **delete icon** (trash) in the Actions column and confirm the deletion.
-
-### All Orders
-Use the **Delete All** button at the top right to remove all orders at once. A confirmation prompt will appear.
-
-## CSV Import with Preview & Edit
-
-InvestIt supports importing multiple orders from a CSV file with an interactive preview feature.
-
-### Step 1: Select CSV File
-
-1. Navigate to the Portfolio view
-2. Locate the **Import Orders from CSV** section
-3. Either:
-   - Drag and drop your `.csv` file onto the drop zone
-   - Click the drop zone to browse and select a file
-
-### Step 2: Preview & Edit Orders
-
-After selecting a CSV file:
-
-1. Click **Preview & Import**
-2. A preview modal opens showing all parsed orders in a table
-3. Review each order for accuracy
-4. **Edit any row** by clicking the edit icon (pencil):
-   - Inline editing allows you to change Date, ISIN, Amount, Shares, or Status
-   - Click the checkmark to save edits or X to cancel
-5. **Remove unwanted rows** by clicking the delete icon (trash)
-6. The bottom bar shows the total count of orders ready to import
-
-### Step 3: Import Orders
-
-Once you're satisfied with the preview:
-
-1. Click **Import Orders** at the bottom right
-2. The backend will process all orders
-3. A success toast will show the number of imported orders
-4. Your portfolio will refresh automatically
-5. Navigate to the Orders tab to see the new entries
-
-### Expected CSV Format
-
-Your CSV file should contain the following columns (header row required):
-
-```
-Fecha de la orden;ISIN;Importe estimado;Nº de participaciones;Estado
+```text
+Fecha de la orden;ISIN;Importe neto;Nº de participaciones;Estado
 ```
 
-**Supported Delimiters**: Both comma (`,`) and semicolon (`;`) are detected automatically.
+Also accepted:
 
-**Example**:
-```csv
-Fecha de la orden;ISIN;Importe estimado;Nº de participaciones;Estado
-25/10/2025;IE00B4L5Y983;850.50;10;Finalizada
-26/10/2025;LU0274208692;1200.00;5;Finalizada
-```
+- `Importe estimado` or `Importe`
+- common mojibake variants of `Nº de participaciones`
+- semicolon or comma delimiters
 
-**Column Details**:
-- **Fecha de la orden**: Date in DD/MM/YYYY format
-- **ISIN**: 12-character instrument identifier
-- **Importe estimado**: Total order amount in EUR (use `.` or `,` as decimal separator)
-- **Nº de participaciones**: Number of shares/units
-- **Estado**: Order status (`Finalizada` or `Rechazada`)
+CSV rules:
 
-### CSV Import Notes
+- Date input: `DD/MM/YYYY`
+- Stored date: `YYYY-MM-DD`
+- Amounts can use `,` or `.` decimals and may include `EUR`
+- Negative amounts become sell orders
+- Shares are stored as positive numbers
+- `Estado = Rechazada` rows are skipped
+- Invalid rows produce row-level errors
 
-- Invalid rows (missing data, malformed ISIN, etc.) are skipped
-- Only orders with status `Finalizada` contribute to portfolio holdings
-- Duplicate orders are allowed (the system does not deduplicate)
-- After import, you can edit or delete orders individually from the Orders tab
+## Orders Page
 
-## Keyboard Shortcuts
+The Orders page supports:
 
-- **Esc**: Close any open modal (edit or preview)
-- **Enter**: Submit form when editing an order (if valid)
+- Viewing index fund and crypto orders separately
+- Editing one order
+- Deleting one order
+- Selecting and deleting multiple orders
+- Deleting all orders
+- Refreshing order data
 
-## Tips
+## API Endpoints
 
-- **Price Calculation**: The system automatically calculates price per share when you enter amount and shares. This helps catch data entry errors.
-- **Bulk Edit**: Use the CSV preview to batch-edit multiple orders before importing rather than editing them one-by-one after import.
-- **Status Filtering**: Only `Finalizada` orders count toward your portfolio holdings. Mark test or cancelled orders as `Rechazada`.
-- **Data Safety**: The Delete All button provides a confirmation prompt to prevent accidental data loss.
+- `GET /api/orders/`
+- `POST /api/orders/`
+- `GET /api/orders/{order_id}`
+- `PUT /api/orders/{order_id}`
+- `DELETE /api/orders/{order_id}`
+- `DELETE /api/orders/all`
+- `POST /api/orders/import-csv`
+
+All endpoints require a bearer token.
 
 ## Troubleshooting
 
-### CSV Import Fails
-- Ensure your CSV has a header row with the expected column names
-- Check that ISINs are exactly 12 characters
-- Verify amounts and shares are positive numbers
-- Try using semicolon (`;`) as the delimiter if comma doesn't work
-
-### Edit Modal Won't Save
-- Confirm the ISIN is exactly 12 characters
-- Ensure Amount and Shares are greater than zero
-- Check that a valid date is selected
-
-### Orders Not Appearing in Portfolio
-- Only orders with status `Finalizada` are included in holdings calculations
-- Refresh the Portfolio view to see updated totals
-- Check the Orders tab to verify the order was saved correctly
+- Import fails with missing headers: verify the header row and delimiter.
+- Holdings do not change: confirm the order status is `Finalizada`.
+- A sell does not reduce holdings: confirm `order_type` is `sell`.
+- E2E import tests should write CSV files to Playwright output paths, not tracked project files.

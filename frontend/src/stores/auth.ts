@@ -74,9 +74,10 @@ export const useAuthStore = defineStore('auth', () => {
           wsClient.connect(storedToken)
         }
       }
+      return true
     } catch (err) {
       logger.error('Failed to load user', { error: err })
-      logout()
+      return false
     }
   }
 
@@ -93,10 +94,12 @@ export const useAuthStore = defineStore('auth', () => {
     const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('user')
 
-    if (storedToken && storedUser) {
+    if (storedToken) {
       token.value = storedToken
+    }
+
+    if (storedUser) {
       user.value = JSON.parse(storedUser)
-      loadUser()
     }
   }
 

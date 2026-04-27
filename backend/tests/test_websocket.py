@@ -17,7 +17,7 @@ def auth_token():
 	password = "testpass123"
 
 	# Try to register
-	client.post("/api/auth/register", json={"username": username, "password": password})
+	client.post("/api/auth/register", json={"username": username, "email": f"{username}@example.com", "password": password})
 
 	# Login
 	response = client.post("/api/auth/login", data={"username": username, "password": password})

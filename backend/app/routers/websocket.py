@@ -76,9 +76,18 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = Query(Non
 	await manager.connect(username, websocket)
 
 	# Send handshake message
-	await websocket.send_json(
-		{"type": "connection_status", "status": "connected", "client_id": username, "timestamp": datetime.datetime.now().isoformat()}
-	)
+	try:
+		await websocket.send_json(
+			{
+				"type": "connection_status",
+				"status": "connected",
+				"client_id": username,
+				"timestamp": datetime.datetime.now().isoformat(),
+			}
+		)
+	except (WebSocketDisconnect, RuntimeError):
+		await manager.disconnect(username, websocket)
+		return
 
 	try:
 		while True:

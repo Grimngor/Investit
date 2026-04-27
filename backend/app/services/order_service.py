@@ -4,7 +4,6 @@ from typing import Any
 
 from app.config import settings
 from app.services.storage_service import StorageService
-from app.services.yahoo_finance import YahooFinanceService
 from app.utils.csv_parser import CryptoExchangeCSVParser, SpanishOrderCSVParser
 from app.utils.validators import is_crypto_symbol
 
@@ -110,26 +109,37 @@ class OrderService:
 		return new_count, updated_count
 
 	@staticmethod
-	async def create_manual_order(user_data: dict[str, Any], order_data, username: str) -> dict[str, Any]:
+	def import_orders_atomic(username: str, orders: list[dict[str, Any]]) -> tuple[int, int]:
+		"""Import parsed orders into a user's order list atomically."""
+		users_file = settings.DATA_DIR / "users.json"
+		counts = {"new": 0, "updated": 0}
+
+		def update_fn(users: dict[str, Any]) -> dict[str, Any]:
+			user_data = users.setdefault(username, {})
+			new_count, updated_count = OrderService.merge_orders(user_data, orders)
+			counts["new"] = new_count
+			counts["updated"] = updated_count
+			return users
+
+		StorageService.update_json(users_file, update_fn, default={})
+		return counts["new"], counts["updated"]
+
+	@staticmethod
+	def build_manual_order(order_data) -> dict[str, Any]:
+		"""Build a manual order payload without mutating stored user data."""
 		order_id = str(uuid.uuid4())
 		price_per_share = order_data.price_per_share
 		price_currency = order_data.price_currency
 		price_date = order_data.price_date
 
 		if price_per_share is None:
-			price_data = await YahooFinanceService.get_price_on_date(order_data.isin, order_data.date)
-			if price_data:
-				price_per_share = price_data["price"]
-				price_currency = price_data["currency"]
-				price_date = price_data["date"]
-			else:
-				price_per_share = order_data.amount_eur / order_data.shares
-				price_currency = "EUR"
-				price_date = order_data.date
+			price_per_share = order_data.amount_eur / order_data.shares
+			price_currency = "EUR"
+			price_date = order_data.date
 
 		derived_asset_type = "Crypto" if is_crypto_symbol(order_data.isin) else None
 
-		new_order = {
+		return {
 			"id": order_id,
 			"date": order_data.date,
 			"isin": order_data.isin,
@@ -145,14 +155,6 @@ class OrderService:
 			"notes": order_data.notes,
 			"created_at": datetime.now(UTC).isoformat(),
 		}
-
-		if "orders" not in user_data:
-			user_data["orders"] = []
-
-		user_data["orders"].append(new_order)
-		user_data["orders"].sort(key=lambda x: str(x.get("date", "")), reverse=True)
-
-		return new_order
 
 	@staticmethod
 	def get_user_orders(username: str, **filters) -> dict[str, Any]:
@@ -211,32 +213,20 @@ class OrderService:
 		return next((o for o in orders if o.get("id") == order_id), None)
 
 	@staticmethod
-	async def create_manual_order_atomic(username: str, order_data) -> dict[str, Any]:
+	def create_manual_order_atomic(username: str, order_data) -> dict[str, Any]:
 		"""Create an order and save it atomically."""
 		users_file = settings.DATA_DIR / "users.json"
+		new_order = OrderService.build_manual_order(order_data)
 
-		def update(users):
+		def update_fn(users: dict[str, Any]) -> dict[str, Any]:
 			if username not in users:
 				users[username] = {}
-			user_data = users[username]
-			# create_manual_order logic is already complex, we call it
-			# But create_manual_order expects user_data and modify it.
-			# We need to make sure it's non-blocking or handle it.
+			users[username].setdefault("orders", [])
+			users[username]["orders"].append(new_order)
+			users[username]["orders"].sort(key=lambda x: str(x.get("date", "")), reverse=True)
 			return users
 
-		# Since create_manual_order is async (fetches prices), we can't easily put it in update_json
-		# which is synchronous and locks the file.
-		# Instead, we fetch price first, then update atomically.
-
-		users = StorageService.load_json(users_file, default={})
-		if username not in users:
-			users[username] = {}
-
-		# Use existing method but it modifies in-place
-		new_order = await OrderService.create_manual_order(users[username], order_data, username)
-
-		# Save atomically
-		StorageService.save_json(users_file, users)
+		StorageService.update_json(users_file, update_fn, default={})
 		return new_order
 
 	@staticmethod

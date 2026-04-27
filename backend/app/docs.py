@@ -7,7 +7,23 @@ tags_metadata = [
 	},
 	{
 		"name": "portfolio",
-		"description": "Portfolio management operations. Create, read, update, and delete investments in your portfolio.",
+		"description": "Portfolio views computed from persisted orders.",
+	},
+	{
+		"name": "orders",
+		"description": "Order import and CRUD operations.",
+	},
+	{
+		"name": "prices",
+		"description": "Price refresh and cache status operations.",
+	},
+	{
+		"name": "dashboard",
+		"description": "Dashboard KPIs, time series, allocations, and price status.",
+	},
+	{
+		"name": "instruments",
+		"description": "Instrument metadata and allocation overrides.",
 	},
 	{
 		"name": "websocket",
@@ -25,9 +41,9 @@ description = """
 ## Features
 
 * **Authentication**: Secure JWT-based authentication system
-* **Portfolio Management**: Track stocks, ETFs, and mutual funds
-* **Real-time Prices**: Integration with Finnhub API for live market data
-* **ISIN Resolution**: Automatic mapping of European fund ISINs to tradable proxies
+* **Portfolio Management**: Track funds, ETFs, stocks, and crypto from order history
+* **Price Refresh**: Yahoo Finance-backed price and metadata refreshes
+* **Instrument Metadata**: Manual overrides and provider-enriched allocations
 * **WebSocket**: Real-time updates and notifications
 
 ## Getting Started

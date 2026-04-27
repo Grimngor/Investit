@@ -46,7 +46,12 @@ class SpanishOrderCSVParser:
 	]
 
 	HEADER_VARIATIONS: ClassVar[dict[str, list[str]]] = {
-		"Nº de participaciones": ["Nº de participaciones", "NÂº de participaciones", "N° de participaciones"],
+		"Nº de participaciones": [
+			"Nº de participaciones",
+			"NÂº de participaciones",
+			"N\u00c3\u201a\u00c2\u00ba de participaciones",
+			"N° de participaciones",
+		],
 		"Importe neto": ["Importe neto", "Importe estimado", "Importe"],
 	}
 

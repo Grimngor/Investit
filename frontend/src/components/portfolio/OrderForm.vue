@@ -27,9 +27,7 @@
           required
           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-          Format: YYYY-MM-DD (will be converted to DD-MM-YYYY)
-        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Format: YYYY-MM-DD</p>
       </div>
 
       <!-- ISIN or Crypto Symbol -->
@@ -183,6 +181,13 @@ const formData = ref<OrderFormData>({
 
 const isCrypto = computed(() => /^(?=.{3,5}$)[A-Z]+$/.test(formData.value.isin) && formData.value.isin.length !== 12)
 
+function toDateInputValue(value: string): string {
+  const parts = value.split('-')
+  if (parts.length !== 3) return value
+  if (parts[0].length === 4) return value
+  return `${parts[2]}-${parts[1]}-${parts[0]}`
+}
+
 function onIsinInput(e: Event) {
   const target = e.target as HTMLInputElement
   target.value = target.value.toUpperCase()
@@ -195,13 +200,9 @@ watch(
   (newOrder) => {
     if (newOrder) {
       editingOrder.value = newOrder
-      // Convert DD-MM-YYYY to YYYY-MM-DD for date input
-      const dateParts = newOrder.date.split('-')
-      const isoDate =
-        dateParts.length === 3 ? `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}` : newOrder.date
 
       formData.value = {
-        date: isoDate,
+        date: toDateInputValue(newOrder.date),
         isin: newOrder.isin,
         amount_eur: newOrder.amount_eur,
         shares: newOrder.shares,
@@ -236,13 +237,8 @@ async function submitForm() {
 
   try {
     const token = localStorage.getItem('token')
-    // Convert YYYY-MM-DD to DD-MM-YYYY for backend
-    const dateParts = formData.value.date.split('-')
-    const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`
-
     const payload = {
       ...formData.value,
-      date: formattedDate,
     }
 
     if (editingOrder.value) {

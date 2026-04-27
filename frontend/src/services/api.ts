@@ -29,7 +29,8 @@ class APIClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
+        const requestUrl = error.config?.url || ''
+        if (error.response?.status === 401 && !requestUrl.includes('/api/auth/login')) {
           // Token expired or invalid
           localStorage.removeItem('token')
           localStorage.removeItem('user')

@@ -8,6 +8,7 @@ addopts = [
     "--strict-markers",
     "--tb=short",
 ]
+cache_dir = "../.cache/pytest/backend"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
@@ -17,6 +18,7 @@ omit = [
     "*/tests/*",
     "*/__pycache__/*",
     "*/venv/*",
+    "*/.venv/*",
 ]
 
 [tool.coverage.report]
@@ -40,7 +42,18 @@ directory = "htmlcov"
 line-length = 140
 target-version = "py312"
 respect-gitignore = true
-extend-exclude = ["venv", "__pycache__"]
+extend-exclude = [
+    ".cache",
+    ".pytest_cache",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "htmlcov",
+    "../frontend/dist",
+    "../frontend/node_modules",
+    "../frontend/playwright-report",
+    "../frontend/test-results",
+]
 
 [tool.ruff.lint]
 select = [
@@ -63,7 +76,6 @@ ignore = [
 # WebSocket tests keep explicit try/except for clarity; ignore simplify suggestion.
 "tests/test_websocket.py" = ["SIM105"]
 "app/routers/*.py" = ["B008", "PLR0913"]
-"app/services/finnhub.py" = ["PLR0911", "PLR2004"]
 "app/services/storage_service.py" = ["B008"]
 "app/services/auth.py" = ["SIM108"]
 "app/routers/orders.py" = ["B904"]

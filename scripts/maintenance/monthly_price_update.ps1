@@ -13,8 +13,14 @@
 $ErrorActionPreference = "Stop"
 
 # Configuration
+$PROJECT_ROOT = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $API_URL = "http://localhost:8000"
-$LOG_FILE = "E:\JaviProyects\Proyects\Programming\Investit\logs\monthly_price_update.log"
+$LOG_FILE = Join-Path $PROJECT_ROOT "logs\monthly_price_update.log"
+
+$logDir = Split-Path -Parent $LOG_FILE
+if (-not (Test-Path $logDir)) {
+    New-Item -ItemType Directory -Path $logDir | Out-Null
+}
 
 # Logging function
 function Write-Log {
@@ -44,7 +50,7 @@ try {
     }
 
     # Load users and trigger price fetch for each
-    $usersFile = "E:\JaviProyects\Proyects\Programming\Investit\data\users.json"
+    $usersFile = Join-Path $PROJECT_ROOT "data\users.json"
 
     if (Test-Path $usersFile) {
         $users = Get-Content $usersFile | ConvertFrom-Json
