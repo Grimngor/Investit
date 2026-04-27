@@ -10,7 +10,7 @@ test.describe('Authentication', () => {
 
     await expect(page).toHaveTitle(/InvestIt/)
     await expect(page.getByRole('button', { name: /login/i })).toBeVisible()
-    await expect(page.locator('#username')).toBeVisible()
+    await expect(page.getByLabel(/username or email/i)).toBeVisible()
     await expect(page.locator('#password')).toBeVisible()
   })
 
@@ -20,6 +20,9 @@ test.describe('Authentication', () => {
     const timestamp = Date.now()
     const username = uniqueUsername('testuser', testInfo)
 
+    await expect(page.getByLabel(/email \(optional\)/i)).toBeVisible()
+    await expect(page.getByLabel(/full name \(optional\)/i)).toBeVisible()
+
     await page.locator('#username').fill(username)
     await page.locator('#email').fill(`test${timestamp}@example.com`)
     await page.locator('#password').fill('TestPassword123!')
@@ -27,6 +30,18 @@ test.describe('Authentication', () => {
     await page.getByRole('button', { name: /register/i }).click()
 
     // Should redirect to login
+    await page.waitForURL(/\/login/)
+    await expect(page.getByRole('heading', { name: /login/i })).toBeVisible()
+  })
+
+  test('should register without optional fields', async ({ page }, testInfo) => {
+    await page.goto('/register')
+
+    const username = uniqueUsername('minimal', testInfo)
+    await page.locator('#username').fill(username)
+    await page.locator('#password').fill('TestPassword123!')
+    await page.getByRole('button', { name: /register/i }).click()
+
     await page.waitForURL(/\/login/)
     await expect(page.getByRole('heading', { name: /login/i })).toBeVisible()
   })
@@ -50,6 +65,27 @@ test.describe('Authentication', () => {
     await page.getByRole('button', { name: /login/i }).click()
 
     // Should redirect to dashboard (based on LoginView.vue redirect)
+    await page.waitForURL(/\/dashboard/)
+    await expect(page.getByText(/total invested/i)).toBeVisible()
+  })
+
+  test('should login with email when provided', async ({ page }, testInfo) => {
+    await page.goto('/register')
+    const timestamp = Date.now()
+    const username = uniqueUsername('emailuser', testInfo)
+    const email = `email${timestamp}@test.com`
+    const password = 'Password123'
+
+    await page.locator('#username').fill(username)
+    await page.locator('#email').fill(email)
+    await page.locator('#password').fill(password)
+    await page.getByRole('button', { name: /register/i }).click()
+    await page.waitForURL(/\/login/)
+
+    await page.getByLabel(/username or email/i).fill(email)
+    await page.locator('#password').fill(password)
+    await page.getByRole('button', { name: /login/i }).click()
+
     await page.waitForURL(/\/dashboard/)
     await expect(page.getByText(/total invested/i)).toBeVisible()
   })

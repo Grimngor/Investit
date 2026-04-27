@@ -15,17 +15,19 @@ Prerequisites:
 
 - Python 3.12+
 - Node.js 18+
-- Windows PowerShell for the bundled launcher and scheduled-task scripts
+- Windows PowerShell for the bundled launcher scripts
 
 ```powershell
 # Backend dependencies
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 
 # Frontend dependencies
 cd frontend
 npm install
+Copy-Item .env.example .env
 cd ..
 ```
 
@@ -49,11 +51,18 @@ Stop local servers:
 
 ## Documentation
 
-- [Product Requirements](docs/INVESTIT_PRD.md)
 - [Developer Guide](docs/DEVELOPER_GUIDE.md)
 - [Orders Management](docs/ORDERS_MANAGEMENT.md)
 - [Operations](docs/OPERATIONS.md)
 - [Roadmap](docs/ROADMAP.md)
+
+## Runtime Notes
+
+- Register with a username and password; email and full name are optional.
+- Log in with either username or email when an email exists for the user.
+- Cached prices render immediately. The app queues a background refresh after login and on dashboard entry only when prices are missing or stale.
+- The manual Portfolio `Fetch Prices` action still forces a refresh.
+- Geography allocation is shown by country, with an optional Europe collapse and automatic `Others` grouping only when a chart has more than 15 entries.
 
 ## Verification
 

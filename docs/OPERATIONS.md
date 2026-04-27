@@ -43,29 +43,16 @@ Events:
 | `orders_cleared` | All orders deleted |
 | `prices_updated` | Background price refresh completed |
 
-## Monthly Price Update
+## Price Refresh Workflow
 
-The monthly update script is:
+The app owns price refreshes; there is no Windows scheduled task dependency.
 
-```powershell
-.\scripts\maintenance\monthly_price_update.ps1
-```
+- `POST /api/prices/refresh-if-needed`: protected endpoint that queues a background refresh only when cached prices are missing or stale.
+- `POST /api/prices/fetch`: protected manual force-refresh endpoint used by the Portfolio `Fetch Prices` action.
+- `PRICE_STALE_THRESHOLD_DAYS`: backend setting used by price services; default is `3`.
+- `prices_updated`: WebSocket event emitted when a background refresh completes so open dashboard and portfolio views can reload current values.
 
-It expects the backend to be running on `http://localhost:8000`.
-
-Set up the Windows scheduled task:
-
-```powershell
-.\scripts\maintenance\setup_monthly_task.ps1
-```
-
-Remove the task:
-
-```powershell
-.\scripts\maintenance\setup_monthly_task.ps1 -Uninstall
-```
-
-Authentication for the maintenance task uses `INVESTIT_DEFAULT_PASSWORD` when set. Do not rely on the fallback test password for real data.
+The frontend triggers `refresh-if-needed` after login and when entering the dashboard with an existing session. Cached data remains visible while the refresh runs.
 
 ## Local Data
 
@@ -74,6 +61,9 @@ User-specific JSON files are intentionally ignored by Git:
 - `data/users.json`
 - `data/orders.json`
 - `data/prices.json`
+- `data/settings.json` (legacy local file; not used by the app)
+- `data/backups/`
+- `data/*.lock`
 
 Generated caches and test reports are ignored and can be deleted safely:
 

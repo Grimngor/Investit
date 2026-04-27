@@ -73,7 +73,7 @@
             />
           </div>
         </button>
-        <div v-show="showIndexFunds">
+        <div v-show="showIndexFunds" data-testid="index-funds-holdings">
           <HoldingsTable
             :holdings="fundHoldings"
             theme="softblue"
@@ -106,7 +106,7 @@
             />
           </div>
         </button>
-        <div v-show="showCrypto">
+        <div v-show="showCrypto" data-testid="crypto-holdings">
           <HoldingsTable
             :holdings="cryptoHoldings"
             theme="purple"

@@ -13,6 +13,10 @@
 - Price validation and async retry utilities added for provider calls.
 - JSON writes centralized through `StorageService` with sidecar locks.
 - Instrument metadata routes added to the FastAPI app.
+- Background stale/missing price refresh added for login and dashboard entry.
+- Login now accepts username or email, with optional email and full name at registration.
+- Geography charts now support country-level allocation, Europe collapse, and max-entry `Others` grouping.
+- Position calculations now sort finalized orders chronologically before sell and cost-basis logic.
 - Documentation consolidated into the current docs set.
 
 ## Next Engineering Work
@@ -20,7 +24,7 @@
 - Finish moving portfolio router persistence into service classes.
 - Add service-level tests for portfolio write operations.
 - Add frontend tests for order form sell behavior.
-- Replace blocking provider calls in request paths with background jobs where needed.
+- Continue moving remaining provider-heavy request paths into background jobs where useful.
 - Review all public service methods for one-line docstrings and type hints.
 
 ## Later Work

@@ -34,6 +34,8 @@ ENV/
 .env
 .env.local
 .env.*.local
+!.env.example
+!frontend/.env.example
 
 # IDEs
 .vscode/
@@ -53,11 +55,16 @@ dist/
 .parcel-cache/
 .npm
 .eslintcache
+*.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/
 
 # Data files (user-specific)
 data/users.json
 data/orders.json
 data/prices.json
+data/settings.json
+data/backups/
 data/*.lock
 data/*.tmp
 

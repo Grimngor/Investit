@@ -5,14 +5,13 @@ import logging
 import sys
 from pathlib import Path
 
-# Add backend directory to path for imports
-script_dir = Path(__file__).parent
-backend_dir = script_dir.parent / "backend"
-sys.path.insert(0, str(backend_dir))
+REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_PATH = REPO_ROOT / "backend"
+sys.path.insert(0, str(BACKEND_PATH))
 
 from app.config import settings  # noqa: E402
-from app.services.historical_price_service import HistoricalPriceService  # noqa: E402
 from app.services.storage_service import StorageService  # noqa: E402
+from app.services.yahoo_finance import YahooFinanceService  # noqa: E402
 
 logging.basicConfig(
 	level=logging.INFO,
@@ -47,7 +46,7 @@ async def backfill_prices():
 		logger.info(f"  Found {len(orders)} orders")
 
 		# Backfill prices
-		updated = await HistoricalPriceService.backfill_order_prices(orders)
+		updated = await YahooFinanceService.backfill_order_prices(orders)
 
 		# Count stats
 		for order in updated:
@@ -69,7 +68,8 @@ async def backfill_prices():
 	logger.info(f"Total orders processed: {total_orders}")
 	logger.info(f"Orders with prices added: {updated_orders}")
 	logger.info(f"Orders already had prices: {skipped_orders}")
-	logger.info(f"Success rate: {updated_orders / total_orders * 100:.1f}%")
+	success_rate = updated_orders / total_orders * 100 if total_orders else 0
+	logger.info(f"Success rate: {success_rate:.1f}%")
 
 
 if __name__ == "__main__":

@@ -8,6 +8,9 @@ import pytest
 
 from app.services.backup_service import BackupService
 
+DAILY_BACKUP_FILE_COUNT = 3
+LIST_BACKUPS_FILE_COUNT = 2
+
 
 @pytest.fixture
 def temp_data_dir(tmp_path):
@@ -38,7 +41,6 @@ def temp_data_dir(tmp_path):
 	(data_dir / "users.json").write_text(json.dumps(users, indent=2))
 	(data_dir / "instruments.json").write_text(json.dumps([], indent=2))
 	(data_dir / "prices.json").write_text(json.dumps({}, indent=2))
-	(data_dir / "settings.json").write_text(json.dumps({}, indent=2))
 
 	return data_dir
 
@@ -102,7 +104,7 @@ def test_daily_backup(backup_service, temp_data_dir):
 	"""Test daily backup creates all files."""
 	stats = backup_service.daily_backup()
 
-	assert len(stats["backups_created"]) == 4  # users, instruments, prices, settings
+	assert len(stats["backups_created"]) == DAILY_BACKUP_FILE_COUNT  # users, instruments, prices
 	assert stats["backups_deleted"] == 0
 	assert len(stats["errors"]) == 0
 
@@ -154,7 +156,7 @@ def test_list_backups(backup_service, tmp_path):
 
 	backups = backup_service.list_backups()
 
-	assert len(backups) == 2
+	assert len(backups) == LIST_BACKUPS_FILE_COUNT
 	assert all("filename" in b for b in backups)
 	assert all("size_bytes" in b for b in backups)
 	assert all("modified" in b for b in backups)

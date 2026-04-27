@@ -4,6 +4,8 @@
 
 Orders are the source of truth for holdings and dashboard calculations. Current holdings are recomputed from finalized buy and sell orders.
 
+Finalized orders are sorted chronologically before position and cost-basis calculations. This keeps invested amount and average-cost results stable even if JSON order changes.
+
 ## Manual Orders
 
 Manual orders are created from the Portfolio page.
@@ -71,5 +73,6 @@ All endpoints require a bearer token.
 
 - Import fails with missing headers: verify the header row and delimiter.
 - Holdings do not change: confirm the order status is `Finalizada`.
+- Invested amount looks wrong: verify the order dates are valid `YYYY-MM-DD`, `DD/MM/YYYY`, or `DD-MM-YYYY` values so chronological cost-basis logic can sort them correctly.
 - A sell does not reduce holdings: confirm `order_type` is `sell`.
 - E2E import tests should write CSV files to Playwright output paths, not tracked project files.

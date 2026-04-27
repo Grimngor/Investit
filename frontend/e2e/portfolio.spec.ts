@@ -15,7 +15,6 @@ test.describe('Portfolio', () => {
   })
 
   test('should add a manual order (Investment)', async ({ page }) => {
-    // Fill the OrderForm
     await page.locator('input[type="date"]').fill('2024-01-01')
     await page.locator('input[placeholder*="IE00BYX5NX33"]').fill('IE00B4L5Y983')
     await page.locator('input[placeholder*="300.00"]').fill('500')
@@ -23,14 +22,11 @@ test.describe('Portfolio', () => {
 
     await page.getByRole('button', { name: /add order/i }).click()
 
-    // Should show success toast and reflect in table
-    // Table is in HoldingsTable.vue
     await expect(page.getByText(/IE00B4L5Y983/i).first()).toBeVisible()
     await expect(page.getByText(/500.00/).first()).toBeVisible()
   })
 
   test('should toggle sections', async ({ page }) => {
-    // Add an order first to make section visible
     await page.locator('input[placeholder*="IE00BYX5NX33"]').fill('IE00B4L5Y983')
     await page.locator('input[placeholder*="300.00"]').fill('100')
     await page.locator('input[placeholder*="24.624"]').fill('1')
@@ -39,8 +35,7 @@ test.describe('Portfolio', () => {
     const sectionButton = page.getByRole('button', { name: /index funds/i })
     await expect(sectionButton).toBeVisible()
 
-    // Toggle
     await sectionButton.click()
-    await expect(page.locator('.holdings-table')).not.toBeVisible() // Assuming class
+    await expect(page.getByTestId('index-funds-holdings')).not.toBeVisible()
   })
 })

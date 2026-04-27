@@ -8,9 +8,11 @@ Use the repository-root `.venv` for Python work.
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 
 cd frontend
 npm install
+Copy-Item .env.example .env
 cd ..
 ```
 
@@ -18,6 +20,8 @@ Canonical development ports:
 
 - Backend: `http://localhost:8000`
 - Frontend: `http://localhost:5174`
+
+`SECRET_KEY` must be changed before any shared or hosted deployment. `FINNHUB_API_KEY` is optional; unauthenticated providers are used when it is blank.
 
 ## Launcher Scripts
 
@@ -98,5 +102,6 @@ Playwright is intentionally not a pre-commit hook. Run it manually before releas
 
 - Backend unreachable: verify `http://localhost:8000/health` and check `backend/logs/error.log`.
 - Frontend cannot register or log in: confirm the frontend API URL points to `http://localhost:8000`.
+- Stale prices: use Portfolio `Fetch Prices` for a manual force refresh, or check `POST /api/prices/refresh-if-needed` and the `prices_updated` WebSocket event.
 - Vitest scans inaccessible folders: `.pytest_cache/**` is excluded in `frontend/vitest.config.ts`.
 - Route mismatch: run `.\scripts\dev\verify_backend.ps1` after starting the backend.

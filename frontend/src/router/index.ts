@@ -6,7 +6,6 @@ import OrdersView from '@/views/OrdersView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
 import PortfolioView from '@/views/PortfolioView.vue'
-import AboutView from '@/views/AboutView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -43,11 +42,6 @@ const router = createRouter({
       name: 'orders',
       component: OrdersView,
       meta: { requiresAuth: true }
-    },
-    {
-      path: '/about',
-      name: 'about',
-      component: AboutView
     }
   ]
 })

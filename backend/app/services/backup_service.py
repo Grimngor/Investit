@@ -91,7 +91,6 @@ class BackupService:
 			"users.json",
 			"instruments.json",
 			"prices.json",
-			"settings.json",
 		]
 
 		for filename in files_to_backup:
