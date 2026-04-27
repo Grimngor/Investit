@@ -13,7 +13,7 @@ from app.services.backup_service import BackupService
 def temp_data_dir(tmp_path):
 	"""Create temporary data directory with test files."""
 	data_dir = tmp_path / "data"
-	data_dir.mkdir()
+	data_dir.mkdir(exist_ok=True)
 
 	# Create test users.json
 	users = {

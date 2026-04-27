@@ -17,18 +17,17 @@
         </div>
 
         <div>
-          <label for="email" class="block text-sm font-medium mb-1">Email</label>
+          <label for="email" class="block text-sm font-medium mb-1">Email (optional)</label>
           <input
             id="email"
             v-model="email"
             type="email"
-            required
             class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label for="full_name" class="block text-sm font-medium mb-1">Full Name (Optional)</label>
+          <label for="full_name" class="block text-sm font-medium mb-1">Full name (optional)</label>
           <input
             id="full_name"
             v-model="fullName"
@@ -84,7 +83,7 @@ async function handleRegister() {
   loading.value = true
   const success = await authStore.register({
     username: username.value,
-    email: email.value,
+    email: email.value || undefined,
     password: password.value,
     full_name: fullName.value || undefined
   })

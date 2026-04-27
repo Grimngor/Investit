@@ -144,7 +144,7 @@ class YahooFinanceService:
 						geo_allocation.update(country_dict)
 
 				if geo_allocation:
-					metadata["geo_allocation"] = geo_allocation
+					metadata["country_allocation"] = geo_allocation
 
 		# Alternative: top holdings for geographic inference (less reliable)
 		# This is available but would require additional processing
@@ -221,7 +221,7 @@ class YahooFinanceService:
 			if "top_holdings" in fund_data:
 				geo_allocation = self._infer_geography_from_holdings(fund_data["top_holdings"])
 				if geo_allocation:
-					fund_data["geo_allocation"] = geo_allocation
+					fund_data["country_allocation"] = geo_allocation
 
 			if not fund_data:
 				logger.warning(f"No fund metadata found for {symbol}")

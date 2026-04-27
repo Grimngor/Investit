@@ -53,7 +53,7 @@ class APIClient {
     return response.data
   }
 
-  async register(userData: { username: string; email: string; password: string; full_name?: string }) {
+  async register(userData: { username: string; email?: string; password: string; full_name?: string }) {
     const response = await this.client.post('/api/auth/register', userData)
     return response.data
   }
@@ -138,6 +138,11 @@ class APIClient {
   // Prices endpoints
   async fetchPrices() {
     const response = await this.client.post('/api/prices/fetch')
+    return response.data
+  }
+
+  async refreshPricesIfNeeded() {
+    const response = await this.client.post('/api/prices/refresh-if-needed')
     return response.data
   }
 

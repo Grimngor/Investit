@@ -64,14 +64,48 @@ const props = withDefaults(defineProps<Props>(), {
 
 const showCryptoBadge = computed(() => props.type === 'asset_type' && props.cryptoPct > 0)
 const cryptoPctDisplay = computed(() => `${props.cryptoPct.toFixed(1)}%`)
+const MAX_ALLOCATION_ENTRIES = 15
+const OTHER_LABEL = 'Others'
+const EUROPE_LABEL = 'Europe'
 
 const collapseEU = ref(false)
 
-// EU country codes for geography collapse feature
+// European country names/codes for geography collapse feature.
 const EU_COUNTRIES = [
+  'Austria',
+  'Belgium',
+  'Bulgaria',
+  'Croatia',
+  'Cyprus',
+  'Czech Republic',
+  'Denmark',
+  'Estonia',
+  'Finland',
+  'France',
+  'Germany',
+  'Greece',
+  'Hungary',
+  'Ireland',
+  'Italy',
+  'Latvia',
+  'Lithuania',
+  'Luxembourg',
+  'Malta',
+  'Netherlands',
+  'Norway',
+  'Poland',
+  'Portugal',
+  'Romania',
+  'Slovakia',
+  'Slovenia',
+  'Spain',
+  'Sweden',
+  'Switzerland',
+  'United Kingdom',
   'AT',
   'BE',
   'BG',
+  'CH',
   'HR',
   'CY',
   'CZ',
@@ -89,6 +123,7 @@ const EU_COUNTRIES = [
   'LU',
   'MT',
   'NL',
+  'NO',
   'PL',
   'PT',
   'RO',
@@ -96,39 +131,95 @@ const EU_COUNTRIES = [
   'SI',
   'ES',
   'SE',
+  'GB',
 ]
+
+const isEuropeanCountry = (country: string) => {
+  return EU_COUNTRIES.some((euCountry) => euCountry.toUpperCase() === country.toUpperCase())
+}
 
 // Check if data contains EU countries that can be collapsed
 const canCollapseEU = computed(() => {
   if (props.type !== 'geography' || !props.allocations) return false
   const keys = Object.keys(props.allocations)
-  return keys.some((key) => EU_COUNTRIES.includes(key.toUpperCase()))
+  return keys.some((key) => isEuropeanCountry(key))
 })
 
-// Process allocations (collapse EU if enabled)
+function sortAllocations(data: AllocationData): AllocationData {
+  return Object.fromEntries(Object.entries(data).sort((a, b) => b[1] - a[1]))
+}
+
+function collapseOverflowEntries(data: AllocationData, pinnedLabels: string[] = []): AllocationData {
+  const entries = Object.entries(data)
+  if (entries.length <= MAX_ALLOCATION_ENTRIES) {
+    return sortAllocations(data)
+  }
+
+  const pinned = new Map<string, number>()
+  const candidates: Array<[string, number]> = []
+  let others = 0
+
+  for (const [key, value] of entries) {
+    if (key === OTHER_LABEL) {
+      others += value
+    } else if (pinnedLabels.includes(key)) {
+      pinned.set(key, (pinned.get(key) || 0) + value)
+    } else {
+      candidates.push([key, value])
+    }
+  }
+
+  candidates.sort((a, b) => b[1] - a[1])
+
+  const keepCount = Math.max(0, MAX_ALLOCATION_ENTRIES - pinned.size - 1)
+  const kept = candidates.slice(0, keepCount)
+  const collapsed = candidates.slice(keepCount)
+
+  for (const [, value] of collapsed) {
+    others += value
+  }
+
+  const result: AllocationData = {}
+  for (const [key, value] of kept) {
+    result[key] = value
+  }
+  for (const [key, value] of pinned) {
+    result[key] = value
+  }
+  if (others > 0) {
+    result[OTHER_LABEL] = (result[OTHER_LABEL] || 0) + others
+  }
+
+  return sortAllocations(result)
+}
+
+// Process allocations (collapse Europe first, then cap visual entries)
 const processedAllocations = computed<AllocationData>(() => {
   if (!props.allocations) return {}
+  let result: AllocationData = props.allocations
+  const pinnedLabels: string[] = []
 
   if (props.type === 'geography' && collapseEU.value) {
-    const result: AllocationData = {}
+    const collapsedEurope: AllocationData = {}
     let europeTotal = 0
 
     for (const [key, value] of Object.entries(props.allocations)) {
-      if (EU_COUNTRIES.includes(key.toUpperCase())) {
+      if (isEuropeanCountry(key)) {
         europeTotal += value
       } else {
-        result[key] = value
+        collapsedEurope[key] = value
       }
     }
 
     if (europeTotal > 0) {
-      result['Europe'] = europeTotal
+      collapsedEurope[EUROPE_LABEL] = europeTotal
+      pinnedLabels.push(EUROPE_LABEL)
     }
 
-    return result
+    result = collapsedEurope
   }
 
-  return props.allocations
+  return collapseOverflowEntries(result, pinnedLabels)
 })
 
 // Color palette optimized for dark/light mode

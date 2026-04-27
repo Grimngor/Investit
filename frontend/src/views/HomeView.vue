@@ -3,7 +3,7 @@
     <template #title>Investit</template>
     <form @submit.prevent="handleLogin" class="space-y-4">
       <div>
-        <label for="username" class="block text-sm font-medium mb-1">Username</label>
+        <label for="username" class="block text-sm font-medium mb-1">Username or email</label>
         <input id="username" v-model="username" type="text" required class="input-base" />
       </div>
       <div>

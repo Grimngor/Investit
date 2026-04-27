@@ -18,9 +18,19 @@ vi.mock('@/stores/dashboard', () => ({
     allocations: null,
     hasStaleData: false,
     priceStatus: null,
+    refreshingPrices: false,
     staleInstruments: [],
     fetchAll: vi.fn(),
+    refreshPricesIfNeeded: vi.fn(),
+    handlePricesUpdated: vi.fn(),
   }),
+}))
+
+vi.mock('@/services/websocket', () => ({
+  wsClient: {
+    on: vi.fn(),
+    off: vi.fn(),
+  },
 }))
 
 describe('DashboardView', () => {

@@ -8,9 +8,11 @@ from typing import Any
 class ComputeService:
 	"""Service for portfolio computations and financial calculations."""
 
+	OTHER_ALLOCATION_LABEL = "Others"
 	COUNTRY_NAMES = {
 		"US": "United States",
 		"CA": "Canada",
+		"AE": "United Arab Emirates",
 		"GB": "United Kingdom",
 		"DE": "Germany",
 		"FR": "France",
@@ -36,6 +38,12 @@ class ComputeService:
 		"BR": "Brazil",
 		"MX": "Mexico",
 		"ZA": "South Africa",
+		"SA": "Saudi Arabia",
+		"MY": "Malaysia",
+		"PL": "Poland",
+		"ID": "Indonesia",
+		"KW": "Kuwait",
+		"QA": "Qatar",
 		"North America": "North America",
 		"Europe Developed": "Europe (Developed)",
 		"Europe Emerging": "Europe (Emerging)",
@@ -47,6 +55,17 @@ class ComputeService:
 		"Oceania": "Oceania",
 	}
 	ISIN_PREFIX_LENGTH = 2
+	_DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y")
+
+	@staticmethod
+	def parse_order_date(date_str: str) -> datetime:
+		"""Parse supported order date formats for chronological calculations."""
+		for fmt in ComputeService._DATE_FORMATS:
+			try:
+				return datetime.strptime(date_str, fmt)
+			except ValueError:
+				continue
+		return datetime.max
 
 	@staticmethod
 	def calculate_position(orders: list[dict[str, Any]], isin: str) -> dict[str, Any]:
@@ -60,7 +79,10 @@ class ComputeService:
 		Returns:
 			Dict with total_shares, average_cost, total_invested
 		"""
-		relevant_orders = [o for o in orders if o.get("isin") == isin and o.get("status", "").lower() == "finalizada"]
+		relevant_orders = sorted(
+			[o for o in orders if o.get("isin") == isin and o.get("status", "").lower() == "finalizada"],
+			key=lambda order: ComputeService.parse_order_date(str(order.get("date", ""))),
+		)
 
 		if not relevant_orders:
 			return {"total_shares": 0.0, "average_cost": 0.0, "total_invested": 0.0}
@@ -217,8 +239,8 @@ class ComputeService:
 		if not orders:
 			return []
 
-		# Sort orders by date
-		sorted_orders = sorted(orders, key=lambda x: x.get("date", ""))
+		# Sort orders chronologically before applying buys/sells.
+		sorted_orders = sorted(orders, key=lambda x: ComputeService.parse_order_date(str(x.get("date", ""))))
 
 		time_series = []
 		cumulative_invested = Decimal("0")
@@ -377,11 +399,37 @@ class ComputeService:
 			"Netherlands": "NL",
 			"United Kingdom": "GB",
 			"UK": "GB",
+			"United States of America": "US",
+			"U.S.": "US",
+			"U.S.A.": "US",
 			"Japan": "JP",
 			"China": "CN",
 			"Hong Kong": "HK",
 			"Singapore": "SG",
 			"Australia": "AU",
+			"Switzerland": "CH",
+			"Sweden": "SE",
+			"Denmark": "DK",
+			"Norway": "NO",
+			"Finland": "FI",
+			"Belgium": "BE",
+			"Austria": "AT",
+			"South Korea": "KR",
+			"Taiwan": "TW",
+			"India": "IN",
+			"Brazil": "BR",
+			"Mexico": "MX",
+			"South Africa": "ZA",
+			"Saudi Arabia": "SA",
+			"United Arab Emirates": "AE",
+			"Malaysia": "MY",
+			"Poland": "PL",
+			"Indonesia": "ID",
+			"Kuwait": "KW",
+			"Qatar": "QA",
+			ComputeService.OTHER_ALLOCATION_LABEL: ComputeService.OTHER_ALLOCATION_LABEL,
+			"Other": ComputeService.OTHER_ALLOCATION_LABEL,
+			"Others": ComputeService.OTHER_ALLOCATION_LABEL,
 		}
 		normalized: dict[str, float] = {}
 		for k, v in geo.items():
@@ -433,7 +481,7 @@ class ComputeService:
 			meta = instrument_map.get(isin, {})
 			asset_type = meta.get("type") or price_data.get("asset_type") or "Fund"
 			sector_alloc = meta.get("sector_allocation") or price_data.get("sector_allocation") or {"Diversified": 1.0}
-			geo_alloc_raw = meta.get("geo_allocation") or price_data.get("geo_allocation") or {}
+			geo_alloc_raw = meta.get("country_allocation") or price_data.get("country_allocation") or {}
 			geo_alloc = ComputeService.normalize_geo_keys(geo_alloc_raw)
 
 			if not geo_alloc:

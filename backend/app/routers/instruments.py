@@ -70,7 +70,7 @@ async def sync_instrument_metadata(current_user: User = Depends(get_current_user
 			continue
 
 		# Try suffix variants similar to price fetching for better coverage
-		suffixes = ["", ".PA", ".AS", ".DE", ".MI"]
+		suffixes = ["", ".F", ".SG", ".PA", ".AS", ".DE", ".MI"]
 		fetched = None
 		for suffix in suffixes:
 			symbol = f"{isin}{suffix}"
@@ -90,6 +90,8 @@ async def sync_instrument_metadata(current_user: User = Depends(get_current_user
 			instrument_metadata["sector_allocation"] = fetched.get("sector_allocation")
 		if fetched.get("geo_allocation"):
 			instrument_metadata["geo_allocation"] = fetched.get("geo_allocation")
+		if fetched.get("country_allocation"):
+			instrument_metadata["country_allocation"] = fetched.get("country_allocation")
 
 		storage.upsert_instrument(isin, instrument_metadata)
 		updated += 1
@@ -208,7 +210,7 @@ async def _refresh_single_instrument(
 	instrument_data: dict[str, Any] = {"symbol": isin}
 
 	# Try Yahoo quote resolution first so yahooquery metadata can use a tradable symbol.
-	suffixes = ["", ".PA", ".AS", ".DE", ".MI"]
+	suffixes = ["", ".F", ".SG", ".PA", ".AS", ".DE", ".MI"]
 	for suffix in suffixes:
 		symbol = f"{isin}{suffix}"
 		quote = await yfinance.get_quote(symbol)
@@ -221,6 +223,8 @@ async def _refresh_single_instrument(
 				instrument_data["sector_allocation"] = quote["sector_allocation"]
 			if quote.get("geo_allocation"):
 				instrument_data["geo_allocation"] = quote["geo_allocation"]
+			if quote.get("country_allocation"):
+				instrument_data["country_allocation"] = quote["country_allocation"]
 			break
 
 	mstar_metadata = await morningstar.get_fund_metadata(isin)

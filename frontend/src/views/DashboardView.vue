@@ -6,9 +6,19 @@
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">High-level overview & KPIs</p>
       </div>
 
+      <div
+        v-if="refreshingPrices"
+        class="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+      >
+        <span class="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+        <span class="text-sm font-medium text-blue-800 dark:text-blue-200">
+          Refreshing prices...
+        </span>
+      </div>
+
       <!-- Stale Price Warning -->
       <div
-        v-if="hasStaleData"
+        v-else-if="hasStaleData"
         class="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg"
       >
         <svg
@@ -126,9 +136,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useDashboardStore } from '@/stores/dashboard'
+import { wsClient } from '@/services/websocket'
 import SummaryCard from '@/components/SummaryCard.vue'
 import LineInvestedVsCurrent from '@/charts/LineInvestedVsCurrent.vue'
 import PieAllocations from '@/charts/PieAllocations.vue'
@@ -154,12 +165,26 @@ const allocations = computed(() => dashboardStore.allocations)
 const hasStaleData = computed(() => dashboardStore.hasStaleData)
 const staleCount = computed(() => dashboardStore.priceStatus?.stale_count || 0)
 const staleInstruments = computed(() => dashboardStore.staleInstruments)
+const refreshingPrices = computed(() => dashboardStore.refreshingPrices)
+
+async function handlePricesUpdated() {
+  await Promise.all([
+    dashboardStore.handlePricesUpdated(),
+    portfolioStore.fetchPortfolio(),
+  ])
+}
 
 onMounted(async () => {
+  wsClient.on('prices_updated', handlePricesUpdated)
   await Promise.all([
     portfolioStore.fetchPortfolio(),
     dashboardStore.fetchAll()
   ])
+  await dashboardStore.refreshPricesIfNeeded()
+})
+
+onUnmounted(() => {
+  wsClient.off('prices_updated', handlePricesUpdated)
 })
 </script>
 

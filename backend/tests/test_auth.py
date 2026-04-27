@@ -44,6 +44,35 @@ def test_register_new_user():
 	data = response.json()
 	assert data["username"] == username
 	assert data["message"] == "User registered successfully"
+	created = load_user_data(username)
+	assert created["email"] == "newuser@test.com"
+	assert created["full_name"] == "Test User"
+
+
+def test_register_email_and_full_name_are_optional():
+	"""Test user registration does not require email or full name."""
+	response = client.post("/api/auth/register", json={"username": "optional_user", "password": "password123"})
+
+	assert response.status_code == 201
+	created = load_user_data("optional_user")
+	assert "email" not in created
+	assert "full_name" not in created
+
+
+def test_register_duplicate_email_fails_case_insensitive():
+	"""Test duplicate emails are rejected case-insensitively when provided."""
+	client.post(
+		"/api/auth/register",
+		json={"username": "email_owner", "email": "Owner@Test.com", "password": "password123"},
+	)
+
+	response = client.post(
+		"/api/auth/register",
+		json={"username": "email_duplicate", "email": "owner@test.com", "password": "password123"},
+	)
+
+	assert response.status_code == 400
+	assert response.json()["detail"] == "Email already registered"
 
 
 def test_register_duplicate_user(test_user):
@@ -67,6 +96,19 @@ def test_login_success(test_user):
 	data = response.json()
 	assert "access_token" in data
 	assert data["token_type"] == "bearer"
+
+
+def test_login_with_email(test_user):
+	"""Test successful login with email when one is stored."""
+	users = get_all_users()
+	users[test_user["username"]]["email"] = "auth-user@example.com"
+	with open(settings.DATA_DIR / "users.json", "w", encoding="utf-8") as f:
+		json.dump(users, f, indent=2)
+
+	response = client.post("/api/auth/login", data={"username": "AUTH-USER@example.com", "password": test_user["password"]})
+
+	assert response.status_code == 200
+	assert "access_token" in response.json()
 
 
 def test_login_wrong_password(test_user):

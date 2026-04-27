@@ -30,6 +30,16 @@ async def register(user_data: UserRegister):
 			detail="Username already registered",
 		)
 
+	if user_data.email:
+		email = user_data.email.casefold()
+		email_exists = any(str(existing.get("email", "")).casefold() == email for existing in users.values())
+		if email_exists:
+			logger.warning(f"Registration failed - Email already exists: {user_data.email}")
+			raise HTTPException(
+				status_code=status.HTTP_400_BAD_REQUEST,
+				detail="Email already registered",
+			)
+
 	# Create new user
 	hashed_password = get_password_hash(user_data.password)
 	new_user = {
@@ -38,6 +48,10 @@ async def register(user_data: UserRegister):
 		"disabled": False,
 		"holdings": [],
 	}
+	if user_data.email:
+		new_user["email"] = user_data.email
+	if user_data.full_name:
+		new_user["full_name"] = user_data.full_name
 
 	save_user_data(user_data.username, new_user)
 

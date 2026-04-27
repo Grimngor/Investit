@@ -32,6 +32,10 @@ export const useAuthStore = defineStore('auth', () => {
         wsClient.connect(data.access_token)
       }
 
+      apiClient.refreshPricesIfNeeded().catch((err) => {
+        logger.warn('Price refresh check after login failed', { error: err })
+      })
+
       useToastStore().addToast('Login successful', 'success')
 
       return true
@@ -44,7 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(userData: { username: string; email: string; password: string; full_name?: string }) {
+  async function register(userData: { username: string; email?: string; password: string; full_name?: string }) {
     loading.value = true
     error.value = null
 
@@ -100,6 +104,10 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (storedUser) {
       user.value = JSON.parse(storedUser)
+    }
+
+    if (storedToken) {
+      wsClient.connect(storedToken)
     }
   }
 

@@ -56,6 +56,23 @@ def test_calculate_position_different_isin():
 	assert position["total_invested"] == 0.0
 
 
+def test_calculate_position_sorts_orders_before_sell_cost_basis():
+	"""Test sell cost basis is deterministic regardless of input order."""
+	chronological_orders = [
+		{"date": "01/01/2024", "isin": "IE00TEST0001", "shares": 10.0, "amount_eur": 1000.0, "status": "Finalizada"},
+		{"date": "2024-02-01", "isin": "IE00TEST0001", "shares": 10.0, "amount_eur": 1400.0, "status": "Finalizada"},
+		{"date": "01-03-2024", "isin": "IE00TEST0001", "shares": 5.0, "amount_eur": 700.0, "order_type": "sell", "status": "Finalizada"},
+	]
+	shuffled_orders = [chronological_orders[2], chronological_orders[0], chronological_orders[1]]
+
+	expected = ComputeService.calculate_position(chronological_orders, "IE00TEST0001")
+	actual = ComputeService.calculate_position(shuffled_orders, "IE00TEST0001")
+
+	assert actual == expected
+	assert actual["total_shares"] == 15.0
+	assert actual["total_invested"] == pytest.approx(1800.0)
+
+
 def test_calculate_pnl_profit():
 	"""Test PnL calculation with profit."""
 	position = {"total_shares": 10.0, "average_cost": 100.0, "total_invested": 1000.0}
@@ -130,6 +147,45 @@ def test_calculate_allocation_empty():
 	assert allocation == []
 
 
+def test_calculate_allocations_prefers_country_allocation():
+	"""Test geography allocation uses country-level metadata when present."""
+	holdings = [
+		{
+			"name": "World Fund",
+			"current_value": 1000.0,
+			"asset_type": "Fund",
+			"geo_allocation": {"US": 0.7, "JP": 0.2, "GB": 0.1},
+			"sector_allocation": {"Technology": 1.0},
+		}
+	]
+
+	allocations = ComputeService.calculate_allocations(holdings, 1000.0)
+
+	assert allocations["by_geography"]["United States"] == 700.0
+	assert allocations["by_geography"]["Japan"] == 200.0
+	assert allocations["by_geography"]["United Kingdom"] == 100.0
+
+
+def test_calculate_allocations_keeps_tiny_geography_entries_for_frontend_collapse():
+	"""Test backend keeps geography entries so the frontend controls visual collapse."""
+	holdings = [
+		{
+			"name": "World Fund",
+			"current_value": 1000.0,
+			"asset_type": "Fund",
+			"geo_allocation": {"US": 0.98, "JP": 0.009, "CN": 0.006, "Others": 0.005},
+			"sector_allocation": {"Technology": 1.0},
+		}
+	]
+
+	allocations = ComputeService.calculate_allocations(holdings, 1000.0)
+
+	assert allocations["by_geography"]["United States"] == 980.0
+	assert allocations["by_geography"]["Japan"] == pytest.approx(9.0)
+	assert allocations["by_geography"]["China"] == pytest.approx(6.0)
+	assert allocations["by_geography"]["Others"] == pytest.approx(5.0)
+
+
 def test_calculate_time_series():
 	"""Test time series calculation."""
 	orders = [
@@ -147,6 +203,21 @@ def test_calculate_time_series():
 	assert time_series[1]["date"] == "2024-02-20"
 	assert time_series[1]["invested_value"] == 1500.0
 	assert time_series[1]["current_value"] == 1700.0
+
+
+def test_calculate_time_series_sorts_mixed_date_formats():
+	"""Test time series applies orders chronologically across supported date formats."""
+	orders = [
+		{"date": "01-03-2024", "isin": "ISIN1", "shares": 5.0, "amount_eur": 700.0, "order_type": "sell", "status": "Finalizada"},
+		{"date": "01/01/2024", "isin": "ISIN1", "shares": 10.0, "amount_eur": 1000.0, "status": "Finalizada"},
+		{"date": "2024-02-01", "isin": "ISIN1", "shares": 10.0, "amount_eur": 1400.0, "status": "Finalizada"},
+	]
+
+	time_series = ComputeService.calculate_time_series(orders, {"ISIN1": 150.0})
+
+	assert [point["date"] for point in time_series] == ["01/01/2024", "2024-02-01", "01-03-2024"]
+	assert time_series[-1]["invested_value"] == pytest.approx(1800.0)
+	assert time_series[-1]["current_value"] == pytest.approx(2250.0)
 
 
 def test_is_price_stale():

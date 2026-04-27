@@ -136,11 +136,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { usePortfolioStore, type Investment } from '@/stores/portfolio'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToastStore } from '@/stores/toast'
 import { apiClient } from '@/services/api'
+import { wsClient } from '@/services/websocket'
 import SummaryCard from '@/components/SummaryCard.vue'
 import CSVImporter from '@/components/portfolio/CSVImporter.vue'
 import OrderForm from '@/components/portfolio/OrderForm.vue'
@@ -222,28 +223,38 @@ async function fetchPrices() {
     toastStore.addToast('Fetching prices from Yahoo Finance... This may take 10-15 seconds.', 'info')
     const response = await apiClient.fetchPrices()
 
-    // Wait for background task to complete (with progress updates)
-    toastStore.addToast('Processing price data...', 'info')
-
-    setTimeout(async () => {
-      await refreshPortfolio()
-      const dashboardStore = useDashboardStore()
-      await dashboardStore.fetchAll()
-
-      if (response.count && response.count > 0) {
-        toastStore.addToast(`Successfully updated prices for ${response.count} instrument(s)`, 'success')
-      } else {
-        toastStore.addToast('Yahoo Finance may be rate-limiting requests. Prices will use purchase cost as fallback. Try again in a few hours.', 'warning')
-      }
-    }, 8000) // Increased timeout for sequential fetching
+    if (response.count && response.count > 0) {
+      toastStore.addToast('Processing price data...', 'info')
+    } else {
+      fetchingPrices.value = false
+      toastStore.addToast('No instruments found to fetch prices for.', 'warning')
+    }
   } catch (error: any) {
     toastStore.addToast(error.response?.data?.detail || 'Failed to fetch prices', 'error')
     fetchingPrices.value = false
   }
 }
 
+async function handlePricesUpdated(data: any) {
+  fetchingPrices.value = false
+  await refreshPortfolio()
+  const dashboardStore = useDashboardStore()
+  await dashboardStore.fetchAll()
+
+  if (data.count && data.count > 0) {
+    toastStore.addToast(`Successfully updated prices for ${data.count} instrument(s)`, 'success')
+  } else {
+    toastStore.addToast('Yahoo Finance may be rate-limiting requests. Prices will use purchase cost as fallback. Try again later.', 'warning')
+  }
+}
+
 onMounted(() => {
+  wsClient.on('prices_updated', handlePricesUpdated)
   portfolioStore.fetchPortfolio()
+})
+
+onUnmounted(() => {
+  wsClient.off('prices_updated', handlePricesUpdated)
 })
 </script>
 

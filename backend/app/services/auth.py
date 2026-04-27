@@ -28,10 +28,13 @@ def get_password_hash(password: str) -> str:
 	return pwd_context.hash(password)
 
 
-def authenticate_user(username: str, password: str) -> User | None:
-	"""Authenticate a user by username and password."""
+def authenticate_user(username_or_email: str, password: str) -> User | None:
+	"""Authenticate a user by username or email and password."""
 	users = get_all_users()
-	user_data = users.get(username)
+	user_data = users.get(username_or_email)
+	if not user_data:
+		login_email = username_or_email.casefold()
+		user_data = next((data for data in users.values() if str(data.get("email", "")).casefold() == login_email), None)
 
 	if not user_data:
 		return None

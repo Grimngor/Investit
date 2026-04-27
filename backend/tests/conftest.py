@@ -6,6 +6,7 @@ import sys
 import warnings
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 # Ensure backend path is on sys.path for 'app' package imports when running pytest directly.
@@ -19,6 +20,18 @@ warnings.filterwarnings(
 	category=DeprecationWarning,
 	message=r".*datetime\.utcnow\(\) is deprecated.*",
 )
+
+
+@pytest.fixture(autouse=True)
+def isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+	"""Run tests against temporary data files instead of project data."""
+	from app.config import settings
+
+	data_dir = tmp_path / "data"
+	data_dir.mkdir()
+	(data_dir / "users.json").write_text("{}", encoding="utf-8")
+	(data_dir / "instruments.json").write_text("[]", encoding="utf-8")
+	monkeypatch.setattr(settings, "DATA_DIR", data_dir)
 
 
 def make_auth_headers(client: TestClient, username: str, password: str = "testpass123", email: str | None = None) -> dict[str, str]:

@@ -38,6 +38,7 @@ export interface DashboardAllocations {
 export interface PriceStatus {
   total_instruments: number
   stale_count: number
+  refreshing?: boolean
   stale_instruments: Array<{
     isin: string
     symbol: string
@@ -59,6 +60,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const timeSeries = ref<TimeSeriesDataPoint[]>([])
   const allocations = ref<DashboardAllocations | null>(null)
   const priceStatus = ref<PriceStatus | null>(null)
+  const refreshingPrices = ref(false)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -138,6 +140,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     try {
       const response = await dashboardClient.get('/api/dashboard/price-status')
       priceStatus.value = response.data
+      refreshingPrices.value = Boolean(response.data.refreshing)
       return response.data
     } catch (err: any) {
       const toastStore = useToastStore()
@@ -162,6 +165,23 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
+  async function refreshPricesIfNeeded() {
+    try {
+      const response = await dashboardClient.post('/api/prices/refresh-if-needed')
+      refreshingPrices.value = Boolean(response.data.queued || response.data.in_progress)
+      return response.data
+    } catch (err: any) {
+      const toastStore = useToastStore()
+      toastStore.addToast(err.response?.data?.detail || 'Failed to check price freshness', 'error')
+      throw err
+    }
+  }
+
+  async function handlePricesUpdated() {
+    refreshingPrices.value = false
+    await fetchAll()
+  }
+
   /**
    * Refresh dashboard data (call after WebSocket updates)
    */
@@ -174,6 +194,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     timeSeries.value = []
     allocations.value = null
     priceStatus.value = null
+    refreshingPrices.value = false
     loading.value = false
     error.value = null
   }
@@ -184,6 +205,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     timeSeries,
     allocations,
     priceStatus,
+    refreshingPrices,
     loading,
     error,
 
@@ -197,6 +219,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     fetchAllocations,
     fetchPriceStatus,
     fetchAll,
+    refreshPricesIfNeeded,
+    handlePricesUpdated,
     refresh,
     reset,
   }

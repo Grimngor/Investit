@@ -14,8 +14,8 @@ from app.utils.validators import is_crypto_symbol, validate_price
 
 logger = logging.getLogger(__name__)
 
-# Suffixes to try when resolving an ISIN to a Yahoo Finance ticker
-_YAHOO_SUFFIXES = ["", ".PA", ".AS", ".DE", ".MI"]
+# Suffixes to try when resolving an ISIN to a Yahoo Finance ticker.
+_YAHOO_SUFFIXES = ["", ".F", ".SG", ".PA", ".AS", ".DE", ".MI"]
 
 
 class PriceService:
@@ -64,6 +64,7 @@ class PriceService:
 		metadata_fields = [
 			("name", [mstar.get("name"), yq.get("name")]),
 			("sector_allocation", [mstar.get("sector_allocation"), yq.get("sector_allocation")]),
+			("country_allocation", [mstar.get("country_allocation"), yq.get("country_allocation")]),
 			("geo_allocation", [mstar.get("regional_allocation"), yq.get("geo_allocation")]),
 			("type", [mstar.get("morningstar_code") and "Fund", yq.get("asset_type")]),
 		]
@@ -85,12 +86,15 @@ class PriceService:
 		yahoo = YahooFinanceService()
 		morningstar = MorningstarService()
 		storage = StorageService()
+		instruments = storage.load_instruments()
+		existing = next((inst for inst in instruments if inst.get("isin") == isin), {})
+		symbols = [existing.get("symbol"), *[f"{isin}{suffix}" for suffix in _YAHOO_SUFFIXES]]
+		symbols = [symbol for index, symbol in enumerate(symbols) if symbol and symbol not in symbols[:index]]
 
-		for idx, suffix in enumerate(_YAHOO_SUFFIXES):
-			symbol = f"{isin}{suffix}"
+		for idx, symbol in enumerate(symbols):
 			quote = await yahoo.get_quote(symbol)
 			if not quote:
-				if idx < len(_YAHOO_SUFFIXES) - 1:
+				if idx < len(symbols) - 1:
 					await asyncio.sleep(0.3)
 				continue
 
@@ -119,7 +123,7 @@ class PriceService:
 		return None
 
 	@staticmethod
-	async def fetch_and_update_prices(username: str, isins: list[str]) -> None:
+	async def fetch_and_update_prices(username: str, isins: list[str], force: bool = False) -> None:
 		"""Background task to fetch and persist prices for the given ISINs."""
 		from app.routers.websocket import manager as websocket_manager
 
@@ -135,7 +139,7 @@ class PriceService:
 		updated = 0
 
 		for isin in isins:
-			if PriceService.is_fresh(prices, isin):
+			if not force and PriceService.is_fresh(prices, isin):
 				logger.info(f"Using cached price for {isin}")
 				updated += 1
 				continue
