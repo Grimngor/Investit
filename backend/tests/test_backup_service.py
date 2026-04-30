@@ -7,8 +7,9 @@ from pathlib import Path
 import pytest
 
 from app.services.backup_service import BackupService
+from app.services.storage_service import StorageService
 
-DAILY_BACKUP_FILE_COUNT = 3
+DAILY_BACKUP_FILE_COUNT = 1
 LIST_BACKUPS_FILE_COUNT = 2
 
 
@@ -18,7 +19,6 @@ def temp_data_dir(tmp_path):
 	data_dir = tmp_path / "data"
 	data_dir.mkdir(exist_ok=True)
 
-	# Create test users.json
 	users = {
 		"testuser": {
 			"username": "testuser",
@@ -38,9 +38,9 @@ def temp_data_dir(tmp_path):
 		}
 	}
 
-	(data_dir / "users.json").write_text(json.dumps(users, indent=2))
-	(data_dir / "instruments.json").write_text(json.dumps([], indent=2))
-	(data_dir / "prices.json").write_text(json.dumps({}, indent=2))
+	StorageService.save_json(data_dir / "users.json", users)
+	StorageService.save_json(data_dir / "instruments.json", [])
+	StorageService.save_json(data_dir / "prices.json", {})
 
 	return data_dir
 
@@ -54,15 +54,15 @@ def backup_service(temp_data_dir, tmp_path):
 
 def test_create_backup(backup_service, temp_data_dir):
 	"""Test creating a single backup file."""
-	backup_path = backup_service.create_backup("users.json")
+	backup_path = backup_service.create_backup("investit.sqlite3")
 
 	assert backup_path.exists()
-	assert "users_backup_" in backup_path.name
-	assert backup_path.suffix == ".json"
+	assert "investit_backup_" in backup_path.name
+	assert backup_path.suffix == ".sqlite3"
 
 	# Verify content matches original
-	original = (temp_data_dir / "users.json").read_text()
-	backup = backup_path.read_text()
+	original = (temp_data_dir / "investit.sqlite3").read_bytes()
+	backup = backup_path.read_bytes()
 	assert original == backup
 
 
@@ -104,7 +104,7 @@ def test_daily_backup(backup_service, temp_data_dir):
 	"""Test daily backup creates all files."""
 	stats = backup_service.daily_backup()
 
-	assert len(stats["backups_created"]) == DAILY_BACKUP_FILE_COUNT  # users, instruments, prices
+	assert len(stats["backups_created"]) == DAILY_BACKUP_FILE_COUNT
 	assert stats["backups_deleted"] == 0
 	assert len(stats["errors"]) == 0
 

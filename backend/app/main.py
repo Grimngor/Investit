@@ -27,6 +27,7 @@ from app.routers import (
 from app.routers import (
 	prices as prices_router,
 )
+from app.services.database_service import DatabaseService
 from app.services.metrics_service import metrics
 
 # Initialize logging
@@ -39,6 +40,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
 	"""Run application startup and shutdown hooks."""
+	if settings.PERSISTENCE_BACKEND == "sqlite":
+		DatabaseService().initialize()
 	logger.info("InvestIt API started successfully")
 	yield
 	logger.info("InvestIt API shutdown complete")

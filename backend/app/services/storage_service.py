@@ -14,10 +14,65 @@ import portalocker
 class StorageService:
 	"""Service for safe atomic JSON file operations with file locking."""
 
+	_RUNTIME_JSON_FILES = {"users.json", "instruments.json", "isin_ticker_mapping.json", "isin_resolution_cache.json", "prices.json"}
+
 	@staticmethod
 	def _sidecar_lock_path(file_path: Path) -> Path:
 		"""Return the sidecar lock path for a data file."""
 		return file_path.with_name(f".{file_path.name}.lock")
+
+	@staticmethod
+	def _uses_sqlite_runtime(file_path: Path) -> bool:
+		"""Return True when a known runtime JSON file should be served by SQLite."""
+		from app.config import settings
+
+		try:
+			is_data_dir_file = file_path.resolve().parent == settings.DATA_DIR.resolve()
+		except OSError:
+			is_data_dir_file = file_path.parent == settings.DATA_DIR
+		return settings.PERSISTENCE_BACKEND == "sqlite" and is_data_dir_file and file_path.name in StorageService._RUNTIME_JSON_FILES
+
+	@staticmethod
+	def _sqlite_service():
+		"""Return a SQLite database service instance."""
+		from app.services.database_service import DatabaseService
+
+		return DatabaseService()
+
+	@staticmethod
+	def _load_runtime_json(file_path: Path, default: Any = None) -> Any:
+		"""Load known runtime data from SQLite using the legacy JSON shape."""
+		db = StorageService._sqlite_service()
+		if file_path.name == "users.json":
+			return db.load_users()
+		if file_path.name == "instruments.json":
+			return db.load_instruments()
+		if file_path.name == "isin_ticker_mapping.json":
+			return {"mappings": db.load_isin_mappings()}
+		if file_path.name == "isin_resolution_cache.json":
+			return {"mappings": db.load_isin_resolution_cache()}
+		if file_path.name == "prices.json":
+			return default if default is not None else {}
+		return default if default is not None else {}
+
+	@staticmethod
+	def _save_runtime_json(file_path: Path, data: Any) -> None:
+		"""Persist known runtime data to SQLite using the legacy JSON shape."""
+		db = StorageService._sqlite_service()
+		if file_path.name == "users.json":
+			db.save_users(data if isinstance(data, dict) else {})
+			return
+		if file_path.name == "instruments.json":
+			db.save_instruments(data if isinstance(data, list) else [])
+			return
+		if file_path.name == "isin_ticker_mapping.json":
+			mappings = data.get("mappings", {}) if isinstance(data, dict) else {}
+			db.save_isin_mappings(mappings)
+			return
+		if file_path.name == "isin_resolution_cache.json":
+			mappings = data.get("mappings", {}) if isinstance(data, dict) else {}
+			db.save_isin_resolution_cache(mappings)
+			return
 
 	@staticmethod
 	@contextmanager
@@ -58,6 +113,9 @@ class StorageService:
 		Returns:
 			Parsed JSON data or default value
 		"""
+		if cls._uses_sqlite_runtime(file_path):
+			return cls._load_runtime_json(file_path, default=default)
+
 		try:
 			with cls._lock_file(cls._sidecar_lock_path(file_path), exclusive=False):
 				if not file_path.exists():
@@ -85,6 +143,10 @@ class StorageService:
 			data: Data to serialize as JSON
 			indent: JSON indentation level (default: 2)
 		"""
+		if cls._uses_sqlite_runtime(file_path):
+			cls._save_runtime_json(file_path, data)
+			return
+
 		with cls._lock_file(cls._sidecar_lock_path(file_path), exclusive=True):
 			cls._save_json_unlocked(file_path, data, indent=indent)
 
@@ -139,6 +201,12 @@ class StorageService:
 
 			StorageService.update_json(users_file, add_user)
 		"""
+		if cls._uses_sqlite_runtime(file_path):
+			data = cls._load_runtime_json(file_path, default=default)
+			updated_data = update_fn(data)
+			cls._save_runtime_json(file_path, updated_data)
+			return updated_data
+
 		with cls._lock_file(cls._sidecar_lock_path(file_path), exclusive=True):
 			if file_path.exists():
 				content = file_path.read_bytes()
@@ -171,6 +239,11 @@ class StorageService:
 
 	def upsert_instrument(self, isin: str, metadata: dict[str, Any]) -> dict[str, Any]:
 		"""Upsert a single instrument's metadata using ISIN key."""
+		from app.config import settings
+
+		if settings.PERSISTENCE_BACKEND == "sqlite":
+			return self._sqlite_service().upsert_instrument(isin, metadata)
+
 		instruments = self.load_instruments()
 		idx = next((i for i, inst in enumerate(instruments) if inst.get("isin") == isin), None)
 		if idx is not None:

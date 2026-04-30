@@ -27,13 +27,15 @@ def isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 	"""Run tests against temporary data files instead of project data."""
 	from app.config import settings
 	from app.services.background_jobs import background_jobs
+	from app.services.database_service import DatabaseService
 	from app.services.isin_mapper import get_isin_mapper
 
 	data_dir = tmp_path / "data"
 	data_dir.mkdir()
-	(data_dir / "users.json").write_text("{}", encoding="utf-8")
-	(data_dir / "instruments.json").write_text("[]", encoding="utf-8")
 	monkeypatch.setattr(settings, "DATA_DIR", data_dir)
+	monkeypatch.setattr(settings, "DATABASE_PATH", data_dir / "investit.sqlite3")
+	monkeypatch.setattr(settings, "PERSISTENCE_BACKEND", "sqlite")
+	DatabaseService().initialize()
 	background_jobs.clear()
 	get_isin_mapper.cache_clear()
 

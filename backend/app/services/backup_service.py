@@ -11,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from app.config import settings
 from app.services.storage_service import StorageService
 
 
@@ -86,12 +87,9 @@ class BackupService:
 		"""
 		stats = {"backups_created": [], "backups_deleted": 0, "errors": []}
 
-		# Files to backup
-		files_to_backup = [
-			"users.json",
-			"instruments.json",
-			"prices.json",
-		]
+		files_to_backup = (
+			["investit.sqlite3"] if settings.PERSISTENCE_BACKEND == "sqlite" else ["users.json", "instruments.json", "prices.json"]
+		)
 
 		for filename in files_to_backup:
 			try:
@@ -120,7 +118,6 @@ class BackupService:
 		Returns:
 			Dict containing user's orders, instruments, and summary
 		"""
-		# Load users
 		users_file = self.data_dir / "users.json"
 		users = self.storage.load_json(users_file, default={})
 

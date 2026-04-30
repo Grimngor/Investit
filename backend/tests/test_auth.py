@@ -1,7 +1,5 @@
 """Tests for authentication endpoints."""
 
-import json
-
 import pytest
 from fastapi.testclient import TestClient
 
@@ -9,6 +7,7 @@ from app.config import settings
 from app.main import app
 from app.models.persistence import get_all_users, load_user_data, save_user_data
 from app.services.auth import get_password_hash
+from app.services.storage_service import StorageService
 
 client = TestClient(app)
 
@@ -34,8 +33,7 @@ def test_register_new_user():
 		users = get_all_users()
 		if username in users:
 			del users[username]
-			with open(settings.DATA_DIR / "users.json", "w", encoding="utf-8") as f:
-				json.dump(users, f, indent=2)
+			StorageService.save_json(settings.DATA_DIR / "users.json", users)
 
 	response = client.post(
 		"/api/auth/register", json={"username": username, "email": "newuser@test.com", "password": "password123", "full_name": "Test User"}
@@ -102,8 +100,7 @@ def test_login_with_email(test_user):
 	"""Test successful login with email when one is stored."""
 	users = get_all_users()
 	users[test_user["username"]]["email"] = "auth-user@example.com"
-	with open(settings.DATA_DIR / "users.json", "w", encoding="utf-8") as f:
-		json.dump(users, f, indent=2)
+	StorageService.save_json(settings.DATA_DIR / "users.json", users)
 
 	response = client.post("/api/auth/login", data={"username": "AUTH-USER@example.com", "password": test_user["password"]})
 

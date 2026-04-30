@@ -1,7 +1,9 @@
 """Authentication service."""
 
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -10,6 +12,10 @@ from passlib.context import CryptContext
 from app.config import settings
 from app.models.auth_persistence import get_all_users
 from app.models.user import User
+
+# Passlib 1.7 reads bcrypt.__about__.__version__, which bcrypt 4.x no longer exposes.
+if not hasattr(bcrypt, "__about__"):
+	bcrypt.__about__ = SimpleNamespace(__version__=getattr(bcrypt, "__version__", "unknown"))
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

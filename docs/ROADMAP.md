@@ -27,15 +27,15 @@
 - Added lightweight in-process background job tracking for provider-heavy price and instrument metadata refreshes.
 - Added OpenFIGI-backed ISIN resolution with local manual overrides and provider-derived JSON cache.
 - Reviewed public service methods for one-line docstrings and type hints.
+- Migrated runtime persistence from JSON files to SQLite and renamed the local `test` user to `grimngor`.
 
 ## Next Engineering Work
 
-- SQLite migration.
 - Production deployment guide.
 - Dockerfile and `.dockerignore` once the deployment shape is decided.
 
 ## Later Work
 
-- More robust provider fallback strategy.
+- Provider reliability layer: explicit fallback order, stale-cache fallback, provider health metrics, and clearer source attribution for price, metadata, and ISIN lookups.
 - PWA or desktop packaging.
 - Portfolio export and backup UI.

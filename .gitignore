@@ -71,6 +71,9 @@ data/isin_ticker_mapping.json
 data/backups/
 data/*.lock
 data/*.tmp
+data/*.sqlite3
+data/*.sqlite3-wal
+data/*.sqlite3-shm
 
 # Logs
 *.log

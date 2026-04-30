@@ -29,6 +29,13 @@ For non-local frontends, set `BACKEND_CORS_ORIGINS` in `.env` to a JSON list of 
 
 Real runtime data stays in ignored files under `data/`. Public-safe examples are stored under `data/examples/`.
 
+Runtime persistence uses SQLite by default:
+
+- Database file: `data/investit.sqlite3`
+- Backend setting: `PERSISTENCE_BACKEND=sqlite`
+- Relative `DATABASE_PATH` values are resolved from the repository root, even when Uvicorn starts from `backend/`.
+- Tests use isolated temporary SQLite databases.
+
 ## Launcher Scripts
 
 ```powershell
@@ -116,6 +123,6 @@ Scripts not listed here should not be added as scratch probes. Prefer backend te
 - Backend unreachable: verify `http://localhost:8000/health` and check `backend/logs/error.log`.
 - Frontend cannot register or log in: confirm the frontend API URL points to `http://localhost:8000`.
 - Stale prices: use Portfolio `Fetch Prices` for a manual force refresh, or check `POST /api/prices/refresh-if-needed` and the `prices_updated` WebSocket event.
-- ISIN resolution: local manual overrides live in ignored `data/isin_ticker_mapping.json`; OpenFIGI-derived mappings are cached in ignored `data/isin_resolution_cache.json`.
+- ISIN resolution: local manual overrides and OpenFIGI-derived mappings are stored in SQLite.
 - Vitest scans inaccessible folders: `.pytest_cache/**` is excluded in `frontend/vitest.config.ts`.
 - Route mismatch: run `.\scripts\dev\verify_backend.ps1` after starting the backend.
