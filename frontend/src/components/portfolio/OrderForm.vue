@@ -152,7 +152,11 @@ interface OrderFormData {
 
 interface Order extends OrderFormData {
   id: string
-  order_type: string
+  order_type: 'buy' | 'sell'
+}
+
+interface OrderPayload extends OrderFormData {
+  order_type: 'buy' | 'sell'
 }
 
 interface Props {
@@ -232,14 +236,23 @@ function cancelEdit() {
   resetForm()
 }
 
+function buildOrderPayload(): OrderPayload {
+  const amount = Number(formData.value.amount_eur)
+  const orderType = amount < 0 ? 'sell' : editingOrder.value?.order_type === 'sell' ? 'sell' : 'buy'
+
+  return {
+    ...formData.value,
+    amount_eur: Math.abs(amount),
+    order_type: orderType,
+  }
+}
+
 async function submitForm() {
   submitting.value = true
 
   try {
     const token = localStorage.getItem('token')
-    const payload = {
-      ...formData.value,
-    }
+    const payload = buildOrderPayload()
 
     if (editingOrder.value) {
       // Update existing order

@@ -15,24 +15,6 @@ class InvestmentBase(BaseModel):
 	currency: str | None = Field(default="USD", max_length=3)
 
 
-class InvestmentCreate(InvestmentBase):
-	"""Investment creation model."""
-
-	pass
-
-
-class InvestmentUpdate(BaseModel):
-	"""Investment update model."""
-
-	symbol: str | None = Field(None, min_length=1, max_length=20)
-	name: str | None = Field(None, max_length=200)
-	quantity: float | None = Field(None, gt=0)
-	purchase_price: float | None = Field(None, gt=0)
-	purchase_date: str | None = None
-	asset_type: str | None = Field(None, max_length=50)
-	currency: str | None = Field(None, max_length=3)
-
-
 class Investment(InvestmentBase):
 	"""Investment model with additional fields."""
 

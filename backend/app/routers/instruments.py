@@ -3,18 +3,17 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app.models.user import User
 from app.routers.auth import get_current_user
-from app.services.morningstar_service import MorningstarService
-from app.services.price_service import PriceService
+from app.services.background_jobs import background_jobs
+from app.services.instrument_metadata_service import InstrumentMetadataService
 from app.services.storage_service import StorageService, load_users
-from app.services.yahoo_finance import YahooFinanceService
-from app.utils.validators import is_crypto_symbol
 
 router = APIRouter(prefix="/api/instruments", tags=["instruments"])
 logger = logging.getLogger(__name__)
+INSTRUMENT_METADATA_JOB = "instrument_metadata_refresh"
 
 
 @router.get("/{isin}")
@@ -36,72 +35,84 @@ async def get_instrument(isin: str, current_user: User = Depends(get_current_use
 	return instrument
 
 
-@router.post("/sync")
-async def sync_instrument_metadata(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
-	"""Fetch and persist missing instrument metadata (sector/geography/asset_type) via Yahoo Finance.
+async def _refresh_and_record(username: str, force: bool) -> None:
+	"""Run metadata refresh and record job state."""
+	background_jobs.start(username, INSTRUMENT_METADATA_JOB)
+	try:
+		result = await InstrumentMetadataService.refresh_for_user(username, force=force)
+	except Exception as e:
+		background_jobs.fail(username, INSTRUMENT_METADATA_JOB, str(e))
+		raise
+	else:
+		background_jobs.complete(username, INSTRUMENT_METADATA_JOB, result)
 
-	Uses user's finalized orders to determine which ISINs to attempt.
-	Only updates instruments lacking sector or geo allocations.
-	"""
+
+def _queued_response(username: str, count: int, message: str) -> dict[str, Any]:
+	"""Build a standard queued metadata response."""
+	background_jobs.queue(username, INSTRUMENT_METADATA_JOB, count)
+	return {
+		"success": True,
+		"queued": True,
+		"in_progress": False,
+		"job_type": INSTRUMENT_METADATA_JOB,
+		"attempted": count,
+		"updated": 0,
+		"skipped": 0,
+		"failures": [],
+		"message": message,
+	}
+
+
+@router.post("/sync")
+async def sync_instrument_metadata(
+	background_tasks: BackgroundTasks,
+	current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+	"""Queue a refresh for missing instrument metadata."""
 	users = load_users()
 	if current_user.username not in users:
 		raise HTTPException(status_code=404, detail="User not found")
-	user_data = users[current_user.username]
-	orders = user_data.get("orders", [])
-	finalized = [o for o in orders if o.get("status", "").lower() == "finalizada" and o.get("isin")]
-	unique_isins = sorted(set(o["isin"] for o in finalized))
 
-	storage = StorageService()
-	instruments = storage.load_instruments()
-	inst_map = {inst.get("isin"): inst for inst in instruments}
+	if background_jobs.is_active(current_user.username, INSTRUMENT_METADATA_JOB):
+		return {
+			"success": True,
+			"queued": False,
+			"in_progress": True,
+			"job_type": INSTRUMENT_METADATA_JOB,
+			"attempted": 0,
+			"updated": 0,
+			"skipped": 0,
+			"failures": [],
+			"message": "Instrument metadata refresh already in progress",
+		}
 
-	yahoo = YahooFinanceService()
-	updated = 0
-	skipped = 0
-	failures: list[str] = []
+	unique_isins = InstrumentMetadataService.get_user_isins(current_user.username)
+	if not unique_isins:
+		return {
+			"success": True,
+			"queued": False,
+			"in_progress": False,
+			"job_type": INSTRUMENT_METADATA_JOB,
+			"attempted": 0,
+			"updated": 0,
+			"skipped": 0,
+			"failures": [],
+		}
 
-	for isin in unique_isins:
-		meta = inst_map.get(isin, {})
-		needs_sector = not meta.get("sector_allocation")
-		needs_geo = not meta.get("geo_allocation")
-		needs_type = not meta.get("type")
-		if not (needs_sector or needs_geo or needs_type):
-			skipped += 1
-			continue
+	if not InstrumentMetadataService.requires_provider(unique_isins):
+		result = await InstrumentMetadataService.refresh_for_user(current_user.username, force=False)
+		return {
+			**result,
+			"queued": False,
+			"in_progress": False,
+			"job_type": INSTRUMENT_METADATA_JOB,
+			"attempted": result.get("total", 0),
+			"failures": result.get("errors", []),
+		}
 
-		# Try suffix variants similar to price fetching for better coverage
-		suffixes = ["", ".F", ".SG", ".PA", ".AS", ".DE", ".MI"]
-		fetched = None
-		for suffix in suffixes:
-			symbol = f"{isin}{suffix}"
-			quote = await yahoo.get_quote(symbol)
-			if quote:
-				fetched = quote
-				break
-
-		if not fetched:
-			failures.append(isin)
-			continue
-
-		instrument_metadata: dict[str, Any] = {"name": fetched.get("name", isin)}
-		if fetched.get("asset_type"):
-			instrument_metadata["type"] = fetched.get("asset_type")
-		if fetched.get("sector_allocation"):
-			instrument_metadata["sector_allocation"] = fetched.get("sector_allocation")
-		if fetched.get("geo_allocation"):
-			instrument_metadata["geo_allocation"] = fetched.get("geo_allocation")
-		if fetched.get("country_allocation"):
-			instrument_metadata["country_allocation"] = fetched.get("country_allocation")
-
-		storage.upsert_instrument(isin, instrument_metadata)
-		updated += 1
-
-	return {
-		"attempted": len(unique_isins),
-		"updated": updated,
-		"skipped": skipped,
-		"failures": failures,
-	}
+	response = _queued_response(current_user.username, len(unique_isins), f"Refreshing metadata for {len(unique_isins)} instruments")
+	background_tasks.add_task(_refresh_and_record, current_user.username, False)
+	return response
 
 
 @router.put("/{isin}")
@@ -148,99 +159,45 @@ async def list_instruments(current_user: User = Depends(get_current_user)) -> li
 
 
 @router.post("/refresh")
-async def refresh_instrument_metadata(current_user: User = Depends(get_current_user)) -> dict[str, Any]:
-	"""
-	Force refresh of instrument metadata from Morningstar and YahooQuery.
-
-	Fetches fresh data for all ISINs in user's portfolio.
-	Useful when metadata seems incomplete or outdated.
-	"""
+async def refresh_instrument_metadata(
+	background_tasks: BackgroundTasks,
+	current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+	"""Queue a forced refresh of instrument metadata from providers."""
 	users = load_users()
 	if current_user.username not in users:
 		raise HTTPException(status_code=404, detail="User not found")
 
-	user_data = users[current_user.username]
-	orders = user_data.get("orders", [])
-	finalized = [o for o in orders if o.get("status", "").lower() == "finalizada" and o.get("isin")]
-	unique_isins = sorted(set(o["isin"] for o in finalized))
+	if background_jobs.is_active(current_user.username, INSTRUMENT_METADATA_JOB):
+		return {
+			"success": True,
+			"queued": False,
+			"in_progress": True,
+			"job_type": INSTRUMENT_METADATA_JOB,
+			"message": "Instrument metadata refresh already in progress",
+			"updated": 0,
+			"total": 0,
+			"errors": [],
+		}
 
+	unique_isins = InstrumentMetadataService.get_user_isins(current_user.username)
 	if not unique_isins:
-		return {"success": True, "message": "No ISINs to refresh", "updated": 0}
+		return {
+			"success": True,
+			"queued": False,
+			"in_progress": False,
+			"job_type": INSTRUMENT_METADATA_JOB,
+			"message": "No ISINs to refresh",
+			"updated": 0,
+			"total": 0,
+			"errors": [],
+		}
 
-	storage = StorageService()
-	morningstar = MorningstarService()
-	yfinance = YahooFinanceService()
+	if not InstrumentMetadataService.requires_provider(unique_isins):
+		result = await InstrumentMetadataService.refresh_for_user(current_user.username, force=True)
+		return {**result, "queued": False, "in_progress": False, "job_type": INSTRUMENT_METADATA_JOB}
 
-	updated_count = 0
-	errors = []
-
-	for isin in unique_isins:
-		try:
-			success = await _refresh_single_instrument(isin, storage, morningstar, yfinance)
-			if success:
-				updated_count += 1
-			else:
-				errors.append(f"{isin}: Could not fetch complete metadata")
-		except Exception as e:
-			logger.error(f"Error refreshing {isin}: {e}")
-			errors.append(f"{isin}: {e!s}")
-
-	return {
-		"success": True,
-		"message": f"Refreshed metadata for {updated_count}/{len(unique_isins)} instruments",
-		"updated": updated_count,
-		"total": len(unique_isins),
-		"errors": errors,
-	}
-
-
-async def _refresh_single_instrument(
-	isin: str,
-	storage: StorageService,
-	morningstar: MorningstarService,
-	yfinance: YahooFinanceService,
-) -> bool:
-	"""Fetch and persist metadata for a single ISIN."""
-	logger.info(f"Refreshing metadata for {isin}")
-
-	if is_crypto_symbol(isin):
-		storage.upsert_instrument(isin, {"name": isin, "symbol": isin, "type": "Crypto"})
-		return True
-
-	instrument_data: dict[str, Any] = {"symbol": isin}
-
-	# Try Yahoo quote resolution first so yahooquery metadata can use a tradable symbol.
-	suffixes = ["", ".F", ".SG", ".PA", ".AS", ".DE", ".MI"]
-	for suffix in suffixes:
-		symbol = f"{isin}{suffix}"
-		quote = await yfinance.get_quote(symbol)
-		if quote:
-			instrument_data["symbol"] = quote.get("symbol", symbol)
-			instrument_data["name"] = quote.get("name", isin)
-			if quote.get("asset_type"):
-				instrument_data["type"] = quote["asset_type"]
-			if quote.get("sector_allocation"):
-				instrument_data["sector_allocation"] = quote["sector_allocation"]
-			if quote.get("geo_allocation"):
-				instrument_data["geo_allocation"] = quote["geo_allocation"]
-			if quote.get("country_allocation"):
-				instrument_data["country_allocation"] = quote["country_allocation"]
-			break
-
-	mstar_metadata = await morningstar.get_fund_metadata(isin)
-
-	if mstar_metadata:
-		logger.info(f"Got Morningstar data for {isin}")
-		PriceService._merge_metadata(instrument_data, mstar_metadata, None)
-
-	if not instrument_data.get("sector_allocation") or not instrument_data.get("geo_allocation"):
-		symbol = instrument_data.get("symbol", isin)
-		logger.info(f"Fetching YahooQuery data for {symbol} ({isin})")
-		yq_metadata = await yfinance.get_fund_metadata(symbol)
-		PriceService._merge_metadata(instrument_data, None, yq_metadata)
-
-	if len(instrument_data) <= 1:
-		return False
-
-	storage.upsert_instrument(isin, instrument_data)
-	return True
+	response = _queued_response(current_user.username, len(unique_isins), f"Refreshing metadata for {len(unique_isins)} instruments")
+	response.update({"total": len(unique_isins), "errors": []})
+	background_tasks.add_task(_refresh_and_record, current_user.username, True)
+	return response

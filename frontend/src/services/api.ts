@@ -69,21 +69,6 @@ class APIClient {
     return response.data
   }
 
-  async addInvestment(investment: any) {
-    const response = await this.client.post('/api/portfolio/', investment)
-    return response.data
-  }
-
-  async updateInvestment(id: number, investment: any) {
-    const response = await this.client.put(`/api/portfolio/${id}`, investment)
-    return response.data
-  }
-
-  async deleteInvestment(id: number) {
-    const response = await this.client.delete(`/api/portfolio/${id}`)
-    return response.data
-  }
-
   async getPortfolioSummary() {
     const response = await this.client.get('/api/portfolio/summary')
     return response.data

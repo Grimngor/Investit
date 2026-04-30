@@ -22,12 +22,27 @@ Frontend logging is handled by `frontend/src/utils/logger.ts`.
 - `GET /debug/yahoo-check`: development-only Yahoo Finance connectivity check.
 - `.\scripts\dev\verify_backend.ps1`: route and health verification for port `8000`.
 
+## Deployment Settings (.env)
+
+- `SECRET_KEY`: required; replace the development value before any shared deployment.
+- `BACKEND_CORS_ORIGINS`: JSON list of allowed frontend origins.
+- `PRICE_STALE_THRESHOLD_DAYS`: age threshold for cached prices; default is `3`.
+- `FINNHUB_API_KEY`: optional market-data key.
+- `OPENFIGI_API_KEY`: optional OpenFIGI key for higher ISIN mapping limits.
+- `ISIN_RESOLUTION_CACHE_DAYS`: age threshold for OpenFIGI-derived ISIN mappings; default is `30`.
+
 ## WebSocket Events
 
 Connect with:
 
 ```text
-ws://localhost:8000/ws?token=<access_token>
+ws://localhost:8000/ws
+```
+
+After opening the socket, authenticate with the first client message:
+
+```json
+{ "type": "auth", "token": "<access_token>" }
 ```
 
 Events:
@@ -45,7 +60,7 @@ Events:
 
 ## Price Refresh Workflow
 
-The app owns price refreshes; there is no Windows scheduled task dependency.
+The app owns price refreshes through lightweight FastAPI background jobs; there is no Windows scheduled task dependency.
 
 - `POST /api/prices/refresh-if-needed`: protected endpoint that queues a background refresh only when cached prices are missing or stale.
 - `POST /api/prices/fetch`: protected manual force-refresh endpoint used by the Portfolio `Fetch Prices` action.
@@ -54,6 +69,14 @@ The app owns price refreshes; there is no Windows scheduled task dependency.
 
 The frontend triggers `refresh-if-needed` after login and when entering the dashboard with an existing session. Cached data remains visible while the refresh runs.
 
+## Instrument Metadata And ISIN Resolution
+
+- `POST /api/instruments/refresh`: protected force-refresh endpoint that queues provider-backed metadata refreshes for traditional instruments.
+- `POST /api/instruments/sync`: protected endpoint that queues missing metadata refreshes where useful.
+- Crypto metadata refreshes complete without external fund providers.
+- Manual ISIN overrides live in `data/isin_ticker_mapping.json`.
+- OpenFIGI-derived mappings are cached in `data/isin_resolution_cache.json`.
+
 ## Local Data
 
 User-specific JSON files are intentionally ignored by Git:
@@ -61,14 +84,21 @@ User-specific JSON files are intentionally ignored by Git:
 - `data/users.json`
 - `data/orders.json`
 - `data/prices.json`
+- `data/instruments.json`
+- `data/isin_ticker_mapping.json`
+- `data/isin_resolution_cache.json`
 - `data/settings.json` (legacy local file; not used by the app)
 - `data/backups/`
 - `data/*.lock`
+
+Public-safe sample data is kept under `data/examples/`.
 
 Generated caches and test reports are ignored and can be deleted safely:
 
 - `.cache/`
 - `.pytest_cache/`
+- `.ruff_cache/`
+- `.serena/`
 - `frontend/test-results/`
 - `frontend/playwright-report/`
 - `frontend/dist/`

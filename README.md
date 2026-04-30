@@ -64,6 +64,17 @@ Stop local servers:
 - The manual Portfolio `Fetch Prices` action still forces a refresh.
 - Geography allocation is shown by country, with an optional Europe collapse and automatic `Others` grouping only when a chart has more than 15 entries.
 
+## Data And Publishing
+
+Runtime JSON files in `data/` are local state and intentionally ignored by Git. Public-safe example files live in `data/examples/`.
+
+Before publishing or sharing:
+
+- Confirm `.env` and `frontend/.env` are ignored.
+- Keep real `data/users.json`, `data/prices.json`, `data/instruments.json`, and `data/isin_ticker_mapping.json` local.
+- Use the sample files in `data/examples/` for documentation, tests, or onboarding examples.
+- Run the verification commands below.
+
 ## Verification
 
 ```powershell

@@ -1,0 +1,24 @@
+[
+  {
+    "isin": "IE00B4L5Y983",
+    "symbol": "IWDA.AS",
+    "name": "Sample Global Equity Index Fund",
+    "type": "Fund",
+    "currency": "EUR",
+    "asset_type": "Fund",
+    "geo_allocation": {
+      "United States": 0.65,
+      "Japan": 0.06,
+      "United Kingdom": 0.04,
+      "Europe": 0.18,
+      "Others": 0.07
+    },
+    "sector_allocation": {
+      "Technology": 0.25,
+      "Financial Services": 0.15,
+      "Healthcare": 0.12,
+      "Industrials": 0.10,
+      "Others": 0.38
+    }
+  }
+]

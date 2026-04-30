@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.config import settings
+from app.services.isin_mapper import get_isin_mapper
 from app.services.metrics_service import metrics
 from app.services.morningstar_service import MorningstarService
 from app.services.storage_service import StorageService
@@ -77,6 +78,17 @@ class PriceService:
 					break
 
 	@staticmethod
+	async def get_candidate_symbols(isin: str) -> list[str]:
+		"""Return ordered provider symbols for an ISIN."""
+		storage = StorageService()
+		instruments = storage.load_instruments()
+		existing = next((inst for inst in instruments if inst.get("isin") == isin), {})
+		resolved = await get_isin_mapper().resolve_isin_info(isin)
+		resolved_symbol = resolved.get("ticker") if resolved else None
+		symbols = [existing.get("symbol"), resolved_symbol, *[f"{isin}{suffix}" for suffix in _YAHOO_SUFFIXES]]
+		return [symbol for index, symbol in enumerate(symbols) if symbol and symbol not in symbols[:index]]
+
+	@staticmethod
 	async def fetch_traditional_quote(isin: str) -> dict[str, Any] | None:
 		"""Fetch price and metadata for a traditional instrument (fund/ETF/stock).
 
@@ -86,10 +98,7 @@ class PriceService:
 		yahoo = YahooFinanceService()
 		morningstar = MorningstarService()
 		storage = StorageService()
-		instruments = storage.load_instruments()
-		existing = next((inst for inst in instruments if inst.get("isin") == isin), {})
-		symbols = [existing.get("symbol"), *[f"{isin}{suffix}" for suffix in _YAHOO_SUFFIXES]]
-		symbols = [symbol for index, symbol in enumerate(symbols) if symbol and symbol not in symbols[:index]]
+		symbols = await PriceService.get_candidate_symbols(isin)
 
 		for idx, symbol in enumerate(symbols):
 			quote = await yahoo.get_quote(symbol)

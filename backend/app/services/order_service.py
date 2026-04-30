@@ -3,12 +3,15 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.config import settings
+from app.models.order import OrderCreate
 from app.services.storage_service import StorageService
 from app.utils.csv_parser import CryptoExchangeCSVParser, SpanishOrderCSVParser
 from app.utils.validators import is_crypto_symbol
 
 
 class OrderService:
+	"""Service for order filtering, import, and persistence operations."""
+
 	@staticmethod
 	def filter_orders(
 		orders: list[dict[str, Any]],
@@ -19,6 +22,7 @@ class OrderService:
 		date_from: str | None,
 		date_to: str | None,
 	) -> list[dict[str, Any]]:
+		"""Return orders matching the provided optional filters."""
 		filtered = orders
 		if isin:
 			filtered = [o for o in filtered if o.get("isin", "").upper() == isin.upper()]
@@ -36,6 +40,7 @@ class OrderService:
 
 	@staticmethod
 	def parse_date_for_sorting(date_str: str) -> str:
+		"""Normalize supported date strings for lexical sorting."""
 		ISO_LEN = 10
 		DATE_PARTS = 3
 		if not date_str:
@@ -50,6 +55,7 @@ class OrderService:
 
 	@staticmethod
 	def sort_orders(orders: list[dict[str, Any]], sort_by: str, sort_order: str) -> None:
+		"""Sort orders in-place by a supported field."""
 		if sort_by in {"date", "amount_eur", "shares"}:
 			reverse = sort_order.lower() == "desc"
 			if sort_by == "date":
@@ -59,6 +65,7 @@ class OrderService:
 
 	@staticmethod
 	def paginate_orders(orders: list[dict[str, Any]], offset: int, limit: int | None) -> list[dict[str, Any]]:
+		"""Return a page of orders from offset with optional limit."""
 		if not orders:
 			return []
 
@@ -69,6 +76,7 @@ class OrderService:
 
 	@staticmethod
 	def detect_and_parse_csv(content_str: str) -> tuple[list[dict[str, Any]], list[str]]:
+		"""Parse an uploaded CSV using the matching order parser."""
 		content_str = content_str.lstrip("\ufeff")
 		first_line = content_str.splitlines()[0] if content_str else ""
 		is_crypto_csv = "Date(UTC" in first_line and "Spend Amount" in first_line
@@ -82,6 +90,7 @@ class OrderService:
 
 	@staticmethod
 	def merge_orders(user_data: dict[str, Any], new_orders: list[dict[str, Any]]) -> tuple[int, int]:
+		"""Merge parsed orders into user data and return new/updated counts."""
 		if "orders" not in user_data:
 			user_data["orders"] = []
 
@@ -125,7 +134,7 @@ class OrderService:
 		return counts["new"], counts["updated"]
 
 	@staticmethod
-	def build_manual_order(order_data) -> dict[str, Any]:
+	def build_manual_order(order_data: OrderCreate) -> dict[str, Any]:
 		"""Build a manual order payload without mutating stored user data."""
 		order_id = str(uuid.uuid4())
 		price_per_share = order_data.price_per_share
@@ -157,7 +166,7 @@ class OrderService:
 		}
 
 	@staticmethod
-	def get_user_orders(username: str, **filters) -> dict[str, Any]:
+	def get_user_orders(username: str, **filters: Any) -> dict[str, Any]:
 		"""Get orders for a user with filtering and pagination."""
 		users_file = settings.DATA_DIR / "users.json"
 		users = StorageService.load_json(users_file, default={})
@@ -213,7 +222,7 @@ class OrderService:
 		return next((o for o in orders if o.get("id") == order_id), None)
 
 	@staticmethod
-	def create_manual_order_atomic(username: str, order_data) -> dict[str, Any]:
+	def create_manual_order_atomic(username: str, order_data: OrderCreate) -> dict[str, Any]:
 		"""Create an order and save it atomically."""
 		users_file = settings.DATA_DIR / "users.json"
 		new_order = OrderService.build_manual_order(order_data)
@@ -234,7 +243,7 @@ class OrderService:
 		"""Update an order atomically."""
 		users_file = settings.DATA_DIR / "users.json"
 
-		def update_fn(users):
+		def update_fn(users: dict[str, Any]) -> dict[str, Any]:
 			if username not in users:
 				return users
 
@@ -267,7 +276,7 @@ class OrderService:
 		users_file = settings.DATA_DIR / "users.json"
 		deleted = False
 
-		def update_fn(users):
+		def update_fn(users: dict[str, Any]) -> dict[str, Any]:
 			nonlocal deleted
 			if username not in users:
 				return users
@@ -286,7 +295,7 @@ class OrderService:
 		"""Clear all orders for a user atomically."""
 		users_file = settings.DATA_DIR / "users.json"
 
-		def update_fn(users):
+		def update_fn(users: dict[str, Any]) -> dict[str, Any]:
 			if username in users:
 				users[username]["orders"] = []
 			return users

@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models.persistence import save_user_data
 from app.services.auth import get_password_hash
+from app.services.portfolio_service import PortfolioService
 
 client = TestClient(app)
 
@@ -44,6 +45,48 @@ def test_get_empty_portfolio(authenticated_client):
 	data = response.json()
 	assert "holdings" in data
 	assert len(data["holdings"]) == 0
+
+
+def test_portfolio_service_computes_summary_from_orders(authenticated_client):
+	"""Test portfolio service computes holdings and summary from orders only."""
+	client, headers = authenticated_client
+
+	order_data = {
+		"date": "2024-02-01",
+		"isin": "IE00TEST0001",
+		"amount_eur": 1000.0,
+		"shares": 10.0,
+		"status": "Finalizada",
+	}
+	client.post("/api/orders", json=order_data, headers=headers)
+
+	portfolio = PortfolioService.get_portfolio("test_portfolio_user")
+	summary = PortfolioService.get_summary("test_portfolio_user")
+
+	assert len(portfolio.holdings) == 1
+	assert portfolio.holdings[0].symbol == "IE00TEST0001"
+	assert portfolio.holdings[0].purchase_price == 100.0
+	assert summary.total_investments == 1
+	assert summary.total_cost == 1000.0
+	assert summary.total_value == 1000.0
+
+
+def test_legacy_portfolio_write_endpoint_removed(authenticated_client):
+	"""Test legacy portfolio writes are no longer accepted."""
+	client, headers = authenticated_client
+	response = client.post(
+		"/api/portfolio/",
+		json={
+			"symbol": "IE00TEST0001",
+			"name": "Legacy Holding",
+			"quantity": 1,
+			"purchase_price": 100,
+			"purchase_date": "2024-01-01",
+		},
+		headers=headers,
+	)
+
+	assert response.status_code == 405
 
 
 def test_get_portfolio_with_holdings(authenticated_client):

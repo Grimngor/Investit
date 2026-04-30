@@ -21,6 +21,8 @@ wheels/
 *.egg
 MANIFEST
 .pytest_cache/
+.ruff_cache/
+.serena/
 .coverage
 htmlcov/
 *.cover
@@ -64,6 +66,8 @@ data/users.json
 data/orders.json
 data/prices.json
 data/settings.json
+data/instruments.json
+data/isin_ticker_mapping.json
 data/backups/
 data/*.lock
 data/*.tmp

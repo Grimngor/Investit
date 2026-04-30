@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.config import settings
 from app.main import app
+from app.services.instrument_metadata_service import InstrumentMetadataService
 from app.services.storage_service import StorageService
 from tests.conftest import make_auth_headers
 
@@ -91,3 +92,40 @@ def test_refresh_crypto_metadata_without_external_provider() -> None:
 	instruments = StorageService.load_json(settings.DATA_DIR / "instruments.json", default=[])
 	assert instruments[0]["isin"] == "BTC"
 	assert instruments[0]["type"] == "Crypto"
+
+
+def test_refresh_traditional_metadata_queues_background_job(monkeypatch) -> None:
+	"""Traditional instrument refresh returns a queued response."""
+	username = "instrument_queue_user"
+	headers = make_auth_headers(client, username)
+	users_file = settings.DATA_DIR / "users.json"
+	calls = []
+
+	def add_order(users: dict[str, Any]) -> dict[str, Any]:
+		users[username]["orders"] = [
+			{
+				"id": "fund-order",
+				"date": "2024-01-01",
+				"isin": "IE00B4L5Y983",
+				"amount_eur": 100.0,
+				"shares": 1.0,
+				"order_type": "buy",
+				"status": "Finalizada",
+			}
+		]
+		return users
+
+	async def fake_refresh(user: str, force: bool = False) -> dict[str, Any]:
+		calls.append((user, force))
+		return {"success": True, "updated": 1, "total": 1, "errors": []}
+
+	StorageService.update_json(users_file, add_order, default={})
+	monkeypatch.setattr(InstrumentMetadataService, "refresh_for_user", fake_refresh)
+
+	response = client.post("/api/instruments/refresh", headers=headers)
+
+	assert response.status_code == 200
+	assert response.json()["queued"] is True
+	assert response.json()["job_type"] == "instrument_metadata_refresh"
+	assert response.json()["updated"] == 0
+	assert calls == [(username, True)]

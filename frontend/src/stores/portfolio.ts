@@ -58,60 +58,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     }
   }
 
-  async function addInvestment(investment: Partial<Investment>) {
-    loading.value = true
-    error.value = null
-
-    try {
-      await apiClient.addInvestment(investment)
-      await fetchPortfolio()
-      useToastStore().addToast('Investment added successfully', 'success')
-      return true
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to add investment'
-      useToastStore().addToast(error.value, 'error')
-      return false
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function updateInvestment(id: number, investment: Partial<Investment>) {
-    loading.value = true
-    error.value = null
-
-    try {
-      await apiClient.updateInvestment(id, investment)
-      await fetchPortfolio()
-      useToastStore().addToast('Investment updated successfully', 'success')
-      return true
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to update investment'
-      useToastStore().addToast(error.value, 'error')
-      return false
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function deleteInvestment(id: number) {
-    loading.value = true
-    error.value = null
-
-    try {
-      await apiClient.deleteInvestment(id)
-      await fetchPortfolio()
-      useToastStore().addToast('Investment deleted successfully', 'success')
-      return true
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Failed to delete investment'
-      useToastStore().addToast(error.value, 'error')
-      return false
-    } finally {
-      loading.value = false
-    }
-  }
-
   return {
     portfolio,
     loading,
@@ -119,9 +65,6 @@ export const usePortfolioStore = defineStore('portfolio', () => {
     totalValue,
     totalCost,
     totalGainLoss,
-    fetchPortfolio,
-    addInvestment,
-    updateInvestment,
-    deleteInvestment
+    fetchPortfolio
   }
 })

@@ -10,25 +10,33 @@ class WebSocketClient {
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectInterval = 3000
+  private authToken: string | null = null
+  private shouldReconnect = false
 
   connect(token?: string) {
+    if (token) {
+      this.authToken = token
+    }
+    this.shouldReconnect = true
+
     // Connection guard - prevent duplicate connections
     if (this.ws?.readyState === WebSocket.OPEN || this.ws?.readyState === WebSocket.CONNECTING) {
       logger.debug('WebSocket already connected or connecting, skipping')
       return
     }
 
-    const url = token ? `${WS_URL}?token=${token}` : WS_URL
-
     try {
-      this.ws = new WebSocket(url)
+      this.ws = new WebSocket(WS_URL)
 
       this.ws.onopen = () => {
         logger.info('WebSocket connection opened')
         this.reconnectAttempts = 0
 
-        // Send ping on connect
-        this.send({ type: 'ping' })
+        if (this.authToken) {
+          this.send({ type: 'auth', token: this.authToken })
+        } else {
+          logger.warn('WebSocket opened without an auth token')
+        }
       }
 
       this.ws.onmessage = (event) => {
@@ -38,6 +46,7 @@ class WebSocketClient {
           // Handle handshake
           if (data.type === 'connection_status') {
             logger.debug('WebSocket handshake received', { data })
+            this.send({ type: 'ping' })
             return
           }
 
@@ -62,9 +71,14 @@ class WebSocketClient {
       this.ws.onclose = (event) => {
         logger.info('WebSocket connection closed', { code: event.code, reason: event.reason })
 
+        if (!this.shouldReconnect) {
+          return
+        }
+
         // Don't reconnect on code 1008 (policy violation - auth failed)
         if (event.code === 1008) {
           logger.warn('WebSocket auth failed, not reconnecting')
+          this.shouldReconnect = false
           return
         }
 
@@ -74,7 +88,9 @@ class WebSocketClient {
           logger.info('WebSocket reconnecting', { attempt: this.reconnectAttempts, max: this.maxReconnectAttempts })
 
           setTimeout(() => {
-            this.connect(token)
+            if (this.shouldReconnect) {
+              this.connect(this.authToken || undefined)
+            }
           }, this.reconnectInterval * this.reconnectAttempts)
         } else {
           logger.warn('WebSocket max reconnect attempts reached')
@@ -86,6 +102,9 @@ class WebSocketClient {
   }
 
   disconnect() {
+    this.shouldReconnect = false
+    this.authToken = null
+
     if (this.ws) {
       this.ws.close()
       this.ws = null

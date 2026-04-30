@@ -1,66 +1,161 @@
 """ISINMapper service for resolving ISIN codes to ticker symbols."""
 
-import json
+import logging
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any
 
+import httpx
+
 from app.config import settings
+from app.services.storage_service import StorageService
+
+logger = logging.getLogger(__name__)
+
+OPENFIGI_MAPPING_URL = "https://api.openfigi.com/v3/mapping"
 
 
 class ISINMapper:
-	"""Service to map ISIN codes to ticker symbols using static mapping."""
+	"""Service to map ISIN codes to ticker symbols using overrides, cache, and OpenFIGI."""
 
-	def __init__(self):
-		"""Initialize the ISIN mapper and load mappings from JSON file."""
-		self.mappings: dict[str, dict[str, Any]] = {}
+	def __init__(self) -> None:
+		"""Initialize the ISIN mapper and load mappings from JSON files."""
+		self.overrides: dict[str, dict[str, Any]] = {}
+		self.cache: dict[str, dict[str, Any]] = {}
 		self._load_mappings()
+		self._load_cache()
 
 	def _load_mappings(self) -> None:
-		"""Load ISIN to ticker mappings from JSON file."""
+		"""Load manual/static ISIN to ticker mappings from JSON file."""
 		mapping_file = settings.DATA_DIR / "isin_ticker_mapping.json"
+		data = StorageService.load_json(mapping_file, default={"mappings": {}})
+		self.overrides = data.get("mappings", {}) if isinstance(data, dict) else {}
 
-		if not mapping_file.exists():
-			print(f"Warning: ISIN mapping file not found at {mapping_file}")
-			return
+	def _load_cache(self) -> None:
+		"""Load provider-derived ISIN resolution cache."""
+		cache_file = settings.DATA_DIR / "isin_resolution_cache.json"
+		data = StorageService.load_json(cache_file, default={"mappings": {}})
+		self.cache = data.get("mappings", {}) if isinstance(data, dict) else {}
+
+	def _save_cache(self) -> None:
+		"""Persist provider-derived ISIN resolution cache."""
+		cache_file = settings.DATA_DIR / "isin_resolution_cache.json"
+		StorageService.save_json(cache_file, {"mappings": self.cache})
+
+	def _is_fresh(self, mapping: dict[str, Any]) -> bool:
+		"""Return True when a cached mapping is within the configured freshness window."""
+		timestamp = mapping.get("timestamp")
+		if not timestamp:
+			return False
+		try:
+			cache_time = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+		except ValueError:
+			return False
+		return datetime.now(UTC) - cache_time < timedelta(days=settings.ISIN_RESOLUTION_CACHE_DAYS)
+
+	def _manual_override(self, isin: str) -> dict[str, Any] | None:
+		"""Return an explicit manual override for an ISIN when one exists."""
+		mapping = self.overrides.get(isin)
+		if not mapping:
+			return None
+		if mapping.get("manual") is True or mapping.get("source") == "manual":
+			return {**mapping, "isin": isin, "source": mapping.get("source", "manual")}
+		return None
+
+	def _static_fallback(self, isin: str) -> dict[str, Any] | None:
+		"""Return a non-manual local mapping as a final fallback."""
+		mapping = self.overrides.get(isin)
+		if not mapping:
+			return None
+		return {**mapping, "isin": isin, "source": mapping.get("source", "local")}
+
+	def _normalize_openfigi_result(self, isin: str, result: dict[str, Any]) -> dict[str, Any] | None:
+		"""Normalize the first OpenFIGI result into the local mapping shape."""
+		ticker = result.get("ticker")
+		if not ticker:
+			return None
+		exch_code = result.get("exchCode")
+		symbol = f"{ticker}.{exch_code}" if exch_code and "." not in ticker else ticker
+		return {
+			"isin": isin,
+			"ticker": symbol,
+			"name": result.get("name"),
+			"exchange": exch_code,
+			"currency": result.get("currency"),
+			"figi": result.get("figi"),
+			"composite_figi": result.get("compositeFIGI"),
+			"source": "openfigi",
+			"timestamp": datetime.now(UTC).isoformat(),
+		}
+
+	async def _resolve_with_openfigi(self, isin: str) -> dict[str, Any] | None:
+		"""Resolve an ISIN through OpenFIGI."""
+		headers = {"Content-Type": "application/json"}
+		if settings.OPENFIGI_API_KEY:
+			headers["X-OPENFIGI-APIKEY"] = settings.OPENFIGI_API_KEY
 
 		try:
-			with open(mapping_file, encoding="utf-8") as f:
-				data = json.load(f)
-				self.mappings = data.get("mappings", {})
-				print(f"Loaded {len(self.mappings)} ISIN mappings")
-		except Exception as e:
-			print(f"Error loading ISIN mappings: {e}")
+			async with httpx.AsyncClient(timeout=10.0) as client:
+				response = await client.post(OPENFIGI_MAPPING_URL, headers=headers, json=[{"idType": "ID_ISIN", "idValue": isin}])
+			if response.status_code == 429:
+				logger.warning(f"OpenFIGI rate limit reached while resolving {isin}")
+				return None
+			response.raise_for_status()
+			payload = response.json()
+		except (httpx.HTTPError, ValueError) as e:
+			logger.warning(f"Could not resolve {isin} with OpenFIGI: {e!s}")
+			return None
 
-	def resolve_isin(self, isin: str) -> str | None:
-		"""
-		Resolve an ISIN code to a ticker symbol.
+		if not isinstance(payload, list) or not payload:
+			return None
+		data = payload[0].get("data") if isinstance(payload[0], dict) else None
+		if not data:
+			return None
+		for result in data:
+			if isinstance(result, dict):
+				normalized = self._normalize_openfigi_result(isin, result)
+				if normalized:
+					self.cache[isin] = normalized
+					self._save_cache()
+					return normalized
+		return None
 
-		Args:
-			isin: The ISIN code to resolve
-
-		Returns:
-			The ticker symbol if found, None otherwise
-		"""
+	async def resolve_isin_info(self, isin: str) -> dict[str, Any] | None:
+		"""Resolve an ISIN code to ticker metadata."""
 		if not isin:
 			return None
 
-		mapping = self.mappings.get(isin)
+		isin = isin.upper()
+		manual = self._manual_override(isin)
+		if manual:
+			return manual
+
+		cached = self.cache.get(isin)
+		if cached and self._is_fresh(cached):
+			return cached
+
+		openfigi = await self._resolve_with_openfigi(isin)
+		if openfigi:
+			return openfigi
+
+		if cached:
+			return cached
+
+		return self._static_fallback(isin)
+
+	def resolve_isin(self, isin: str) -> str | None:
+		"""Resolve an ISIN code to a locally available ticker symbol."""
+		if not isin:
+			return None
+		isin = isin.upper()
+		mapping = self._manual_override(isin) or self.cache.get(isin) or self._static_fallback(isin)
 		if mapping:
 			return mapping.get("ticker")
-
 		return None
 
 	def get_mapping_info(self, isin: str) -> dict[str, Any] | None:
-		"""
-		Get full mapping information for an ISIN.
-
-		Args:
-			isin: The ISIN code
-
-		Returns:
-			Dictionary with mapping details or None
-		"""
-		return self.mappings.get(isin)
+		"""Get locally loaded mapping information for an ISIN."""
+		return self.overrides.get(isin) or self.cache.get(isin)
 
 
 @lru_cache

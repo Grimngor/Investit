@@ -140,7 +140,7 @@ class MorningstarService:
 		if sector_allocation:
 			metadata["sector_allocation"] = sector_allocation
 
-	def clear_cache(self):
+	def clear_cache(self) -> None:
 		"""Clear the metadata cache."""
 		self.cache.clear()
 		logger.info("Morningstar metadata cache cleared")

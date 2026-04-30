@@ -2,12 +2,19 @@
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.websockets import WebSocketDisconnect
 
 from app.config import settings
 from app.main import app
 from app.services.storage_service import StorageService
 
 client = TestClient(app)
+
+
+def authenticate_websocket(websocket, token: str) -> dict:
+	"""Authenticate a WebSocket test connection and return its handshake."""
+	websocket.send_json({"type": "auth", "token": token})
+	return websocket.receive_json()
 
 
 @pytest.fixture
@@ -51,9 +58,10 @@ def cleanup_user_data():
 
 def test_websocket_connection_with_valid_token(auth_token, cleanup_user_data):
 	"""Test WebSocket connection with valid authentication token."""
-	with client.websocket_connect(f"/ws?token={auth_token}") as websocket:
+	with client.websocket_connect("/ws") as websocket:
+		data = authenticate_websocket(websocket, auth_token)
+
 		# Should receive connection status message
-		data = websocket.receive_json()
 		assert data["type"] == "connection_status"
 		assert data["status"] == "connected"
 		assert data["client_id"] == "test_websocket"
@@ -61,29 +69,28 @@ def test_websocket_connection_with_valid_token(auth_token, cleanup_user_data):
 
 def test_websocket_connection_without_token(cleanup_user_data):
 	"""Test WebSocket connection fails without token."""
-	with client.websocket_connect("/ws") as websocket:
-		# Connection is accepted but should close with error
-		try:
-			websocket.receive_json()
-		except Exception:
-			pass  # Expected to disconnect
+	with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws") as websocket:
+		websocket.send_json({"type": "auth"})
+		websocket.receive_json()
 
 
 def test_websocket_connection_with_invalid_token(cleanup_user_data):
 	"""Test WebSocket connection fails with invalid token."""
-	with client.websocket_connect("/ws?token=invalid_token") as websocket:
-		# Connection is accepted but should close with error
-		try:
-			websocket.receive_json()
-		except Exception:
-			pass  # Expected to disconnect
+	with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws") as websocket:
+		websocket.send_json({"type": "auth", "token": "invalid_token"})
+		websocket.receive_json()
+
+
+def test_websocket_legacy_client_id_route_is_removed(cleanup_user_data):
+	"""Test legacy unauthenticated WebSocket route is not available."""
+	with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws/test-client"):
+		pass
 
 
 def test_websocket_ping_pong(auth_token, cleanup_user_data):
 	"""Test WebSocket ping/pong mechanism."""
-	with client.websocket_connect(f"/ws?token={auth_token}") as websocket:
-		# Skip connection status message
-		websocket.receive_json()
+	with client.websocket_connect("/ws") as websocket:
+		authenticate_websocket(websocket, auth_token)
 
 		# Send ping
 		websocket.send_json({"type": "ping"})
@@ -96,9 +103,8 @@ def test_websocket_ping_pong(auth_token, cleanup_user_data):
 
 def test_websocket_broadcast_on_order_create(auth_token, cleanup_user_data):
 	"""Test that WebSocket broadcasts when an order is created."""
-	with client.websocket_connect(f"/ws?token={auth_token}") as websocket:
-		# Skip connection status message
-		websocket.receive_json()
+	with client.websocket_connect("/ws") as websocket:
+		authenticate_websocket(websocket, auth_token)
 
 		# Create an order via API
 		response = client.post(
@@ -141,9 +147,8 @@ def test_websocket_broadcast_on_order_update(auth_token, cleanup_user_data):
 	)
 	order_id = response.json()["id"]
 
-	with client.websocket_connect(f"/ws?token={auth_token}") as websocket:
-		# Skip connection status message
-		websocket.receive_json()
+	with client.websocket_connect("/ws") as websocket:
+		authenticate_websocket(websocket, auth_token)
 
 		# Update the order
 		response = client.put(
@@ -178,9 +183,8 @@ def test_websocket_broadcast_on_order_delete(auth_token, cleanup_user_data):
 	)
 	order_id = response.json()["id"]
 
-	with client.websocket_connect(f"/ws?token={auth_token}") as websocket:
-		# Skip connection status message
-		websocket.receive_json()
+	with client.websocket_connect("/ws") as websocket:
+		authenticate_websocket(websocket, auth_token)
 
 		# Delete the order
 		response = client.delete(
@@ -198,9 +202,8 @@ def test_websocket_broadcast_on_order_delete(auth_token, cleanup_user_data):
 
 def test_websocket_broadcast_on_csv_import(auth_token, cleanup_user_data):
 	"""Test that WebSocket broadcasts when CSV is imported."""
-	with client.websocket_connect(f"/ws?token={auth_token}") as websocket:
-		# Skip connection status message
-		websocket.receive_json()
+	with client.websocket_connect("/ws") as websocket:
+		authenticate_websocket(websocket, auth_token)
 
 		# Import CSV
 		csv_content = """Fecha de la orden,ISIN,Importe estimado,Nº de participaciones,Estado

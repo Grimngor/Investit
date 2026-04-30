@@ -1,0 +1,11 @@
+{
+  "mappings": {
+    "IE00B4L5Y983": {
+      "ticker": "IWDA.AS",
+      "name": "Sample Global Equity Index Fund",
+      "exchange": "Amsterdam",
+      "currency": "EUR",
+      "source": "sample"
+    }
+  }
+}

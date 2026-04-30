@@ -3,7 +3,7 @@
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from app.config import settings
@@ -53,27 +53,36 @@ async def decode_token(token: str) -> str | None:
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: str | None = Query(None)):
+async def websocket_endpoint(websocket: WebSocket) -> None:
 	"""
-	WebSocket endpoint with token-based authentication.
+	WebSocket endpoint authenticated by the first client message.
 
-	Connect with: ws://localhost:8000/ws?token=YOUR_JWT_TOKEN
+	Connect to /ws, then send {"type": "auth", "token": "<jwt>"}.
 	"""
-	# Validate token before accepting connection
-	if not token:
-		await websocket.accept()
+	await websocket.accept()
+	username: str | None = None
+	connected = False
+
+	try:
+		auth_message = await websocket.receive_json()
+	except WebSocketDisconnect:
+		return
+	except Exception:
+		await websocket.close(code=1008, reason="Invalid authentication message")
+		return
+
+	token = auth_message.get("token") if isinstance(auth_message, dict) and auth_message.get("type") == "auth" else None
+	if not isinstance(token, str) or not token:
 		await websocket.close(code=1008, reason="Missing authentication token")
 		return
 
 	username = await decode_token(token)
 	if not username:
-		await websocket.accept()
 		await websocket.close(code=1008, reason="Invalid authentication token")
 		return
 
-	# Accept connection
-	await websocket.accept()
 	await manager.connect(username, websocket)
+	connected = True
 
 	# Send handshake message
 	try:
@@ -101,23 +110,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str | None = Query(Non
 				await websocket.send_json(data)
 
 	except WebSocketDisconnect:
-		await manager.disconnect(username, websocket)
-		print(f"WebSocket disconnected for user: {username}")
-
-
-@router.websocket("/ws/{client_id}")
-async def websocket_legacy_endpoint(websocket: WebSocket, client_id: str):
-	"""
-	Legacy WebSocket endpoint (kept for backward compatibility).
-	Prefer using /ws with token query parameter.
-	"""
-	await websocket.accept()
-
-	await websocket.send_json({"type": "connection_status", "status": "connected", "client_id": client_id})
-
-	try:
-		while True:
-			data = await websocket.receive_json()
-			await websocket.send_json(data)
-	except WebSocketDisconnect:
-		print(f"WebSocket disconnected: {client_id}")
+		pass
+	finally:
+		if connected and username:
+			await manager.disconnect(username, websocket)

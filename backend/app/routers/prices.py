@@ -8,13 +8,14 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from app.config import settings
 from app.models.user import User
 from app.routers.auth import get_current_user
+from app.services.background_jobs import background_jobs
 from app.services.price_service import PriceService
 from app.services.storage_service import StorageService
 from app.services.yahoo_finance import YahooFinanceService
 
 router = APIRouter(prefix="/api/prices", tags=["prices"])
 logger = logging.getLogger(__name__)
-_ACTIVE_FETCHES: set[str] = set()
+PRICE_FETCH_JOB = "price_fetch"
 
 
 def _get_user_isins(user_data: dict[str, Any]) -> list[str]:
@@ -32,11 +33,15 @@ def _get_stale_or_missing_isins(user_data: dict[str, Any]) -> list[str]:
 
 
 async def _fetch_and_clear_active(username: str, isins: list[str], force: bool) -> None:
-	"""Run a price fetch and clear active-state after completion."""
+	"""Run a price fetch and record job state after completion."""
+	background_jobs.start(username, PRICE_FETCH_JOB)
 	try:
 		await PriceService.fetch_and_update_prices(username, isins, force=force)
-	finally:
-		_ACTIVE_FETCHES.discard(username)
+	except Exception as e:
+		background_jobs.fail(username, PRICE_FETCH_JOB, str(e))
+		raise
+	else:
+		background_jobs.complete(username, PRICE_FETCH_JOB, {"count": len(isins), "force": force})
 
 
 @router.post("/fetch")
@@ -68,12 +73,24 @@ async def fetch_prices(
 
 	logger.info(f"Queueing price fetch for {len(unique_isins)} ISINs - User: {current_user.username}")
 
-	# Queue background task
-	_ACTIVE_FETCHES.add(current_user.username)
+	if background_jobs.is_active(current_user.username, PRICE_FETCH_JOB):
+		return {
+			"success": True,
+			"queued": False,
+			"in_progress": True,
+			"job_type": PRICE_FETCH_JOB,
+			"message": "Price refresh already in progress",
+			"count": 0,
+		}
+
+	background_jobs.queue(current_user.username, PRICE_FETCH_JOB, len(unique_isins))
 	background_tasks.add_task(_fetch_and_clear_active, current_user.username, unique_isins, True)
 
 	return {
 		"success": True,
+		"queued": True,
+		"in_progress": False,
+		"job_type": PRICE_FETCH_JOB,
 		"message": f"Fetching prices for {len(unique_isins)} instruments",
 		"count": len(unique_isins),
 	}
@@ -91,11 +108,12 @@ async def refresh_prices_if_needed(
 	if current_user.username not in users:
 		raise HTTPException(status_code=404, detail="User not found")
 
-	if current_user.username in _ACTIVE_FETCHES:
+	if background_jobs.is_active(current_user.username, PRICE_FETCH_JOB):
 		return {
 			"success": True,
 			"queued": False,
 			"in_progress": True,
+			"job_type": PRICE_FETCH_JOB,
 			"count": 0,
 			"message": "Price refresh already in progress",
 		}
@@ -112,13 +130,14 @@ async def refresh_prices_if_needed(
 			"message": "All cached prices are fresh",
 		}
 
-	_ACTIVE_FETCHES.add(current_user.username)
+	background_jobs.queue(current_user.username, PRICE_FETCH_JOB, len(stale_or_missing_isins))
 	background_tasks.add_task(_fetch_and_clear_active, current_user.username, stale_or_missing_isins, False)
 
 	return {
 		"success": True,
 		"queued": True,
 		"in_progress": False,
+		"job_type": PRICE_FETCH_JOB,
 		"count": len(stale_or_missing_isins),
 		"message": f"Refreshing {len(stale_or_missing_isins)} stale or missing prices",
 	}
@@ -151,6 +170,7 @@ async def get_price_status(current_user: User = Depends(get_current_user)) -> di
 		"total": len(prices),
 		"fresh": fresh_count,
 		"stale": stale_count,
-		"refreshing": current_user.username in _ACTIVE_FETCHES,
+		"refreshing": background_jobs.is_active(current_user.username, PRICE_FETCH_JOB),
+		"job": background_jobs.get(current_user.username, PRICE_FETCH_JOB),
 		"cache_hours": settings.PRICE_CACHE_HOURS,
 	}

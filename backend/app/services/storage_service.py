@@ -210,7 +210,7 @@ def save_user_data(username: str, user_data: dict[str, Any]) -> None:
 	"""Save specific user data atomically."""
 	from app.config import settings
 
-	def update(data):
+	def update(data: dict[str, Any]) -> dict[str, Any]:
 		data[username] = user_data
 		return data
 

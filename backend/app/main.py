@@ -5,6 +5,7 @@ import os
 import platform
 import sys
 import time
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
 
@@ -34,23 +35,26 @@ setup_logging(level=LOG_LEVEL)
 
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+	"""Run application startup and shutdown hooks."""
+	logger.info("InvestIt API started successfully")
+	yield
+	logger.info("InvestIt API shutdown complete")
+
+
 app = FastAPI(
 	title="Investit API",
 	description=description,
 	version="1.0.0",
 	openapi_tags=tags_metadata,
+	lifespan=lifespan,
 )
-# Configure CORS
+
 app.add_middleware(
 	CORSMiddleware,
-	allow_origins=[
-		"http://localhost:5173",
-		"http://localhost:5174",
-		"http://localhost:3000",
-		"http://127.0.0.1:5173",
-		"http://127.0.0.1:5174",
-	],
+	allow_origins=settings.BACKEND_CORS_ORIGINS,
 	allow_credentials=True,
 	allow_methods=["*"],
 	allow_headers=["*"],
@@ -75,12 +79,6 @@ async def metrics_middleware(request: Request, call_next):
 	process_time = time.time() - start_time
 	metrics.record_request(process_time, response.status_code)
 	return response
-
-
-@app.on_event("startup")
-async def startup_event():
-	"""Run on application startup."""
-	logger.info("InvestIt API started successfully")
 
 
 @app.get("/")

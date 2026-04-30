@@ -2,13 +2,13 @@
 
 import time
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Self
 
 
 class MetricsService:
 	"""Singleton service to store and retrieve application metrics in-memory."""
 
-	_instance = None
+	_instance: Self | None = None
 
 	def __init__(self):
 		"""Initialize metrics counters."""
@@ -20,20 +20,20 @@ class MetricsService:
 		self.last_price_fetch: dict[str, Any] = {"timestamp": None, "status": "never", "count": 0}
 
 	@classmethod
-	def get_instance(cls):
+	def get_instance(cls) -> Self:
 		"""Get or create the singleton instance."""
 		if cls._instance is None:
 			cls._instance = cls()
 		return cls._instance
 
-	def record_request(self, duration: float, status_code: int):
+	def record_request(self, duration: float, status_code: int) -> None:
 		"""Record details of a processed HTTP request."""
 		self.request_count += 1
 		self.latency_sum += duration
 		if 500 <= status_code < 600:
 			self.error_count += 1
 
-	def record_price_fetch(self, status: str, count: int):
+	def record_price_fetch(self, status: str, count: int) -> None:
 		"""Record the result of a background price fetch task."""
 		self.last_price_fetch = {
 			"timestamp": datetime.now(UTC).isoformat(),
@@ -41,11 +41,11 @@ class MetricsService:
 			"count": count,
 		}
 
-	def increment_websockets(self):
+	def increment_websockets(self) -> None:
 		"""Increment active WebSocket connection count."""
 		self.active_websockets += 1
 
-	def decrement_websockets(self):
+	def decrement_websockets(self) -> None:
 		"""Decrement active WebSocket connection count."""
 		self.active_websockets = max(0, self.active_websockets - 1)
 

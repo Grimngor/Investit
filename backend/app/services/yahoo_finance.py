@@ -353,7 +353,7 @@ class YahooFinanceService:
 		except (ValueError, AttributeError):
 			return True
 
-	def clear_cache(self):
+	def clear_cache(self) -> None:
 		"""Clear the price cache."""
 		self.cache.clear()
 		logger.info("Yahoo Finance price cache cleared")
