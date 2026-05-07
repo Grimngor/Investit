@@ -28,14 +28,17 @@
 - Added OpenFIGI-backed ISIN resolution with local manual overrides and provider-derived JSON cache.
 - Reviewed public service methods for one-line docstrings and type hints.
 - Migrated runtime persistence from JSON files to SQLite and renamed the local `test` user to `grimngor`.
+- Added Docker Compose deployment shape for Raspberry Pi 5 with a localhost-bound web proxy, internal FastAPI backend, and SQLite data volume.
+- Added Raspberry Pi deployment runbook covering Tailscale Serve, environment setup, release checks, and SQLite backup/restore.
 
 ## Next Engineering Work
 
-- Production deployment guide.
-- Dockerfile and `.dockerignore` once the deployment shape is decided.
+- Validate the Docker Compose deployment on the Raspberry Pi 5 hardware and record any ARM64 package or performance adjustments.
+- Add automated scheduled SQLite backups for the Pi deployment.
 
 ## Later Work
 
+- Tailscale passwordless auth mode: trusted proxy identity headers, email allowlist, frontend no-login flow, and WebSocket header authentication.
 - Provider reliability layer: explicit fallback order, stale-cache fallback, provider health metrics, and clearer source attribution for price, metadata, and ISIN lookups.
 - PWA or desktop packaging.
 - Portfolio export and backup UI.

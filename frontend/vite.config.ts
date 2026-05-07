@@ -19,5 +19,15 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    proxy: {
+      '/api': 'http://127.0.0.1:8000',
+      '/health': 'http://127.0.0.1:8000',
+      '/docs': 'http://127.0.0.1:8000',
+      '/openapi.json': 'http://127.0.0.1:8000',
+      '/ws': {
+        target: 'ws://127.0.0.1:8000',
+        ws: true,
+      },
+    },
   },
 })

@@ -26,6 +26,7 @@ Frontend logging is handled by `frontend/src/utils/logger.ts`.
 
 - `SECRET_KEY`: required; replace the development value before any shared deployment.
 - `BACKEND_CORS_ORIGINS`: JSON list of allowed frontend origins.
+- `INVESTIT_WEB_PORT`: Docker Compose web proxy port bound to localhost; default is `8080`.
 - `PERSISTENCE_BACKEND`: runtime persistence backend; default is `sqlite`.
 - `DATABASE_PATH`: SQLite database path; default is `data/investit.sqlite3`, resolved from the repository root when relative.
 - `PRICE_STALE_THRESHOLD_DAYS`: age threshold for cached prices; default is `3`.
@@ -89,6 +90,12 @@ User-specific runtime files are intentionally ignored by Git:
 - `data/*.lock`
 
 Public-safe sample data is kept under `data/examples/`.
+
+## Raspberry Pi Deployment
+
+The Pi deployment uses Docker Compose with a localhost-bound web proxy and an internal-only backend service. Put Tailscale Serve in front of the web proxy and do not publish the backend port.
+
+See [Raspberry Pi Deployment](DEPLOYMENT_PI.md) for the production runbook, including SQLite backup and restore.
 
 Generated caches and test reports are ignored and can be deleted safely:
 

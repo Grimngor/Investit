@@ -1,6 +1,5 @@
 import { logger } from '@/utils/logger'
-
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws'
+import { getWebSocketUrl } from '@/services/config'
 
 type MessageHandler = (data: any) => void
 
@@ -26,7 +25,7 @@ class WebSocketClient {
     }
 
     try {
-      this.ws = new WebSocket(WS_URL)
+      this.ws = new WebSocket(getWebSocketUrl())
 
       this.ws.onopen = () => {
         logger.info('WebSocket connection opened')
