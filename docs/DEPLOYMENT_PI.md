@@ -80,11 +80,12 @@ SECRET_KEY=<generated-value>
 PERSISTENCE_BACKEND=sqlite
 DATABASE_PATH=data/investit.sqlite3
 INVESTIT_WEB_PORT=8080
+INVESTIT_DATA_DIR=./data
 FINNHUB_API_KEY=
 OPENFIGI_API_KEY=
 ```
 
-`compose.yaml` overrides the backend container database path to `/app/data/investit.sqlite3`, while the host keeps the database under `./data/`.
+`compose.yaml` overrides the backend container database path to `/app/data/investit.sqlite3`, while the host keeps the database under `INVESTIT_DATA_DIR`, which defaults to `./data/`.
 
 Build and start:
 

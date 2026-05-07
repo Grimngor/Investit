@@ -82,6 +82,18 @@ The Docker Compose deployment target is a private Raspberry Pi 5 behind Tailscal
 
 See [Raspberry Pi Deployment](docs/DEPLOYMENT_PI.md) for first install, Tailscale Serve, backup/restore, upgrade, and release checks.
 
+## Local Docker Test
+
+Docker testing does not use the Python virtual environment or the local Vite server.
+
+```powershell
+docker compose build
+docker compose up -d
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8080/health
+```
+
+Open http://127.0.0.1:8080. To avoid touching local runtime data, set `INVESTIT_DATA_DIR=.cache/docker-data` in `.env` before starting Compose.
+
 ## Verification
 
 ```powershell

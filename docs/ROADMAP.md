@@ -30,9 +30,14 @@
 - Migrated runtime persistence from JSON files to SQLite and renamed the local `test` user to `grimngor`.
 - Added Docker Compose deployment shape for Raspberry Pi 5 with a localhost-bound web proxy, internal FastAPI backend, and SQLite data volume.
 - Added Raspberry Pi deployment runbook covering Tailscale Serve, environment setup, release checks, and SQLite backup/restore.
+- CSV reimports now skip already-present orders and the preview marks existing rows before import.
 
 ## Next Engineering Work
 
+- Asset Allocation Charts:
+    - I'm seeing "Hong Kong" in the "By Geography" chart. It should be "China", let's ensure everything is correct.
+    - Crypto shouldn't be part of the "By Instrument" chart. And we should change the name to "By Fund".
+    - Can we try to add the numeric percentage on top of each slice on the charts if they fit (if the slice isn't too small)?
 - Validate the Docker Compose deployment on the Raspberry Pi 5 hardware and record any ARM64 package or performance adjustments.
 - Add automated scheduled SQLite backups for the Pi deployment.
 
