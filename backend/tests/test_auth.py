@@ -108,6 +108,82 @@ def test_login_with_email(test_user):
 	assert "access_token" in response.json()
 
 
+def test_auth_modes_default_to_password_only():
+	"""Test default authentication modes keep trusted proxy auth disabled."""
+	response = client.get("/api/auth/modes")
+
+	assert response.status_code == 200
+	assert response.json() == {"password": True, "trusted_proxy": False}
+
+
+def test_trusted_proxy_login_returns_404_when_disabled():
+	"""Test trusted proxy login is unavailable unless explicitly enabled."""
+	response = client.post("/api/auth/trusted-proxy/login", headers={"Tailscale-User-Login": "owner@example.com"})
+
+	assert response.status_code == 404
+
+
+def test_trusted_proxy_login_requires_identity_header(monkeypatch):
+	"""Test trusted proxy login rejects requests without identity headers."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "owner@example.com")
+
+	response = client.post("/api/auth/trusted-proxy/login")
+
+	assert response.status_code == 403
+	assert response.json()["detail"] == "Missing trusted proxy identity"
+
+
+def test_trusted_proxy_login_requires_allowlisted_email(monkeypatch):
+	"""Test trusted proxy login rejects non-allowlisted identities."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "owner@example.com")
+
+	response = client.post("/api/auth/trusted-proxy/login", headers={"Tailscale-User-Login": "intruder@example.com"})
+
+	assert response.status_code == 403
+	assert response.json()["detail"] == "Trusted proxy identity is not allowed"
+
+
+def test_trusted_proxy_login_requires_linked_user(monkeypatch):
+	"""Test trusted proxy login rejects allowlisted identities without an app user."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "owner@example.com")
+
+	response = client.post("/api/auth/trusted-proxy/login", headers={"Tailscale-User-Login": "owner@example.com"})
+
+	assert response.status_code == 403
+	assert response.json()["detail"] == "Trusted proxy identity is not linked to an app user"
+
+
+def test_trusted_proxy_login_success_for_linked_allowlisted_user(monkeypatch):
+	"""Test trusted proxy login returns a normal bearer token for a linked user."""
+	username = "tailscale_user"
+	email = "owner@example.com"
+	save_user_data(
+		username,
+		{
+			"username": username,
+			"email": email,
+			"hashed_password": get_password_hash("unused-password"),
+			"disabled": False,
+			"holdings": [],
+		},
+	)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", email.upper())
+
+	response = client.post("/api/auth/trusted-proxy/login", headers={"Tailscale-User-Login": email})
+
+	assert response.status_code == 200
+	token = response.json()["access_token"]
+	assert response.json()["token_type"] == "bearer"
+
+	me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+	assert me.status_code == 200
+	assert me.json()["username"] == username
+
+
 def test_login_wrong_password(test_user):
 	"""Test login fails with wrong password."""
 	response = client.post("/api/auth/login", data={"username": test_user["username"], "password": "wrongpassword"})

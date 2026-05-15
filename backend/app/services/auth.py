@@ -1,7 +1,9 @@
 """Authentication service."""
 
 from datetime import UTC, datetime, timedelta
+from email.header import decode_header
 from types import SimpleNamespace
+from typing import Any
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -48,12 +50,51 @@ def authenticate_user(username_or_email: str, password: str) -> User | None:
 	if not verify_password(password, user_data.get("hashed_password", "")):
 		return None
 
+	return build_user(user_data)
+
+
+def decode_trusted_proxy_header(value: str) -> str:
+	"""Decode a trusted proxy header value that may use RFC 2047 encoding."""
+	decoded_parts = decode_header(value)
+	return "".join(part.decode(encoding or "utf-8") if isinstance(part, bytes) else part for part, encoding in decoded_parts).strip()
+
+
+def get_trusted_proxy_allowed_emails() -> set[str]:
+	"""Return trusted proxy email allowlist entries as casefolded strings."""
+	return {email.strip().casefold() for email in settings.TRUSTED_PROXY_AUTH_ALLOWED_EMAILS.split(",") if email.strip()}
+
+
+def is_trusted_proxy_email_allowed(email: str) -> bool:
+	"""Return whether a trusted proxy email is explicitly allowlisted."""
+	return email.casefold() in get_trusted_proxy_allowed_emails()
+
+
+def build_user(user_data: dict[str, Any]) -> User:
+	"""Build a public user model from persisted user data."""
 	return User(
 		username=user_data["username"],
 		email=user_data.get("email", ""),
 		full_name=user_data.get("full_name"),
 		disabled=user_data.get("disabled", False),
 	)
+
+
+def find_user_by_trusted_proxy_email(email: str) -> User | None:
+	"""Find an existing app user linked to a trusted proxy email or username."""
+	login_email = email.casefold()
+	users = get_all_users()
+
+	for username, user_data in users.items():
+		if username.casefold() == login_email or str(user_data.get("email", "")).casefold() == login_email:
+			return build_user(user_data)
+
+	return None
+
+
+def create_user_access_token(user: User) -> str:
+	"""Create a standard access token for an authenticated user."""
+	access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+	return create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -86,12 +127,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
 	if user_data is None:
 		raise credentials_exception
 
-	user = User(
-		username=user_data["username"],
-		email=user_data.get("email", ""),
-		full_name=user_data.get("full_name"),
-		disabled=user_data.get("disabled", False),
-	)
+	user = build_user(user_data)
 
 	if user.disabled:
 		raise HTTPException(status_code=400, detail="Inactive user")

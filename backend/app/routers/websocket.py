@@ -7,6 +7,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from jose import JWTError, jwt
 
 from app.config import settings
+from app.services.auth import decode_trusted_proxy_header, find_user_by_trusted_proxy_email, is_trusted_proxy_email_allowed
 from app.services.metrics_service import metrics
 
 router = APIRouter(tags=["websocket"])
@@ -52,6 +53,67 @@ async def decode_token(token: str) -> str | None:
 		return None
 
 
+async def get_trusted_proxy_username(websocket: WebSocket) -> str | None:
+	"""Return the trusted proxy user for a WebSocket request when headers are valid."""
+	if not settings.TRUSTED_PROXY_AUTH_ENABLED:
+		return None
+
+	raw_email = websocket.headers.get(settings.TRUSTED_PROXY_AUTH_HEADER_EMAIL)
+	if raw_email is None:
+		return None
+
+	email = decode_trusted_proxy_header(raw_email)
+	if not email or not is_trusted_proxy_email_allowed(email):
+		await websocket.close(code=1008, reason="Trusted proxy identity is not allowed")
+		return None
+
+	user = find_user_by_trusted_proxy_email(email)
+	if not user or user.disabled:
+		await websocket.close(code=1008, reason="Trusted proxy identity is not linked to an active app user")
+		return None
+
+	return user.username
+
+
+async def send_connection_status(websocket: WebSocket, username: str) -> bool:
+	"""Send the standard WebSocket connection status message."""
+	try:
+		await websocket.send_json(
+			{
+				"type": "connection_status",
+				"status": "connected",
+				"client_id": username,
+				"timestamp": datetime.datetime.now().isoformat(),
+			}
+		)
+		return True
+	except (WebSocketDisconnect, RuntimeError):
+		return False
+
+
+async def get_jwt_message_username(websocket: WebSocket) -> str | None:
+	"""Return username from the first WebSocket JWT auth message."""
+	try:
+		auth_message = await websocket.receive_json()
+	except WebSocketDisconnect:
+		return None
+	except Exception:
+		await websocket.close(code=1008, reason="Invalid authentication message")
+		return None
+
+	token = auth_message.get("token") if isinstance(auth_message, dict) and auth_message.get("type") == "auth" else None
+	if not isinstance(token, str) or not token:
+		await websocket.close(code=1008, reason="Missing authentication token")
+		return None
+
+	username = await decode_token(token)
+	if not username:
+		await websocket.close(code=1008, reason="Invalid authentication token")
+		return None
+
+	return username
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
 	"""
@@ -63,38 +125,22 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 	username: str | None = None
 	connected = False
 
-	try:
-		auth_message = await websocket.receive_json()
-	except WebSocketDisconnect:
+	has_trusted_proxy_header = (
+		settings.TRUSTED_PROXY_AUTH_ENABLED and websocket.headers.get(settings.TRUSTED_PROXY_AUTH_HEADER_EMAIL) is not None
+	)
+	username = await get_trusted_proxy_username(websocket)
+	if has_trusted_proxy_header and not username:
 		return
-	except Exception:
-		await websocket.close(code=1008, reason="Invalid authentication message")
-		return
-
-	token = auth_message.get("token") if isinstance(auth_message, dict) and auth_message.get("type") == "auth" else None
-	if not isinstance(token, str) or not token:
-		await websocket.close(code=1008, reason="Missing authentication token")
-		return
-
-	username = await decode_token(token)
 	if not username:
-		await websocket.close(code=1008, reason="Invalid authentication token")
-		return
+		username = await get_jwt_message_username(websocket)
+		if not username:
+			return
 
 	await manager.connect(username, websocket)
 	connected = True
 
 	# Send handshake message
-	try:
-		await websocket.send_json(
-			{
-				"type": "connection_status",
-				"status": "connected",
-				"client_id": username,
-				"timestamp": datetime.datetime.now().isoformat(),
-			}
-		)
-	except (WebSocketDisconnect, RuntimeError):
+	if not await send_connection_status(websocket, username):
 		await manager.disconnect(username, websocket)
 		return
 

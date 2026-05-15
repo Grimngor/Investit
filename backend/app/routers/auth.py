@@ -1,16 +1,23 @@
 """Authentication router."""
 
 import logging
-from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.config import settings
 from app.models.auth_persistence import get_all_users, save_user_data
 from app.models.auth_schemas import Token, UserRegister
 from app.models.user import User
-from app.services.auth import authenticate_user, create_access_token, get_current_user, get_password_hash
+from app.services.auth import (
+	authenticate_user,
+	create_user_access_token,
+	decode_trusted_proxy_header,
+	find_user_by_trusted_proxy_email,
+	get_current_user,
+	get_password_hash,
+	is_trusted_proxy_email_allowed,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -69,9 +76,44 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 			headers={"WWW-Authenticate": "Bearer"},
 		)
 
-	access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-	access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+	access_token = create_user_access_token(user)
 
+	return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/modes")
+async def auth_modes() -> dict[str, bool]:
+	"""Return the authentication modes available to the frontend."""
+	return {
+		"password": True,
+		"trusted_proxy": settings.TRUSTED_PROXY_AUTH_ENABLED,
+	}
+
+
+@router.post("/trusted-proxy/login", response_model=Token)
+async def trusted_proxy_login(request: Request) -> dict[str, str]:
+	"""Login using trusted identity headers from a private reverse proxy."""
+	if not settings.TRUSTED_PROXY_AUTH_ENABLED:
+		raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trusted proxy authentication is disabled")
+
+	raw_email = request.headers.get(settings.TRUSTED_PROXY_AUTH_HEADER_EMAIL)
+	if not raw_email:
+		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Missing trusted proxy identity")
+
+	email = decode_trusted_proxy_header(raw_email)
+	raw_name = request.headers.get(settings.TRUSTED_PROXY_AUTH_HEADER_NAME)
+	display_name = decode_trusted_proxy_header(raw_name) if raw_name else ""
+	if not email or not is_trusted_proxy_email_allowed(email):
+		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Trusted proxy identity is not allowed")
+
+	user = find_user_by_trusted_proxy_email(email)
+	if not user:
+		raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Trusted proxy identity is not linked to an app user")
+	if user.disabled:
+		raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
+
+	logger.info("Trusted proxy login accepted - Email: %s, Name: %s, Username: %s", email, display_name, user.username)
+	access_token = create_user_access_token(user)
 	return {"access_token": access_token, "token_type": "bearer"}
 
 

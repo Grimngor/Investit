@@ -81,6 +81,44 @@ def test_websocket_connection_with_invalid_token(cleanup_user_data):
 		websocket.receive_json()
 
 
+def test_websocket_connection_with_trusted_proxy_header(monkeypatch, cleanup_user_data):
+	"""Test WebSocket connection can authenticate with a trusted proxy identity header."""
+	username = "test_websocket_trusted"
+	email = "trusted-ws@example.com"
+	client.post("/api/auth/register", json={"username": username, "email": email, "password": "testpass123"})
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", email)
+
+	with client.websocket_connect("/ws", headers={"Tailscale-User-Login": email}) as websocket:
+		data = websocket.receive_json()
+
+		assert data["type"] == "connection_status"
+		assert data["status"] == "connected"
+		assert data["client_id"] == username
+
+
+def test_websocket_trusted_proxy_missing_header_still_requires_token(monkeypatch, cleanup_user_data):
+	"""Test trusted proxy mode still rejects unauthenticated WebSockets without identity or token."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "trusted-ws@example.com")
+
+	with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws") as websocket:
+		websocket.send_json({"type": "auth"})
+		websocket.receive_json()
+
+
+def test_websocket_trusted_proxy_rejects_denied_identity(monkeypatch, cleanup_user_data):
+	"""Test WebSocket trusted proxy auth rejects non-allowlisted identities."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "trusted-ws@example.com")
+
+	with (
+		pytest.raises(WebSocketDisconnect),
+		client.websocket_connect("/ws", headers={"Tailscale-User-Login": "denied@example.com"}) as websocket,
+	):
+		websocket.receive_json()
+
+
 def test_websocket_legacy_client_id_route_is_removed(cleanup_user_data):
 	"""Test legacy unauthenticated WebSocket route is not available."""
 	with pytest.raises(WebSocketDisconnect), client.websocket_connect("/ws/test-client"):

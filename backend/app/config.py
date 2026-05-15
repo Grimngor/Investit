@@ -14,6 +14,10 @@ class Settings(BaseSettings):
 	DATA_DIR: Path = BASE_DIR / "data"
 	DATABASE_PATH: Path = BASE_DIR / "data" / "investit.sqlite3"
 	PERSISTENCE_BACKEND: str = "sqlite"
+	TRUSTED_PROXY_AUTH_ENABLED: bool = False
+	TRUSTED_PROXY_AUTH_ALLOWED_EMAILS: str = ""
+	TRUSTED_PROXY_AUTH_HEADER_EMAIL: str = "Tailscale-User-Login"
+	TRUSTED_PROXY_AUTH_HEADER_NAME: str = "Tailscale-User-Name"
 	BACKEND_CORS_ORIGINS: list[str] = [
 		"http://localhost:5173",
 		"http://localhost:5174",

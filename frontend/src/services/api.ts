@@ -1,6 +1,11 @@
 import axios, { type AxiosInstance } from 'axios'
 import { API_BASE_URL } from '@/services/config'
 
+export interface AuthModes {
+  password: boolean
+  trusted_proxy: boolean
+}
+
 class APIClient {
   private client: AxiosInstance
 
@@ -8,8 +13,8 @@ class APIClient {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       headers: {
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+      },
     })
 
     // Add request interceptor to include auth token
@@ -21,7 +26,7 @@ class APIClient {
         }
         return config
       },
-      (error) => Promise.reject(error)
+      (error) => Promise.reject(error),
     )
 
     // Add response interceptor for error handling
@@ -36,7 +41,7 @@ class APIClient {
           window.location.href = '/login'
         }
         return Promise.reject(error)
-      }
+      },
     )
   }
 
@@ -47,12 +52,27 @@ class APIClient {
     formData.append('password', password)
 
     const response = await this.client.post('/api/auth/login', formData, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
     return response.data
   }
 
-  async register(userData: { username: string; email?: string; password: string; full_name?: string }) {
+  async getAuthModes(): Promise<AuthModes> {
+    const response = await this.client.get('/api/auth/modes')
+    return response.data
+  }
+
+  async trustedProxyLogin() {
+    const response = await this.client.post('/api/auth/trusted-proxy/login')
+    return response.data
+  }
+
+  async register(userData: {
+    username: string
+    email?: string
+    password: string
+    full_name?: string
+  }) {
     const response = await this.client.post('/api/auth/register', userData)
     return response.data
   }
@@ -99,7 +119,7 @@ class APIClient {
     const formData = new FormData()
     formData.append('file', file)
     const response = await this.client.post('/api/orders/import-csv', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
     return response.data
   }
@@ -135,7 +155,6 @@ class APIClient {
     return response.data
   }
 }
-
 
 export const apiClient = new APIClient()
 export default apiClient

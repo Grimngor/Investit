@@ -83,6 +83,10 @@ INVESTIT_WEB_PORT=8080
 INVESTIT_DATA_DIR=./data
 FINNHUB_API_KEY=
 OPENFIGI_API_KEY=
+TRUSTED_PROXY_AUTH_ENABLED=false
+TRUSTED_PROXY_AUTH_ALLOWED_EMAILS=
+TRUSTED_PROXY_AUTH_HEADER_EMAIL=Tailscale-User-Login
+TRUSTED_PROXY_AUTH_HEADER_NAME=Tailscale-User-Name
 ```
 
 `compose.yaml` overrides the backend container database path to `/app/data/investit.sqlite3`, while the host keeps the database under `INVESTIT_DATA_DIR`, which defaults to `./data/`.
@@ -118,12 +122,73 @@ Recommended hardening:
 - Confirm `tailscale serve status` shows Serve, not Funnel.
 - Add Tailscale grants for the users/devices that may reach the Pi.
 - Keep app registration limited to trusted users because InvestIt still uses app-side login for MVP.
+- Keep the Compose web proxy bound to `127.0.0.1`; trusted identity headers must not be accepted on a LAN-bound service.
 
 Reference docs:
 
 - [Tailscale Serve](https://tailscale.com/docs/features/tailscale-serve)
 - [tailscale serve command](https://tailscale.com/kb/1242/tailscale-serve)
 - [Tailscale grants](https://tailscale.com/docs/features/access-control/grants)
+
+## Pi 5 Validation
+
+After building and starting the stack on the Pi, run the deployment smoke script:
+
+```bash
+bash scripts/deploy/validate_pi_deployment.sh
+```
+
+Expected result:
+
+- Host architecture is `aarch64` or `arm64`.
+- `docker compose config --quiet` passes.
+- `docker compose build` and `docker compose up -d` complete.
+- `curl -fsS http://127.0.0.1:${INVESTIT_WEB_PORT:-8080}/health` returns successfully.
+- `web` publishes `127.0.0.1:${INVESTIT_WEB_PORT:-8080}:80`.
+- `backend` has no published host port.
+- `tailscale serve status` shows the localhost service, not Funnel.
+- `docker stats --no-stream` shows resource usage for the Compose containers.
+
+Record hardware validation notes here after running on the Pi:
+
+| Date | Pi OS / Kernel | Architecture | Docker / Compose | Build time | Runtime notes | Result |
+| --- | --- | --- | --- | --- | --- | --- |
+| Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+
+Known ARM64 notes:
+
+- The Dockerfiles use Python and Node base images that publish ARM64 variants.
+- Backend wheels should install from `requirements.txt` without local compilation on current Raspberry Pi OS 64-bit. If a package compiles locally, record it in the table above.
+- Keep `INVESTIT_DATA_DIR` on persistent storage with enough free space for SQLite and backup files.
+
+## Tailscale Passwordless Login
+
+InvestIt can optionally use Tailscale Serve identity headers as a passwordless login source while keeping the normal username/password flow enabled.
+
+Requirements:
+
+- Use Tailscale Serve, not Funnel.
+- Keep the web proxy bound to `127.0.0.1`.
+- The Tailscale login email must match an existing InvestIt user's `email` or `username`.
+- The Tailscale login email must also be listed in `TRUSTED_PROXY_AUTH_ALLOWED_EMAILS`.
+
+Enable it in `.env`:
+
+```env
+TRUSTED_PROXY_AUTH_ENABLED=true
+TRUSTED_PROXY_AUTH_ALLOWED_EMAILS=you@example.com
+TRUSTED_PROXY_AUTH_HEADER_EMAIL=Tailscale-User-Login
+TRUSTED_PROXY_AUTH_HEADER_NAME=Tailscale-User-Name
+```
+
+Then rebuild and restart:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+The login screen will show both password login and `Continue with Tailscale`. If Tailscale login fails, the password login remains available.
 
 ## Upgrade And Rollback
 

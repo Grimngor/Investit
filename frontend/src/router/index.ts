@@ -13,46 +13,47 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: HomeView,
     },
     {
       path: '/dashboard',
       name: 'dashboard',
       component: DashboardView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/login',
       name: 'login',
-      component: LoginView
+      component: LoginView,
     },
     {
       path: '/register',
       name: 'register',
-      component: RegisterView
+      component: RegisterView,
     },
     {
       path: '/portfolio',
       name: 'portfolio',
       component: PortfolioView,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/orders',
       name: 'orders',
       component: OrdersView,
-      meta: { requiresAuth: true }
-    }
-  ]
+      meta: { requiresAuth: true },
+    },
+  ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({ name: 'login' })
-  } else {
-    next()
+    const trustedProxySuccess = await authStore.tryTrustedProxyLogin()
+    if (!trustedProxySuccess) {
+      return { name: 'login' }
+    }
   }
 })
 

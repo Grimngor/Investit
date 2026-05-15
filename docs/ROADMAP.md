@@ -32,11 +32,12 @@
 - Added Raspberry Pi deployment runbook covering Tailscale Serve, environment setup, release checks, and SQLite backup/restore.
 - CSV reimports now skip already-present orders and the preview marks existing rows before import.
 - Asset allocation charts now report Hong Kong exposure as China, label the instrument view as funds, exclude crypto from that fund chart, and draw in-slice percentages when they fit.
+- Added a Raspberry Pi deployment validation script and runbook section for ARM64 Compose smoke checks.
+- Added optional hybrid Tailscale Serve passwordless auth with trusted identity headers, email allowlisting, normal JWT issuance, and password-login fallback.
 
 ## Next Engineering Work
 
-- Validate the Docker Compose deployment on the Raspberry Pi 5 hardware and record any ARM64 package or performance adjustments.
-- Tailscale passwordless auth mode: trusted proxy identity headers, email allowlist, frontend no-login flow, and WebSocket header authentication.
+- Run the Raspberry Pi deployment validation script on the Pi 5 hardware and record ARM64 package or performance findings in the runbook.
 
 ## Later Work
 
