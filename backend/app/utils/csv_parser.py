@@ -51,6 +51,8 @@ class SpanishOrderCSVParser:
 			"NÂº de participaciones",
 			"N\u00c3\u201a\u00c2\u00ba de participaciones",
 			"N° de participaciones",
+			"Numero de participaciones",
+			"Número de participaciones",
 		],
 		"Importe neto": ["Importe neto", "Importe estimado", "Importe"],
 	}

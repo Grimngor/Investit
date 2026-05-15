@@ -95,6 +95,7 @@ import CSVPreviewModal from './CSVPreviewModal.vue'
 interface ImportResult {
   imported_count: number
   rejected_count: number
+  skipped_count?: number
   errors?: Array<{ row: number; error: string }>
 }
 
@@ -148,7 +149,7 @@ function closePreview() {
   showPreview.value = false
 }
 
-function handleImported(result: { imported_count: number; rejected_count: number }) {
+function handleImported(result: ImportResult) {
   emit('import-complete')
   clearFile()
 }

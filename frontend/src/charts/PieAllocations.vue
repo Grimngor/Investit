@@ -1,12 +1,15 @@
 <template>
   <div>
-        <div v-if="title" class="flex justify-between items-center mb-4">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            {{ title }}
-            <span v-if="showCryptoBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-              Crypto {{ cryptoPctDisplay }}
-            </span>
-          </h3>
+    <div v-if="title" class="flex justify-between items-center mb-4">
+      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+        {{ title }}
+        <span
+          v-if="showCryptoBadge"
+          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300"
+        >
+          Crypto {{ cryptoPctDisplay }}
+        </span>
+      </h3>
       <button
         v-if="type === 'geography' && canCollapseEU"
         @click="toggleEUCollapse"
@@ -29,17 +32,77 @@
 import { computed, ref } from 'vue'
 import { Pie } from 'vue-chartjs'
 import {
-	Chart as ChartJS,
-	ArcElement,
-	Tooltip,
-	Legend,
-	type ChartData,
-	type ChartOptions,
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  type ChartData,
+  type ChartOptions,
+  type Plugin,
 } from 'chart.js'
 import { useThemeStore } from '@/stores/theme'
 
-// Register Chart.js components
-ChartJS.register(ArcElement, Tooltip, Legend)
+const MIN_SLICE_LABEL_PERCENTAGE = 4
+
+interface PieArcElement {
+  circumference?: number
+  innerRadius?: number
+  outerRadius?: number
+  tooltipPosition: (useFinalPosition?: boolean) => { x: number; y: number }
+}
+
+const percentageLabelPlugin: Plugin<'pie'> = {
+  id: 'percentageLabel',
+  afterDatasetsDraw(chart) {
+    const dataset = chart.data.datasets[0]
+    const values = (dataset?.data || []) as number[]
+    const total = values.reduce((sum, value) => sum + value, 0)
+
+    if (total <= 0) {
+      return
+    }
+
+    const { ctx } = chart
+    const meta = chart.getDatasetMeta(0)
+
+    ctx.save()
+    ctx.font = "600 11px 'Inter', sans-serif"
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#ffffff'
+    ctx.lineWidth = 3
+    ctx.strokeStyle = 'rgba(17, 24, 39, 0.45)'
+
+    meta.data.forEach((element, index) => {
+      const value = values[index]
+      const percentage = total > 0 ? (value / total) * 100 : 0
+
+      if (percentage < MIN_SLICE_LABEL_PERCENTAGE) {
+        return
+      }
+
+      const label = `${percentage.toFixed(0)}%`
+      const arc = element as unknown as PieArcElement
+      const circumference = arc.circumference || 0
+      const outerRadius = arc.outerRadius || 0
+      const innerRadius = arc.innerRadius || 0
+      const midRadius = (outerRadius + innerRadius) / 2
+      const availableWidth = circumference * midRadius
+
+      if (availableWidth < ctx.measureText(label).width + 8) {
+        return
+      }
+
+      const position = arc.tooltipPosition(true)
+      ctx.strokeText(label, position.x, position.y)
+      ctx.fillText(label, position.x, position.y)
+    })
+
+    ctx.restore()
+  },
+}
+
+ChartJS.register(ArcElement, Tooltip, Legend, percentageLabelPlugin)
 
 const themeStore = useThemeStore()
 
@@ -149,7 +212,10 @@ function sortAllocations(data: AllocationData): AllocationData {
   return Object.fromEntries(Object.entries(data).sort((a, b) => b[1] - a[1]))
 }
 
-function collapseOverflowEntries(data: AllocationData, pinnedLabels: string[] = []): AllocationData {
+function collapseOverflowEntries(
+  data: AllocationData,
+  pinnedLabels: string[] = [],
+): AllocationData {
   const entries = Object.entries(data)
   if (entries.length <= MAX_ALLOCATION_ENTRIES) {
     return sortAllocations(data)
@@ -280,8 +346,8 @@ const chartOptions = computed<ChartOptions<'pie'>>(() => {
         right: 0,
         left: 20,
         top: 0,
-        bottom: 0
-      }
+        bottom: 0,
+      },
     },
     plugins: {
       legend: {
@@ -329,7 +395,10 @@ const chartOptions = computed<ChartOptions<'pie'>>(() => {
           label: function (context) {
             const label = context.label || ''
             const value = context.parsed as number
-            const total = (context.dataset.data as number[]).reduce((sum: number, val: number) => sum + val, 0)
+            const total = (context.dataset.data as number[]).reduce(
+              (sum: number, val: number) => sum + val,
+              0,
+            )
             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
             return `${label}: ${percentage}%`
           },
@@ -346,8 +415,8 @@ function toggleEUCollapse() {
 
 <style scoped>
 .chart-container {
-	position: relative;
-	height: 340px; /* enlarged height */
-	width: 100%;
+  position: relative;
+  height: 340px; /* enlarged height */
+  width: 100%;
 }
 </style>

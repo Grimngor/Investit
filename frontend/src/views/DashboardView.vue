@@ -81,7 +81,7 @@
           <PieAllocations
             :allocations="allocations?.by_instrument"
             type="instrument"
-            title="By Instrument"
+            title="By Fund"
             :loading="loading"
           />
           <PieAllocations
@@ -168,18 +168,12 @@ const staleInstruments = computed(() => dashboardStore.staleInstruments)
 const refreshingPrices = computed(() => dashboardStore.refreshingPrices)
 
 async function handlePricesUpdated() {
-  await Promise.all([
-    dashboardStore.handlePricesUpdated(),
-    portfolioStore.fetchPortfolio(),
-  ])
+  await Promise.all([dashboardStore.handlePricesUpdated(), portfolioStore.fetchPortfolio()])
 }
 
 onMounted(async () => {
   wsClient.on('prices_updated', handlePricesUpdated)
-  await Promise.all([
-    portfolioStore.fetchPortfolio(),
-    dashboardStore.fetchAll()
-  ])
+  await Promise.all([portfolioStore.fetchPortfolio(), dashboardStore.fetchAll()])
   await dashboardStore.refreshPricesIfNeeded()
 })
 

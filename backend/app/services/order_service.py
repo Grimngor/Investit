@@ -1,5 +1,6 @@
 import uuid
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 from app.config import settings
@@ -11,6 +12,52 @@ from app.utils.validators import is_crypto_symbol
 
 class OrderService:
 	"""Service for order filtering, import, and persistence operations."""
+
+	@staticmethod
+	def _normalized_decimal(value: Any, places: str) -> str:
+		"""Return a stable decimal string for order fingerprinting."""
+		try:
+			decimal_value = Decimal(str(value))
+		except (InvalidOperation, TypeError, ValueError):
+			decimal_value = Decimal("0")
+		return str(decimal_value.quantize(Decimal(places), rounding=ROUND_HALF_UP))
+
+	@staticmethod
+	def order_fingerprint(order: dict[str, Any]) -> tuple[str, str, str, str, str]:
+		"""Return the duplicate-detection fingerprint for an order."""
+		return (
+			str(order.get("date", "")).strip(),
+			str(order.get("isin", "")).strip().upper(),
+			str(order.get("order_type", "buy")).strip().lower(),
+			OrderService._normalized_decimal(order.get("amount_eur", 0), "0.01"),
+			OrderService._normalized_decimal(order.get("shares", 0), "0.0000000001"),
+		)
+
+	@staticmethod
+	def classify_import_orders(existing_orders: list[dict[str, Any]], parsed_orders: list[dict[str, Any]]) -> dict[str, Any]:
+		"""Classify parsed orders as new or already present."""
+		existing_by_fingerprint = {OrderService.order_fingerprint(order): order for order in existing_orders}
+		seen_fingerprints = set(existing_by_fingerprint)
+		classified_orders: list[dict[str, Any]] = []
+		new_count = 0
+		skipped_count = 0
+
+		for order in parsed_orders:
+			fingerprint = OrderService.order_fingerprint(order)
+			existing_order = existing_by_fingerprint.get(fingerprint)
+			classified = dict(order)
+			if fingerprint in seen_fingerprints:
+				classified["import_status"] = "already_present"
+				classified["existing_order_id"] = existing_order.get("id") if existing_order else None
+				skipped_count += 1
+			else:
+				classified["import_status"] = "new"
+				classified["existing_order_id"] = None
+				seen_fingerprints.add(fingerprint)
+				new_count += 1
+			classified_orders.append(classified)
+
+		return {"orders": classified_orders, "new_count": new_count, "skipped_count": skipped_count}
 
 	@staticmethod
 	def filter_orders(
@@ -90,48 +137,42 @@ class OrderService:
 
 	@staticmethod
 	def merge_orders(user_data: dict[str, Any], new_orders: list[dict[str, Any]]) -> tuple[int, int]:
-		"""Merge parsed orders into user data and return new/updated counts."""
+		"""Merge parsed orders into user data and return new/skipped counts."""
 		if "orders" not in user_data:
 			user_data["orders"] = []
 
 		existing_orders = user_data["orders"]
 		new_count: int = 0
-		updated_count: int = 0
+		skipped_count: int = 0
+		existing_fingerprints = {OrderService.order_fingerprint(order) for order in existing_orders}
 
 		for order in new_orders:
-			order_key = (order.get("isin"), order.get("date"), order.get("shares"))
-			existing_idx = None
-			for idx, existing in enumerate(existing_orders):
-				existing_key = (existing.get("isin"), existing.get("date"), existing.get("shares"))
-				if order_key == existing_key:
-					existing_idx = idx
-					break
-
-			if existing_idx is not None:
-				existing_orders[existing_idx] = order
-				updated_count += 1
-			else:
-				existing_orders.append(order)
-				new_count += 1
+			fingerprint = OrderService.order_fingerprint(order)
+			if fingerprint in existing_fingerprints:
+				skipped_count += 1
+				continue
+			existing_orders.append(order)
+			existing_fingerprints.add(fingerprint)
+			new_count += 1
 
 		user_data["orders"].sort(key=lambda x: str(x.get("date", "")), reverse=True)
-		return new_count, updated_count
+		return new_count, skipped_count
 
 	@staticmethod
 	def import_orders_atomic(username: str, orders: list[dict[str, Any]]) -> tuple[int, int]:
 		"""Import parsed orders into a user's order list atomically."""
 		users_file = settings.DATA_DIR / "users.json"
-		counts = {"new": 0, "updated": 0}
+		counts = {"new": 0, "skipped": 0}
 
 		def update_fn(users: dict[str, Any]) -> dict[str, Any]:
 			user_data = users.setdefault(username, {})
-			new_count, updated_count = OrderService.merge_orders(user_data, orders)
+			new_count, skipped_count = OrderService.merge_orders(user_data, orders)
 			counts["new"] = new_count
-			counts["updated"] = updated_count
+			counts["skipped"] = skipped_count
 			return users
 
 		StorageService.update_json(users_file, update_fn, default={})
-		return counts["new"], counts["updated"]
+		return counts["new"], counts["skipped"]
 
 	@staticmethod
 	def build_manual_order(order_data: OrderCreate) -> dict[str, Any]:

@@ -22,7 +22,7 @@ class ComputeService:
 		"NL": "Netherlands",
 		"JP": "Japan",
 		"CN": "China",
-		"HK": "Hong Kong",
+		"HK": "China",
 		"SG": "Singapore",
 		"AU": "Australia",
 		"CH": "Switzerland",
@@ -404,7 +404,7 @@ class ComputeService:
 			"U.S.A.": "US",
 			"Japan": "JP",
 			"China": "CN",
-			"Hong Kong": "HK",
+			"Hong Kong": "CN",
 			"Singapore": "SG",
 			"Australia": "AU",
 			"Switzerland": "CH",
@@ -434,6 +434,8 @@ class ComputeService:
 		normalized: dict[str, float] = {}
 		for k, v in geo.items():
 			code = name_to_iso.get(k, k)
+			if code == "HK":
+				code = "CN"
 			# Only keep simple tokens (avoid long region descriptions)
 			normalized[code] = normalized.get(code, 0.0) + float(v)
 		return normalized
@@ -456,7 +458,7 @@ class ComputeService:
 			"CA": "CA",
 			"JP": "JP",
 			"CN": "CN",
-			"HK": "HK",
+			"HK": "CN",
 			"SG": "SG",
 			"AU": "AU",
 		}
@@ -517,16 +519,13 @@ class ComputeService:
 				"crypto_value": 0.0,
 			}
 
-		crypto_total = 0.0
 		for h in holdings:
 			name = str(h["name"])
 			value = float(h.get("current_value", 0.0))
 			asset_type = str(h.get("asset_type", "Unknown"))
 
-			# By instrument (collapse crypto into "Crypto")
-			if asset_type == "Crypto":
-				crypto_total = float(crypto_total) + float(value)
-			else:
+			# By instrument/fund excludes crypto. Crypto remains visible in asset-type allocation.
+			if asset_type != "Crypto":
 				by_instrument[name] = float(value)
 
 			# By asset type
@@ -547,10 +546,11 @@ class ComputeService:
 
 		# Transform and sort
 		by_instrument = dict(sorted(by_instrument.items(), key=lambda x: x[1], reverse=True))
-		if float(crypto_total) > 0:
-			by_instrument["Crypto"] = float(crypto_total)
 
-		by_geography_named = {ComputeService.COUNTRY_NAMES.get(code, code): value for code, value in by_geography.items()}
+		by_geography_named: dict[str, float] = {}
+		for code, value in by_geography.items():
+			label = ComputeService.COUNTRY_NAMES.get(code, code)
+			by_geography_named[label] = by_geography_named.get(label, 0.0) + value
 		by_geography_named = dict(sorted(by_geography_named.items(), key=lambda x: x[1], reverse=True))
 		by_sector = dict(sorted(by_sector.items(), key=lambda x: x[1], reverse=True))
 		by_asset_type = dict(sorted(by_asset_type.items(), key=lambda x: x[1], reverse=True))

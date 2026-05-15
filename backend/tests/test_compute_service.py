@@ -186,6 +186,50 @@ def test_calculate_allocations_keeps_tiny_geography_entries_for_frontend_collaps
 	assert allocations["by_geography"]["Others"] == pytest.approx(5.0)
 
 
+def test_calculate_allocations_rolls_hong_kong_into_china():
+	"""Test Hong Kong country exposure is reported as China."""
+	holdings = [
+		{
+			"name": "China Fund",
+			"current_value": 1000.0,
+			"asset_type": "Fund",
+			"geo_allocation": {"CN": 0.6, "HK": 0.4},
+			"sector_allocation": {"Technology": 1.0},
+		}
+	]
+
+	allocations = ComputeService.calculate_allocations(holdings, 1000.0)
+
+	assert allocations["by_geography"]["China"] == 1000.0
+	assert "Hong Kong" not in allocations["by_geography"]
+
+
+def test_calculate_allocations_excludes_crypto_from_instrument_chart():
+	"""Test crypto is excluded from the instrument/fund allocation chart."""
+	holdings = [
+		{
+			"name": "World Fund",
+			"current_value": 1000.0,
+			"asset_type": "Fund",
+			"geo_allocation": {"US": 1.0},
+			"sector_allocation": {"Technology": 1.0},
+		},
+		{
+			"name": "Bitcoin",
+			"current_value": 500.0,
+			"asset_type": "Crypto",
+			"geo_allocation": {},
+			"sector_allocation": {},
+		},
+	]
+
+	allocations = ComputeService.calculate_allocations(holdings, 1500.0)
+
+	assert allocations["by_instrument"] == {"World Fund": 1000.0}
+	assert allocations["by_asset_type"]["Crypto"] == 500.0
+	assert allocations["crypto_value"] == 500.0
+
+
 def test_calculate_time_series():
 	"""Test time series calculation."""
 	orders = [

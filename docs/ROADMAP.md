@@ -31,19 +31,16 @@
 - Added Docker Compose deployment shape for Raspberry Pi 5 with a localhost-bound web proxy, internal FastAPI backend, and SQLite data volume.
 - Added Raspberry Pi deployment runbook covering Tailscale Serve, environment setup, release checks, and SQLite backup/restore.
 - CSV reimports now skip already-present orders and the preview marks existing rows before import.
+- Asset allocation charts now report Hong Kong exposure as China, label the instrument view as funds, exclude crypto from that fund chart, and draw in-slice percentages when they fit.
 
 ## Next Engineering Work
 
-- Asset Allocation Charts:
-    - I'm seeing "Hong Kong" in the "By Geography" chart. It should be "China", let's ensure everything is correct.
-    - Crypto shouldn't be part of the "By Instrument" chart. And we should change the name to "By Fund".
-    - Can we try to add the numeric percentage on top of each slice on the charts if they fit (if the slice isn't too small)?
 - Validate the Docker Compose deployment on the Raspberry Pi 5 hardware and record any ARM64 package or performance adjustments.
-- Add automated scheduled SQLite backups for the Pi deployment.
+- Tailscale passwordless auth mode: trusted proxy identity headers, email allowlist, frontend no-login flow, and WebSocket header authentication.
 
 ## Later Work
 
-- Tailscale passwordless auth mode: trusted proxy identity headers, email allowlist, frontend no-login flow, and WebSocket header authentication.
+- Add automated scheduled SQLite backups for the Pi deployment.
 - Provider reliability layer: explicit fallback order, stale-cache fallback, provider health metrics, and clearer source attribution for price, metadata, and ISIN lookups.
 - PWA or desktop packaging.
 - Portfolio export and backup UI.
