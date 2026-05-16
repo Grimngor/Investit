@@ -7,7 +7,7 @@
           Manage your investments and import orders
         </p>
       </div>
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3">
         <button
           @click="fetchPrices"
           :disabled="loading || fetchingPrices"
@@ -64,7 +64,7 @@
             </span>
           </div>
           <div class="flex items-center gap-4">
-            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <span class="text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
               {{ indexFundsValue.toFixed(2) }} €
             </span>
             <ChevronDown
@@ -97,7 +97,7 @@
             </span>
           </div>
           <div class="flex items-center gap-4">
-            <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <span class="text-right text-sm font-semibold text-gray-700 dark:text-gray-300">
               {{ cryptoValue.toFixed(2) }} €
             </span>
             <ChevronDown

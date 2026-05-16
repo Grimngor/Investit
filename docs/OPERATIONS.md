@@ -91,6 +91,30 @@ User-specific runtime files are intentionally ignored by Git:
 
 Public-safe sample data is kept under `data/examples/`.
 
+Prefer the app UI for editing portfolio data. The Portfolio and Orders screens should own normal order imports, manual order edits, and derived holdings changes. Use direct SQLite maintenance only for operations that do not have UI support yet, and take a backup first.
+
+Create a local SQLite backup from PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force data\backups
+$stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+Copy-Item data\investit.sqlite3 "data\backups\investit_backup_$stamp.sqlite3"
+```
+
+Inspect users without modifying the database:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import sqlite3; c = sqlite3.connect('data/investit.sqlite3'); print([r[0] for r in c.execute('select username from users order by username')]); c.close()"
+```
+
+For user profile fields that are not editable in the UI, use the app persistence layer instead of hand-editing SQLite rows:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); from app.models.persistence import load_user_data, save_user_data; u = load_user_data('<username>'); u['full_name'] = 'Your Name'; u['email'] = 'you@example.com'; save_user_data('<username>', u)"
+```
+
+Do not edit password hashes directly unless you are using `app.services.auth.get_password_hash` or a dedicated maintenance command.
+
 ## Raspberry Pi Deployment
 
 The Pi deployment uses Docker Compose with a localhost-bound web proxy and an internal-only backend service. Put Tailscale Serve in front of the web proxy and do not publish the backend port.

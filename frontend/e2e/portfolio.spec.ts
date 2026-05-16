@@ -22,8 +22,13 @@ test.describe('Portfolio', () => {
 
     await page.getByRole('button', { name: /add order/i }).click()
 
-    await expect(page.getByText(/IE00B4L5Y983/i).first()).toBeVisible()
-    await expect(page.getByText(/500.00/).first()).toBeVisible()
+    const holdings = page.getByTestId('index-funds-holdings')
+    const holdingsSurface = page.viewportSize()?.width && page.viewportSize()!.width < 1024
+      ? holdings.locator('.lg\\:hidden')
+      : holdings.locator('.hidden.lg\\:block')
+
+    await expect(holdingsSurface.getByText(/IE00B4L5Y983/i).first()).toBeVisible()
+    await expect(holdingsSurface.getByText(/500.00/).first()).toBeVisible()
   })
 
   test('should toggle sections', async ({ page }) => {

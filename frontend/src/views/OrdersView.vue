@@ -5,7 +5,7 @@
         <h1 class="page-title">Orders</h1>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">History of executed orders</p>
       </div>
-      <div class="flex gap-3">
+      <div class="flex flex-wrap gap-3">
         <button
           v-if="selectedIds.length > 0"
           @click="confirmDeleteSelected"

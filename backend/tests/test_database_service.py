@@ -28,8 +28,8 @@ def test_user_order_price_round_trip() -> None:
 	"""Persist and load user data with orders and prices."""
 	db = DatabaseService()
 	users = {
-		"grimngor": {
-			"username": "grimngor",
+		"primary_user": {
+			"username": "primary_user",
 			"hashed_password": "hash",
 			"holdings": [],
 			"orders": [{"id": "order-1", "isin": "IE00TEST0001", "shares": 1, "amount_eur": 100, "status": "Finalizada"}],
@@ -40,9 +40,9 @@ def test_user_order_price_round_trip() -> None:
 	db.save_users(users)
 
 	loaded = db.load_users()
-	assert loaded["grimngor"]["hashed_password"] == "hash"
-	assert loaded["grimngor"]["orders"][0]["id"] == "order-1"
-	assert loaded["grimngor"]["prices"]["IE00TEST0001"]["price"] == 100.0
+	assert loaded["primary_user"]["hashed_password"] == "hash"
+	assert loaded["primary_user"]["orders"][0]["id"] == "order-1"
+	assert loaded["primary_user"]["prices"]["IE00TEST0001"]["price"] == 100.0
 
 
 def test_instrument_and_isin_mapping_round_trip() -> None:
@@ -59,7 +59,7 @@ def test_instrument_and_isin_mapping_round_trip() -> None:
 
 
 def test_migration_renames_test_user_and_preserves_counts() -> None:
-	"""Migrate JSON data while renaming test to grimngor."""
+	"""Migrate JSON data while renaming test to a primary user."""
 	db = DatabaseService()
 	users = {
 		"test": {
@@ -74,13 +74,13 @@ def test_migration_renames_test_user_and_preserves_counts() -> None:
 		users,
 		[{"isin": "IE00TEST0001", "symbol": "TEST.AS"}],
 		{"IE00TEST0001": {"ticker": "TEST.AS"}},
-		rename_users={"test": "grimngor"},
+		rename_users={"test": "primary_user"},
 	)
 
 	loaded = db.load_users()
 	assert "test" not in loaded
-	assert loaded["grimngor"]["username"] == "grimngor"
-	assert loaded["grimngor"]["hashed_password"] == "hash"
+	assert loaded["primary_user"]["username"] == "primary_user"
+	assert loaded["primary_user"]["hashed_password"] == "hash"
 	assert counts["orders"] == 1
 	assert counts["prices"] == 1
 	assert counts["instruments"] == 1
@@ -90,7 +90,7 @@ def test_migration_renames_test_user_and_preserves_counts() -> None:
 def test_migration_aborts_on_username_conflict() -> None:
 	"""Abort migration when a rename target already exists."""
 	db = DatabaseService()
-	users = {"test": {"username": "test"}, "grimngor": {"username": "grimngor"}}
+	users = {"test": {"username": "test"}, "primary_user": {"username": "primary_user"}}
 
 	with pytest.raises(ValueError, match="target user already exists"):
-		db.migrate_from_json(users, [], {}, rename_users={"test": "grimngor"})
+		db.migrate_from_json(users, [], {}, rename_users={"test": "primary_user"})

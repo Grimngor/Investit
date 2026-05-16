@@ -6,8 +6,8 @@
 			@click.self="close"
 		>
 			<div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden m-4 flex flex-col">
-				<div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-					<div>
+				<div class="flex items-start justify-between gap-4 p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+					<div class="min-w-0">
 						<h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Preview & Edit CSV Import</h2>
 						<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
 							Review {{ parsedOrders.length }} orders: {{ importableOrders.length }} new, {{ skippedOrders.length }} already present
@@ -20,7 +20,7 @@
 					</button>
 				</div>
 
-				<div class="flex-1 overflow-auto p-6">
+				<div class="flex-1 overflow-auto p-4 sm:p-6">
 					<table class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
 						<thead class="bg-gray-100 dark:bg-gray-800 sticky top-0">
 							<tr>
@@ -179,12 +179,12 @@
 					<div v-if="parsedOrders.length === 0" class="text-center py-12 text-gray-400">No valid orders found in CSV</div>
 				</div>
 
-				<div class="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
+				<div class="flex flex-col gap-4 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 sm:flex-row sm:items-center sm:justify-between">
 					<div class="text-sm text-gray-600 dark:text-gray-400">
 						<span class="font-medium text-gray-800 dark:text-gray-200">{{ importableOrders.length }}</span>
 						new orders ready to import
 					</div>
-					<div class="flex gap-3">
+					<div class="flex flex-col-reverse gap-3 sm:flex-row">
 						<button
 							@click="close"
 							:disabled="importing"

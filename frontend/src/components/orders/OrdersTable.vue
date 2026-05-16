@@ -48,7 +48,8 @@
       </table>
     </div>
 
-    <table v-else-if="orders.length" class="w-full text-sm">
+    <div v-else-if="orders.length" class="hidden lg:block overflow-x-auto">
+      <table class="w-full text-sm">
         <thead class="bg-softblue-100 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300">
           <tr class="divide-x divide-gray-200 dark:divide-gray-700">
             <th class="px-4 py-3 text-center w-12">
@@ -107,6 +108,7 @@
           </tr>
         </tbody>
       </table>
+    </div>
 
     <!-- Mobile Cards -->
     <div v-if="loading" class="lg:hidden p-4 space-y-4">
@@ -135,7 +137,7 @@
       </div>
     </div>
 
-    <div v-else-if="orders.length" class="lg:hidden p-4 space-y-4">
+    <div v-if="!loading && orders.length" class="lg:hidden p-4 space-y-4">
       <div
         v-for="order in orders"
         :key="'mob-' + order.id"
@@ -190,7 +192,7 @@
       </div>
     </div>
 
-    <div v-else class="p-8 text-center text-gray-500 dark:text-gray-400">
+    <div v-if="!loading && !orders.length" class="p-8 text-center text-gray-500 dark:text-gray-400">
       {{ emptyMessage }}
     </div>
   </div>

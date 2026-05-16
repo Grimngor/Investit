@@ -73,7 +73,7 @@
 				</div>
 
 				<!-- Amount & Shares (Grid) -->
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<div>
 						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 							Amount (EUR)
@@ -113,7 +113,7 @@
 				</div>
 
 				<!-- Order Type & Status (Grid) -->
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<div>
 						<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
 							Order Type
@@ -154,7 +154,7 @@
 				</div>
 
 				<!-- Actions -->
-				<div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+				<div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
 					<button
 						type="button"
 						@click="close"

@@ -102,7 +102,7 @@ curl -fsS http://127.0.0.1:${INVESTIT_WEB_PORT:-8080}/health
 
 ## Tailscale Serve
 
-Use Serve, not Funnel. Serve is private to the tailnet; Funnel is public internet exposure. Tailscale Serve can also add identity headers, but InvestIt does not consume those headers yet.
+Use Serve, not Funnel. Serve is private to the tailnet; Funnel is public internet exposure. Tailscale Serve also terminates HTTPS for the app's tailnet URL.
 
 ```bash
 sudo tailscale up
@@ -114,6 +114,23 @@ The app is reachable at the Pi's tailnet HTTPS name, such as:
 
 ```text
 https://raspberrypi.example-tailnet.ts.net
+```
+
+Use that `https://...ts.net` URL from trusted devices. Direct local URLs such as `http://127.0.0.1:8080` are intentionally plain HTTP because they are only the localhost hop between Tailscale Serve and the Docker web proxy; browsers will label those direct HTTP URLs as not secure. Do not publish that HTTP port to the LAN or internet to avoid bypassing Tailscale's HTTPS and access controls.
+
+### URL Customization
+
+You can customize the URL without changing InvestIt's Docker or backend configuration:
+
+- Rename the Pi in Tailscale admin or with `sudo tailscale set --hostname=investit-pi` to change the machine-name part of the tailnet URL.
+- Enable or rename MagicDNS in Tailscale admin to control the tailnet DNS suffix shown in `tailscale serve status`.
+- Use a private custom domain through Tailscale DNS/HTTPS features if you already control the domain. Keep it tailnet-only and point it at the same Serve target, `localhost:${INVESTIT_WEB_PORT:-8080}`.
+
+After any URL change, run:
+
+```bash
+sudo tailscale serve status
+curl -fsS http://127.0.0.1:${INVESTIT_WEB_PORT:-8080}/health
 ```
 
 Recommended hardening:
@@ -153,7 +170,7 @@ Record hardware validation notes here after running on the Pi:
 
 | Date | Pi OS / Kernel | Architecture | Docker / Compose | Build time | Runtime notes | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+| 2026-05-16 | Debian GNU/Linux 13 trixie / Linux 6.12.62+rpt-rpi-2712 | aarch64 | Docker 29.4.3 / Compose v5.1.3 | 2.3s cached image rebuild | Web proxy published only on `127.0.0.1:8080`; backend internal only; `/health` returned healthy; Tailscale Serve exposed the Pi's private `https://<machine>.<tailnet>.ts.net` URL; logs showed normal nginx and Uvicorn startup | Passed without warnings |
 
 Known ARM64 notes:
 
@@ -265,6 +282,56 @@ curl -fsS http://127.0.0.1:${INVESTIT_WEB_PORT:-8080}/health
 ```
 
 Keep off-device encrypted backups for real portfolio data.
+
+## Editing And Moving User Data
+
+Prefer app workflows for portfolio data:
+
+- Use the Portfolio and Orders screens to edit orders, imports, prices, and holdings-derived state.
+- Use SQLite only for inspection or maintenance operations that the UI does not expose yet.
+- Always create a backup before changing `data/investit.sqlite3`.
+
+For a cold local backup on Windows PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force data\backups
+$stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+Copy-Item data\investit.sqlite3 "data\backups\investit_backup_$stamp.sqlite3"
+```
+
+For profile/auth fields that are not editable in the UI, use the app persistence layer from the repository root after backing up:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0, 'backend'); from app.models.persistence import load_user_data, save_user_data; u = load_user_data('<username>'); u['full_name'] = 'Your Name'; u['email'] = 'you@example.com'; save_user_data('<username>', u)"
+```
+
+Do not hand-edit password hashes unless you know the expected hash format. To change a password, prefer adding a dedicated maintenance command before doing it on real data.
+
+To copy your local primary-user data to the Pi, transfer the SQLite database as a stopped-service restore:
+
+```bash
+cd ~/services/investit
+docker compose down
+mkdir -p data/backups
+cp data/investit.sqlite3 data/backups/investit_pi_before_restore_$(date -u +%Y%m%d_%H%M%S).sqlite3
+```
+
+From Windows PowerShell, copy the local database:
+
+```powershell
+scp data\investit.sqlite3 <pi-user>@<pi-host>:~/services/investit/data/investit.sqlite3
+```
+
+Then restart and verify on the Pi:
+
+```bash
+cd ~/services/investit
+rm -f data/investit.sqlite3-wal data/investit.sqlite3-shm
+docker compose up -d
+curl -fsS http://127.0.0.1:${INVESTIT_WEB_PORT:-8080}/health
+```
+
+Copy the main `.sqlite3` file while the app is stopped. The `-wal` and `-shm` files are SQLite runtime files and should not be copied as the source of truth for a stopped-service restore.
 
 ## Release Checks
 

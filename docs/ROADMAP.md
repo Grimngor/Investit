@@ -2,9 +2,10 @@
 
 ## Current Stabilization
 
-- Keep backend on port `8000` and frontend on port `5174`.
-- Keep Python tooling on root `.venv`.
-- Keep backend tests, Ruff checks, frontend build, Vitest, and Playwright green.
+- Keep the local development backend on port `8000` and Vite frontend on port `5174`.
+- Keep Raspberry Pi deployment traffic behind the localhost-bound Compose web proxy on `INVESTIT_WEB_PORT`, currently `8080`.
+- Keep Python tooling on the repository root `.venv`.
+- Keep backend tests, Ruff checks, frontend build, Vitest, and Playwright green before releases.
 - Keep Playwright isolated from live user data through `.cache/e2e-data`.
 
 ## Recently Completed
@@ -27,21 +28,32 @@
 - Added lightweight in-process background job tracking for provider-heavy price and instrument metadata refreshes.
 - Added OpenFIGI-backed ISIN resolution with local manual overrides and provider-derived JSON cache.
 - Reviewed public service methods for one-line docstrings and type hints.
-- Migrated runtime persistence from JSON files to SQLite and renamed the local `test` user to `grimngor`.
+- Migrated runtime persistence from JSON files to SQLite and renamed the local `test` user to the primary user account.
 - Added Docker Compose deployment shape for Raspberry Pi 5 with a localhost-bound web proxy, internal FastAPI backend, and SQLite data volume.
 - Added Raspberry Pi deployment runbook covering Tailscale Serve, environment setup, release checks, and SQLite backup/restore.
 - CSV reimports now skip already-present orders and the preview marks existing rows before import.
 - Asset allocation charts now report Hong Kong exposure as China, label the instrument view as funds, exclude crypto from that fund chart, and draw in-slice percentages when they fit.
 - Added a Raspberry Pi deployment validation script and runbook section for ARM64 Compose smoke checks.
 - Added optional hybrid Tailscale Serve passwordless auth with trusted identity headers, email allowlisting, normal JWT issuance, and password-login fallback.
+- Validated the Raspberry Pi 5 deployment on Debian GNU/Linux 13 trixie ARM64 with Docker 29.4.3 and Docker Compose v5.1.3; build, startup, health check, localhost-only web exposure, internal backend networking, Tailscale Serve, and container logs all passed without warnings.
+- Documented the Pi deployment HTTPS path through Tailscale Serve, why direct local HTTP shows browser security warnings, URL customization options, and the local-to-Pi SQLite transfer flow.
+- Documented local SQLite backup and safe primary-user profile-editing guidance.
+- Pruned the local SQLite runtime database back to only the primary user after creating timestamped backups.
+- Removed obsolete empty project folders and disposable generated artifacts where Windows locks allowed cleanup.
+- Improved mobile frontend readiness for navigation, orders tables, order editing, CSV preview, and responsive page actions.
+- Added Playwright phone/tablet projects, fixed SQLite E2E isolation through `DATABASE_PATH`, and added focused Orders E2E coverage for mobile card rendering without duplicate desktop tables.
+- Verified the frontend through Browser screenshots on phone and tablet viewports for dashboard, portfolio, orders, auth, CSV preview, and order edit modal with no horizontal overflow in checked screens.
 
 ## Next Engineering Work
 
-- Run the Raspberry Pi deployment validation script on the Pi 5 hardware and record ARM64 package or performance findings in the runbook.
+- Add a documented SSH key setup path for Pi maintenance from Windows, including a dedicated personal Pi key and avoiding reuse of work Git keys.
 
 ## Later Work
 
 - Add automated scheduled SQLite backups for the Pi deployment.
 - Provider reliability layer: explicit fallback order, stale-cache fallback, provider health metrics, and clearer source attribution for price, metadata, and ISIN lookups.
-- PWA or desktop packaging.
-- Portfolio export and backup UI.
+- Explore taking advantage of Apps Script + Order emails from MyInvestor to populate the orders as an alternative to the CSV import.
+    - If doable, we should include a button in the app that creates an apps script, needed gmail tags to filter messages, and asks for the needed permissions automatically.
+- Investigate an alternative or improvement to Tailscale that keeps the Raspberry Pi and home network safe while easing access for trusted family and friends from anywhere.
+- Portfolio export and backup UI so live data can be exported, backed up, and restored from the app instead of relying only on command-line SQLite copies.
+- PWA or desktop packaging for installing InvestIt as an app-like experience on trusted devices, either through browser PWA support or a lightweight desktop wrapper.

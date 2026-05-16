@@ -39,6 +39,11 @@ test.describe('CSV Import', () => {
 
     // Verify success and page update
     await expect(page.getByText(/successfully imported/i)).toBeVisible({ timeout: 15000 })
-    await expect(page.getByText('IE00B4L5Y983').first()).toBeVisible()
+    const holdings = page.getByTestId('index-funds-holdings')
+    const holdingsSurface = page.viewportSize()?.width && page.viewportSize()!.width < 1024
+      ? holdings.locator('.lg\\:hidden')
+      : holdings.locator('.hidden.lg\\:block')
+
+    await expect(holdingsSurface.getByText('IE00B4L5Y983').first()).toBeVisible()
   })
 })

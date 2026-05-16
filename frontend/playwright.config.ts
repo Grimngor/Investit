@@ -18,8 +18,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Keep local JSON storage and bcrypt-backed auth stable under browser concurrency. */
-  workers: process.env.CI ? 1 : 4,
+  /* Keep local SQLite storage and bcrypt-backed auth stable across desktop and mobile projects. */
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [['html', { open: 'never' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -49,6 +49,16 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
+
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+
+    {
+      name: 'tablet-safari',
+      use: { ...devices['iPad Pro 11'] },
+    },
   ],
 
   /* Run local backend and frontend servers before starting the tests. */
@@ -59,6 +69,7 @@ export default defineConfig({
       url: 'http://127.0.0.1:8000/health',
       env: {
         DATA_DIR: e2eDataDir,
+        DATABASE_PATH: `${e2eDataDir}/investit.sqlite3`,
       },
       reuseExistingServer: false,
       timeout: 120 * 1000,
