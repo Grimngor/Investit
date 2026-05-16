@@ -1,30 +1,52 @@
 <template>
-  <div class="chart-container">
-    <Line v-if="chartData" :data="chartData" :options="chartOptions" />
-    <div v-else class="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-      <p>No data available</p>
+  <div>
+    <div class="chart-container">
+      <Line v-if="chartData" :data="chartData" :options="chartOptions" />
+      <div v-else class="flex h-64 items-center justify-center text-gray-500 dark:text-gray-400">
+        <p>No data available</p>
+      </div>
+    </div>
+
+    <div
+      v-if="props.timeSeries.length > 0"
+      class="mt-4 flex flex-wrap items-center justify-center gap-2"
+      aria-label="Portfolio performance time range"
+    >
+      <button
+        v-for="range in ranges"
+        :key="range.value"
+        type="button"
+        class="min-w-12 rounded-md border px-3 py-1.5 text-sm font-medium transition"
+        :class="
+          selectedRange === range.value
+            ? 'border-blue-600 bg-blue-600 text-white'
+            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+        "
+        @click="selectedRange = range.value"
+      >
+        {{ range.label }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
-  Chart as ChartJS,
   CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LineElement,
   LinearScale,
   PointElement,
-  LineElement,
   Title,
   Tooltip,
-  Legend,
-  Filler,
   type ChartData,
   type ChartOptions,
 } from 'chart.js'
 
-// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -47,20 +69,86 @@ interface Props {
   loading?: boolean
 }
 
+type RangeValue = '1M' | '3M' | '6M' | '1Y' | '3Y' | 'MAX'
+
 const props = withDefaults(defineProps<Props>(), {
   timeSeries: () => [],
   loading: false,
 })
 
-// Extract data for chart
-const chartData = computed<ChartData<'line'> | null>(() => {
-  if (!props.timeSeries || props.timeSeries.length === 0) {
+const ranges: Array<{ label: string; value: RangeValue; months?: number }> = [
+  { label: '1M', value: '1M', months: 1 },
+  { label: '3M', value: '3M', months: 3 },
+  { label: '6M', value: '6M', months: 6 },
+  { label: '1Y', value: '1Y', months: 12 },
+  { label: '3Y', value: '3Y', months: 36 },
+  { label: 'Max', value: 'MAX' },
+]
+
+const selectedRange = ref<RangeValue>('MAX')
+
+function parsePointDate(value: string): Date | null {
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed
+  }
+
+  const ddmmyyyy = value.match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/)
+  if (!ddmmyyyy) {
     return null
   }
 
-  const labels = props.timeSeries.map((point) => point.date)
-  const investedValues = props.timeSeries.map((point) => point.invested_value)
-  const currentValues = props.timeSeries.map((point) => point.current_value)
+  const [, day, month, year] = ddmmyyyy
+  const fullYear = year.length === 2 ? `20${year}` : year
+  const fallback = new Date(`${fullYear}-${month}-${day}`)
+  return Number.isNaN(fallback.getTime()) ? null : fallback
+}
+
+function formatShortDate(value: string): string {
+  const parsed = parsePointDate(value)
+  if (!parsed) {
+    return value
+  }
+
+  const day = String(parsed.getDate()).padStart(2, '0')
+  const month = String(parsed.getMonth() + 1).padStart(2, '0')
+  const year = String(parsed.getFullYear()).slice(-2)
+  return `${day}/${month}/${year}`
+}
+
+const filteredTimeSeries = computed(() => {
+  if (selectedRange.value === 'MAX' || props.timeSeries.length === 0) {
+    return props.timeSeries
+  }
+
+  const latestDate = props.timeSeries.reduce<Date | null>((latest, point) => {
+    const parsed = parsePointDate(point.date)
+    if (!parsed) return latest
+    return !latest || parsed > latest ? parsed : latest
+  }, null)
+  const range = ranges.find((item) => item.value === selectedRange.value)
+
+  if (!latestDate || !range?.months) {
+    return props.timeSeries
+  }
+
+  const startDate = new Date(latestDate)
+  startDate.setMonth(startDate.getMonth() - range.months)
+
+  return props.timeSeries.filter((point) => {
+    const parsed = parsePointDate(point.date)
+    return parsed ? parsed >= startDate : true
+  })
+})
+
+const chartData = computed<ChartData<'line'> | null>(() => {
+  if (filteredTimeSeries.value.length === 0) {
+    return null
+  }
+
+  const labels = filteredTimeSeries.value.map((point) => formatShortDate(point.date))
+  const investedValues = filteredTimeSeries.value.map((point) => point.invested_value)
+  const currentValues = filteredTimeSeries.value.map((point) => point.current_value)
 
   return {
     labels,
@@ -68,7 +156,7 @@ const chartData = computed<ChartData<'line'> | null>(() => {
       {
         label: 'Invested Value',
         data: investedValues,
-        borderColor: 'rgb(59, 130, 246)', // blue-500
+        borderColor: 'rgb(59, 130, 246)',
         backgroundColor: 'rgba(59, 130, 246, 0.1)',
         borderWidth: 2,
         pointRadius: 3,
@@ -79,7 +167,7 @@ const chartData = computed<ChartData<'line'> | null>(() => {
       {
         label: 'Current Value',
         data: currentValues,
-        borderColor: 'rgb(16, 185, 129)', // green-500
+        borderColor: 'rgb(16, 185, 129)',
         backgroundColor: 'rgba(16, 185, 129, 0.1)',
         borderWidth: 2,
         pointRadius: 3,
@@ -91,11 +179,10 @@ const chartData = computed<ChartData<'line'> | null>(() => {
   }
 })
 
-// Chart options with dark mode support
 const chartOptions = computed<ChartOptions<'line'>>(() => {
   const isDark = document.documentElement.classList.contains('dark')
-  const textColor = isDark ? '#d1d5db' : '#374151' // gray-300 : gray-700
-  const gridColor = isDark ? '#374151' : '#e5e7eb' // gray-700 : gray-200
+  const textColor = isDark ? '#d1d5db' : '#374151'
+  const gridColor = isDark ? '#374151' : '#e5e7eb'
 
   return {
     responsive: true,
@@ -127,13 +214,14 @@ const chartOptions = computed<ChartOptions<'line'>>(() => {
         padding: 12,
         displayColors: true,
         callbacks: {
-          label: function (context) {
+          title: (context) => context[0]?.label || '',
+          label: (context) => {
             let label = context.dataset.label || ''
             if (label) {
               label += ': '
             }
             if (context.parsed.y !== null) {
-              label += '€' + context.parsed.y.toFixed(2)
+              label += `€${context.parsed.y.toFixed(2)}`
             }
             return label
           },
@@ -164,9 +252,7 @@ const chartOptions = computed<ChartOptions<'line'>>(() => {
           font: {
             size: 11,
           },
-          callback: function (value) {
-            return '€' + Number(value).toFixed(0)
-          },
+          callback: (value) => `€${Number(value).toFixed(0)}`,
         },
         beginAtZero: true,
       },

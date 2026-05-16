@@ -9,6 +9,18 @@
       </div>
       <div class="flex flex-wrap gap-3">
         <button
+          @click="showImportModal = true"
+          class="inline-flex items-center justify-center gap-2 bg-white hover:bg-softblue-50 text-softblue-700 border border-softblue-300 px-4 py-2 rounded-md text-sm font-medium transition dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-softblue-300 dark:border-gray-600"
+        >
+          Import CSV
+        </button>
+        <button
+          @click="showOrderModal = true"
+          class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium transition"
+        >
+          Add Manual Order
+        </button>
+        <button
           @click="fetchPrices"
           :disabled="loading || fetchingPrices"
           class="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-md text-sm font-medium transition disabled:opacity-50"
@@ -118,26 +130,79 @@
       <div v-if="!fundHoldings.length && !cryptoHoldings.length" class="p-12 text-center">
         <div class="text-gray-400 dark:text-gray-500 mb-2">No investments yet</div>
         <p class="text-xs text-gray-500 dark:text-gray-600">
-          Import a CSV or add your first manual order below.
+          Import a CSV or add your first manual order from the page actions.
         </p>
       </div>
     </div>
 
-    <!-- CSV Importer -->
-    <div class="mb-10">
-      <CSVImporter @import-complete="handleImportComplete" />
-    </div>
+    <Teleport to="body">
+      <div
+        v-if="showImportModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        @click.self="showImportModal = false"
+      >
+        <div
+          class="m-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white p-4 shadow-xl dark:bg-gray-800 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="csv-import-title"
+        >
+          <div class="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <h2 id="csv-import-title" class="text-xl font-semibold text-gray-800 dark:text-gray-200">
+                Import Orders from CSV
+              </h2>
+            </div>
+            <button
+              @click="showImportModal = false"
+              class="rounded p-1 text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-300"
+              aria-label="Close CSV import"
+            >
+              <X class="h-6 w-6" />
+            </button>
+          </div>
+          <CSVImporter embedded :show-title="false" @import-complete="handleImportComplete" />
+        </div>
+      </div>
 
-    <!-- Manual Order Form -->
-    <div class="mb-10">
-      <OrderForm @order-saved="handleOrderSaved" @order-deleted="handleOrderDeleted" />
-    </div>
+      <div
+        v-if="showOrderModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+        @click.self="showOrderModal = false"
+      >
+        <div
+          class="m-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-4 shadow-xl dark:bg-gray-800 sm:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="manual-order-title"
+        >
+          <div class="mb-6 flex items-start justify-between gap-4">
+            <h2 id="manual-order-title" class="text-xl font-semibold text-gray-800 dark:text-gray-200">
+              Add Manual Order
+            </h2>
+            <button
+              @click="showOrderModal = false"
+              class="rounded p-1 text-gray-400 transition hover:text-gray-600 dark:hover:text-gray-300"
+              aria-label="Close manual order"
+            >
+              <X class="h-6 w-6" />
+            </button>
+          </div>
+          <OrderForm
+            embedded
+            :show-title="false"
+            @order-saved="handleOrderSaved"
+            @order-deleted="handleOrderDeleted"
+          />
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { usePortfolioStore, type Investment } from '@/stores/portfolio'
+import { usePortfolioStore } from '@/stores/portfolio'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToastStore } from '@/stores/toast'
 import { apiClient } from '@/services/api'
@@ -146,11 +211,13 @@ import SummaryCard from '@/components/SummaryCard.vue'
 import CSVImporter from '@/components/portfolio/CSVImporter.vue'
 import OrderForm from '@/components/portfolio/OrderForm.vue'
 import HoldingsTable from '@/components/portfolio/HoldingsTable.vue'
-import { ChevronDown } from 'lucide-vue-next'
+import { ChevronDown, X } from 'lucide-vue-next'
 
 const portfolioStore = usePortfolioStore()
 const toastStore = useToastStore()
 const fetchingPrices = ref(false)
+const showImportModal = ref(false)
+const showOrderModal = ref(false)
 
 const holdings = computed(() => portfolioStore.portfolio?.holdings || [])
 
@@ -203,17 +270,17 @@ async function refreshPortfolio() {
 }
 
 async function handleImportComplete() {
-  // Refresh portfolio after successful CSV import
+  showImportModal.value = false
   await refreshPortfolio()
 }
 
 async function handleOrderSaved() {
-  // Refresh portfolio after manual order is saved
+  showOrderModal.value = false
   await refreshPortfolio()
 }
 
 async function handleOrderDeleted() {
-  // Refresh portfolio after order is deleted
+  showOrderModal.value = false
   await refreshPortfolio()
 }
 

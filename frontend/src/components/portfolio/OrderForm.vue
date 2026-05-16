@@ -1,8 +1,6 @@
 <template>
-  <div
-    class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur p-6 shadow-sm"
-  >
-    <div class="flex items-center justify-between mb-6">
+  <div :class="containerClasses">
+    <div v-if="showTitle || editingOrder" class="flex items-center justify-between mb-6">
       <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
         {{ editingOrder ? 'Edit Order' : 'Add Manual Order' }}
       </h2>
@@ -135,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import axios from 'axios'
 import { useToastStore } from '@/stores/toast'
 import { API_BASE_URL } from '@/services/config'
@@ -160,9 +158,15 @@ interface OrderPayload extends OrderFormData {
 
 interface Props {
   order?: Order | null
+  embedded?: boolean
+  showTitle?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  order: null,
+  embedded: false,
+  showTitle: true,
+})
 
 const emit = defineEmits<{
   (e: 'order-saved'): void
@@ -172,6 +176,11 @@ const emit = defineEmits<{
 const toastStore = useToastStore()
 const submitting = ref(false)
 const editingOrder = ref<Order | null>(null)
+const containerClasses = computed(() =>
+  props.embedded
+    ? ''
+    : 'rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur p-6 shadow-sm',
+)
 
 const formData = ref<OrderFormData>({
   date: new Date().toISOString().split('T')[0],

@@ -15,6 +15,8 @@ test.describe('Portfolio', () => {
   })
 
   test('should add a manual order (Investment)', async ({ page }) => {
+    await page.getByRole('button', { name: /add manual order/i }).click()
+
     await page.locator('input[type="date"]').fill('2024-01-01')
     await page.locator('input[placeholder*="IE00BYX5NX33"]').fill('IE00B4L5Y983')
     await page.locator('input[placeholder*="300.00"]').fill('500')
@@ -32,6 +34,8 @@ test.describe('Portfolio', () => {
   })
 
   test('should toggle sections', async ({ page }) => {
+    await page.getByRole('button', { name: /add manual order/i }).click()
+
     await page.locator('input[placeholder*="IE00BYX5NX33"]').fill('IE00B4L5Y983')
     await page.locator('input[placeholder*="300.00"]').fill('100')
     await page.locator('input[placeholder*="24.624"]').fill('1')

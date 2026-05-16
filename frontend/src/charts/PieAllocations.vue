@@ -19,10 +19,23 @@
       </button>
     </div>
 
-    <div class="chart-container">
-      <Pie v-if="chartData" :data="chartData" :options="chartOptions" />
-      <div v-else class="flex items-center justify-center h-48 text-gray-500 dark:text-gray-400">
-        <p class="text-sm">No {{ type }} data available</p>
+    <div class="allocation-chart-layout" :class="{ 'allocation-chart-layout--legend': showLegend }">
+      <div class="chart-container">
+        <Pie v-if="chartData" :data="chartData" :options="chartOptions" />
+        <div v-else class="flex h-48 items-center justify-center text-gray-500 dark:text-gray-400">
+          <p class="text-sm">No {{ type }} data available</p>
+        </div>
+      </div>
+      <div
+        v-if="showLegend && legendItems.length > 0"
+        class="legend-panel"
+        :aria-label="`${title || type} legend`"
+      >
+        <div v-for="item in legendItems" :key="item.label" class="legend-item">
+          <span class="legend-swatch" :style="{ backgroundColor: item.color }" />
+          <span class="truncate">{{ item.label }}</span>
+          <span class="shrink-0 font-medium">{{ item.percentage }}%</span>
+        </div>
       </div>
     </div>
   </div>
@@ -116,6 +129,7 @@ interface Props {
   title?: string
   loading?: boolean
   cryptoPct?: number // overall portfolio crypto percentage (0-100)
+  showLegend?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -123,6 +137,7 @@ const props = withDefaults(defineProps<Props>(), {
   type: 'instrument',
   loading: false,
   cryptoPct: 0,
+  showLegend: false,
 })
 
 const showCryptoBadge = computed(() => props.type === 'asset_type' && props.cryptoPct > 0)
@@ -334,6 +349,22 @@ const chartData = computed<ChartData<'pie'> | null>(() => {
   }
 })
 
+const legendItems = computed(() => {
+  const data = processedAllocations.value
+  const entries = Object.entries(data)
+  const total = entries.reduce((sum, [, value]) => sum + value, 0)
+
+  if (entries.length === 0 || total <= 0) {
+    return []
+  }
+
+  return entries.map(([label, value], index) => ({
+    label,
+    percentage: ((value / total) * 100).toFixed(1),
+    color: colorPalette[index % colorPalette.length],
+  }))
+})
+
 // Chart options with dark mode support
 const chartOptions = computed<ChartOptions<'pie'>>(() => {
   const textColor = themeStore.isDark ? '#f3f4f6' : '#374151' // gray-100 for dark, gray-700 for light
@@ -351,38 +382,7 @@ const chartOptions = computed<ChartOptions<'pie'>>(() => {
     },
     plugins: {
       legend: {
-        display: true,
-        position: 'right',
-        align: 'center',
-        maxWidth: 200,
-        labels: {
-          color: textColor,
-          font: {
-            size: 11,
-            family: "'Inter', sans-serif",
-          },
-          padding: 10,
-          usePointStyle: true,
-          generateLabels: function (chart) {
-            const data = chart.data
-            if (data.labels && data.datasets.length) {
-              const total = (data.datasets[0].data as number[]).reduce((sum, val) => sum + val, 0)
-              return data.labels.map((label, i) => {
-                const value = data.datasets[0].data[i] as number
-                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
-                const bgColors = data.datasets[0].backgroundColor as string[]
-                return {
-                  text: `${label}: ${percentage}%`,
-                  fillStyle: bgColors[i],
-                  fontColor: textColor,
-                  hidden: false,
-                  index: i,
-                }
-              })
-            }
-            return []
-          },
-        },
+        display: false,
       },
       tooltip: {
         backgroundColor: themeStore.isDark ? '#1f2937' : '#ffffff',
@@ -416,7 +416,62 @@ function toggleEUCollapse() {
 <style scoped>
 .chart-container {
   position: relative;
-  height: 340px; /* enlarged height */
+  height: 300px;
+  min-width: 0;
   width: 100%;
+}
+
+.allocation-chart-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.allocation-chart-layout--legend {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.legend-panel {
+  display: grid;
+  grid-auto-rows: minmax(0, auto);
+  max-height: 6.75rem;
+  overflow-y: auto;
+  gap: 0.35rem;
+  padding-right: 0.25rem;
+}
+
+.legend-item {
+  display: grid;
+  grid-template-columns: 0.75rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  color: rgb(75 85 99);
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.legend-swatch {
+  height: 0.75rem;
+  width: 0.75rem;
+  border-radius: 9999px;
+}
+
+:global(.dark) .legend-item {
+  color: rgb(209 213 219);
+}
+
+@media (min-width: 1024px) {
+  .chart-container {
+    height: 320px;
+  }
+
+  .allocation-chart-layout--legend {
+    grid-template-columns: minmax(260px, 1fr) minmax(140px, 200px);
+    align-items: center;
+  }
+
+  .legend-panel {
+    max-height: 320px;
+  }
 }
 </style>

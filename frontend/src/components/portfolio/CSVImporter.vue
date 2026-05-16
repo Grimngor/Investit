@@ -1,8 +1,6 @@
 <template>
-  <div
-    class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur p-6 shadow-sm"
-  >
-    <h2 class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">
+  <div :class="containerClasses">
+    <h2 v-if="showTitle" class="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">
       Import Orders from CSV
     </h2>
     <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
@@ -88,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useToastStore } from '@/stores/toast'
 import CSVPreviewModal from './CSVPreviewModal.vue'
 
@@ -103,11 +101,26 @@ const emit = defineEmits<{
   (e: 'import-complete'): void
 }>()
 
+interface Props {
+  embedded?: boolean
+  showTitle?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  embedded: false,
+  showTitle: true,
+})
+
 const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const isDragging = ref(false)
 const toastStore = useToastStore()
 const showPreview = ref(false)
+const containerClasses = computed(() =>
+  props.embedded
+    ? ''
+    : 'rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur p-6 shadow-sm',
+)
 
 function triggerFileInput() {
   fileInput.value?.click()

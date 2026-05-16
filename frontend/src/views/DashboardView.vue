@@ -74,33 +74,52 @@
       <div
         class="rounded-xl border border-softblue-200 dark:border-gray-700 bg-white dark:bg-gray-800/60 backdrop-blur p-6 shadow-sm"
       >
-        <h2 class="text-lg font-semibold mb-6 text-gray-800 dark:text-gray-200">
-          Asset Allocation
-        </h2>
+        <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200">
+            Asset Allocation
+          </h2>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-sm font-medium transition"
+            :class="
+              showAllocationLegends
+                ? 'border-blue-600 bg-blue-600 text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+            "
+            :aria-pressed="showAllocationLegends"
+            @click="showAllocationLegends = !showAllocationLegends"
+          >
+            Legends
+          </button>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
           <PieAllocations
             :allocations="allocations?.by_instrument"
             type="instrument"
             title="By Fund"
             :loading="loading"
+            :show-legend="showAllocationLegends"
           />
           <PieAllocations
             :allocations="allocations?.by_geography"
             type="geography"
             title="By Geography"
             :loading="loading"
+            :show-legend="showAllocationLegends"
           />
           <PieAllocations
             :allocations="allocations?.by_sector"
             type="sector"
             title="By Sector"
             :loading="loading"
+            :show-legend="showAllocationLegends"
           />
           <PieAllocations
             :allocations="allocations?.by_asset_type"
             type="asset_type"
             title="By Asset Type"
             :loading="loading"
+            :show-legend="showAllocationLegends"
           />
         </div>
       </div>
@@ -136,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useDashboardStore } from '@/stores/dashboard'
 import { wsClient } from '@/services/websocket'
@@ -146,6 +165,7 @@ import PieAllocations from '@/charts/PieAllocations.vue'
 
 const portfolioStore = usePortfolioStore()
 const dashboardStore = useDashboardStore()
+const showAllocationLegends = ref(false)
 
 const totalCost = computed(() => portfolioStore.totalCost)
 const totalValue = computed(() => portfolioStore.totalValue)

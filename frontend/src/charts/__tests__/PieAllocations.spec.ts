@@ -14,7 +14,7 @@ vi.mock('vue-chartjs', () => ({
   Pie: {
     name: 'Pie',
     props: ['data', 'options'],
-    template: '<div data-testid="pie">{{ JSON.stringify(data.labels) }}</div>',
+    template: '<div data-testid="pie" :data-options="JSON.stringify(options)">{{ JSON.stringify(data.labels) }}</div>',
   },
 }))
 
@@ -75,5 +75,18 @@ describe('PieAllocations', () => {
     expect(chartLabels).not.toContain('France')
     expect(chartLabels).not.toContain('Germany')
     expect(chartLabels).not.toContain('Spain')
+  })
+
+  it('hides legends by default and renders external legends when enabled', async () => {
+    const wrapper = mountChart({ Spain: 70, France: 30 })
+
+    expect(wrapper.find('.legend-panel').exists()).toBe(false)
+    expect(JSON.parse(wrapper.get('[data-testid="pie"]').attributes('data-options')).plugins.legend.display).toBe(false)
+
+    await wrapper.setProps({ showLegend: true })
+
+    expect(wrapper.find('.legend-panel').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Spain')
+    expect(wrapper.text()).toContain('70.0%')
   })
 })
