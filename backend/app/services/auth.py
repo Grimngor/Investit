@@ -1,5 +1,6 @@
 """Authentication service."""
 
+import json
 from datetime import UTC, datetime, timedelta
 from email.header import decode_header
 from types import SimpleNamespace
@@ -60,13 +61,38 @@ def decode_trusted_proxy_header(value: str) -> str:
 
 
 def get_trusted_proxy_allowed_emails() -> set[str]:
-	"""Return trusted proxy email allowlist entries as casefolded strings."""
-	return {email.strip().casefold() for email in settings.TRUSTED_PROXY_AUTH_ALLOWED_EMAILS.split(",") if email.strip()}
+	"""Return configured email allowlist entries as casefolded strings."""
+	raw_value = settings.TRUSTED_PROXY_AUTH_ALLOWED_EMAILS.strip()
+	if not raw_value:
+		return set()
+
+	try:
+		parsed = json.loads(raw_value)
+	except json.JSONDecodeError:
+		parsed = None
+
+	if isinstance(parsed, list):
+		return {str(email).strip().casefold() for email in parsed if str(email).strip()}
+
+	return {email.strip().casefold() for email in raw_value.split(",") if email.strip()}
+
+
+def is_email_allowlist_configured() -> bool:
+	"""Return whether app login and registration should be restricted by email."""
+	return bool(get_trusted_proxy_allowed_emails())
 
 
 def is_trusted_proxy_email_allowed(email: str) -> bool:
 	"""Return whether a trusted proxy email is explicitly allowlisted."""
 	return email.casefold() in get_trusted_proxy_allowed_emails()
+
+
+def is_user_allowed_by_email_allowlist(user: User) -> bool:
+	"""Return whether a user matches the configured email allowlist."""
+	allowed = get_trusted_proxy_allowed_emails()
+	if not allowed:
+		return True
+	return user.email.casefold() in allowed or user.username.casefold() in allowed
 
 
 def build_user(user_data: dict[str, Any]) -> User:

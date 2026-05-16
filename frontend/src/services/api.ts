@@ -68,8 +68,8 @@ class APIClient {
   }
 
   async register(userData: {
-    username: string
-    email?: string
+    email: string
+    username?: string
     password: string
     full_name?: string
   }) {

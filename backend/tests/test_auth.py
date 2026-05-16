@@ -47,14 +47,21 @@ def test_register_new_user():
 	assert created["full_name"] == "Test User"
 
 
-def test_register_email_and_full_name_are_optional():
-	"""Test user registration does not require email or full name."""
-	response = client.post("/api/auth/register", json={"username": "optional_user", "password": "password123"})
+def test_register_username_and_full_name_are_optional():
+	"""Test user registration can derive username from required email."""
+	response = client.post("/api/auth/register", json={"email": "optional-user@test.com", "password": "password123"})
 
 	assert response.status_code == 201
-	created = load_user_data("optional_user")
-	assert "email" not in created
+	created = load_user_data("optional-user")
+	assert created["email"] == "optional-user@test.com"
 	assert "full_name" not in created
+
+
+def test_register_requires_email():
+	"""Test user registration requires an email address."""
+	response = client.post("/api/auth/register", json={"username": "missing_email", "password": "password123"})
+
+	assert response.status_code == 422
 
 
 def test_register_duplicate_email_fails_case_insensitive():
@@ -71,6 +78,31 @@ def test_register_duplicate_email_fails_case_insensitive():
 
 	assert response.status_code == 400
 	assert response.json()["detail"] == "Email already registered"
+
+
+def test_register_requires_allowlisted_email_when_allowlist_configured(monkeypatch):
+	"""Test registration rejects emails outside the configured allowlist."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "allowed@example.com")
+
+	response = client.post(
+		"/api/auth/register",
+		json={"username": "blocked_email", "email": "blocked@example.com", "password": "password123"},
+	)
+
+	assert response.status_code == 403
+	assert response.json()["detail"] == "Email is not allowed"
+
+
+def test_register_accepts_allowlisted_email_when_allowlist_configured(monkeypatch):
+	"""Test registration accepts emails inside the configured allowlist."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", '["allowed@example.com"]')
+
+	response = client.post(
+		"/api/auth/register",
+		json={"username": "allowed_email", "email": "allowed@example.com", "password": "password123"},
+	)
+
+	assert response.status_code == 201
 
 
 def test_register_duplicate_user(test_user):
@@ -103,6 +135,49 @@ def test_login_with_email(test_user):
 	StorageService.save_json(settings.DATA_DIR / "users.json", users)
 
 	response = client.post("/api/auth/login", data={"username": "AUTH-USER@example.com", "password": test_user["password"]})
+
+	assert response.status_code == 200
+	assert "access_token" in response.json()
+
+
+def test_login_requires_allowlisted_user_when_allowlist_configured(monkeypatch):
+	"""Test password login rejects users outside the configured email allowlist."""
+	username = "blocked_login"
+	save_user_data(
+		username,
+		{
+			"username": username,
+			"email": "blocked-login@example.com",
+			"hashed_password": get_password_hash("password123"),
+			"disabled": False,
+			"holdings": [],
+		},
+	)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "allowed@example.com")
+
+	response = client.post("/api/auth/login", data={"username": username, "password": "password123"})
+
+	assert response.status_code == 403
+	assert response.json()["detail"] == "Email is not allowed"
+
+
+def test_login_accepts_allowlisted_user_when_allowlist_configured(monkeypatch):
+	"""Test password login accepts users inside the configured email allowlist."""
+	username = "allowed_login"
+	email = "allowed-login@example.com"
+	save_user_data(
+		username,
+		{
+			"username": username,
+			"email": email,
+			"hashed_password": get_password_hash("password123"),
+			"disabled": False,
+			"holdings": [],
+		},
+	)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", email)
+
+	response = client.post("/api/auth/login", data={"username": username, "password": "password123"})
 
 	assert response.status_code == 200
 	assert "access_token" in response.json()

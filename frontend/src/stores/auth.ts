@@ -108,8 +108,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function register(userData: {
-    username: string
-    email?: string
+    email: string
+    username?: string
     password: string
     full_name?: string
   }) {

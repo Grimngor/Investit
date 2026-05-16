@@ -16,11 +16,14 @@ from app.services.auth import (
 	find_user_by_trusted_proxy_email,
 	get_current_user,
 	get_password_hash,
+	is_email_allowlist_configured,
 	is_trusted_proxy_email_allowed,
+	is_user_allowed_by_email_allowlist,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
+MIN_GENERATED_USERNAME_LENGTH = 3
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -28,41 +31,47 @@ async def register(user_data: UserRegister):
 	"""Register a new user."""
 	logger.info(f"Registration attempt - Username: {user_data.username}, Email: {user_data.email}")
 	users = get_all_users()
+	username = user_data.username or build_username_from_email(user_data.email, users)
 
 	# Check if username exists
-	if user_data.username in users:
-		logger.warning(f"Registration failed - Username already exists: {user_data.username}")
+	if username in users:
+		logger.warning(f"Registration failed - Username already exists: {username}")
 		raise HTTPException(
 			status_code=status.HTTP_400_BAD_REQUEST,
 			detail="Username already registered",
 		)
 
-	if user_data.email:
-		email = user_data.email.casefold()
-		email_exists = any(str(existing.get("email", "")).casefold() == email for existing in users.values())
-		if email_exists:
-			logger.warning(f"Registration failed - Email already exists: {user_data.email}")
-			raise HTTPException(
-				status_code=status.HTTP_400_BAD_REQUEST,
-				detail="Email already registered",
-			)
+	if is_email_allowlist_configured() and not is_trusted_proxy_email_allowed(user_data.email):
+		logger.warning(f"Registration failed - Email is not allowlisted: {user_data.email}")
+		raise HTTPException(
+			status_code=status.HTTP_403_FORBIDDEN,
+			detail="Email is not allowed",
+		)
+
+	email = user_data.email.casefold()
+	email_exists = any(str(existing.get("email", "")).casefold() == email for existing in users.values())
+	if email_exists:
+		logger.warning(f"Registration failed - Email already exists: {user_data.email}")
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Email already registered",
+		)
 
 	# Create new user
 	hashed_password = get_password_hash(user_data.password)
 	new_user = {
-		"username": user_data.username,
+		"username": username,
+		"email": user_data.email,
 		"hashed_password": hashed_password,
 		"disabled": False,
 		"holdings": [],
 	}
-	if user_data.email:
-		new_user["email"] = user_data.email
 	if user_data.full_name:
 		new_user["full_name"] = user_data.full_name
 
-	save_user_data(user_data.username, new_user)
+	save_user_data(username, new_user)
 
-	return {"message": "User registered successfully", "username": user_data.username}
+	return {"message": "User registered successfully", "username": username}
 
 
 @router.post("/login", response_model=Token)
@@ -74,6 +83,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 			status_code=status.HTTP_401_UNAUTHORIZED,
 			detail="Incorrect username or password",
 			headers={"WWW-Authenticate": "Bearer"},
+		)
+	if not is_user_allowed_by_email_allowlist(user):
+		raise HTTPException(
+			status_code=status.HTTP_403_FORBIDDEN,
+			detail="Email is not allowed",
 		)
 
 	access_token = create_user_access_token(user)
@@ -121,3 +135,17 @@ async def trusted_proxy_login(request: Request) -> dict[str, str]:
 async def read_users_me(current_user: User = Depends(get_current_user)):
 	"""Get current user information."""
 	return current_user
+
+
+def build_username_from_email(email: str, users: dict[str, dict]) -> str:
+	"""Build a stable username from an email address when one is not provided."""
+	base = email.split("@", 1)[0].strip()[:50] or "user"
+	if len(base) < MIN_GENERATED_USERNAME_LENGTH:
+		base = f"{base}user"[:50]
+	username = base
+	suffix = 2
+	while username in users:
+		suffix_text = f"-{suffix}"
+		username = f"{base[: 50 - len(suffix_text)]}{suffix_text}"
+		suffix += 1
+	return username

@@ -5,23 +5,23 @@
 
       <form @submit.prevent="handleRegister" class="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
         <div>
-          <label for="username" class="block text-sm font-medium mb-1">Username</label>
+          <label for="email" class="block text-sm font-medium mb-1">Email</label>
           <input
-            id="username"
-            v-model="username"
-            type="text"
+            id="email"
+            v-model="email"
+            type="email"
             required
-            minlength="3"
             class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label for="email" class="block text-sm font-medium mb-1">Email (optional)</label>
+          <label for="username" class="block text-sm font-medium mb-1">Username (optional)</label>
           <input
-            id="email"
-            v-model="email"
-            type="email"
+            id="username"
+            v-model="username"
+            type="text"
+            minlength="3"
             class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -82,8 +82,8 @@ const loading = ref(false)
 async function handleRegister() {
   loading.value = true
   const success = await authStore.register({
-    username: username.value,
-    email: email.value || undefined,
+    email: email.value,
+    username: username.value || undefined,
     password: password.value,
     full_name: fullName.value || undefined
   })

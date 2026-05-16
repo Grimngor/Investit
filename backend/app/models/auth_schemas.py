@@ -26,7 +26,7 @@ class UserLogin(BaseModel):
 class UserRegister(BaseModel):
 	"""User registration request schema."""
 
-	username: str = Field(..., min_length=3, max_length=50)
-	email: str | None = Field(default=None, pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+	email: str = Field(..., pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 	password: str = Field(..., min_length=6)
+	username: str | None = Field(default=None, min_length=3, max_length=50)
 	full_name: str | None = None
