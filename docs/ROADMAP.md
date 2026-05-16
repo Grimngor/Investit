@@ -43,6 +43,7 @@
 - Improved mobile frontend readiness for navigation, orders tables, order editing, CSV preview, and responsive page actions.
 - Added Playwright phone/tablet projects, fixed SQLite E2E isolation through `DATABASE_PATH`, and added focused Orders E2E coverage for mobile card rendering without duplicate desktop tables.
 - Verified the frontend through Browser screenshots on phone and tablet viewports for dashboard, portfolio, orders, auth, CSV preview, and order edit modal with no horizontal overflow in checked screens.
+- Added a provider reliability layer with explicit fallback ordering, stale-cache price fallback, provider health metrics, and source attribution for price, metadata, and ISIN lookups.
 
 ## Next Engineering Work
 
@@ -51,7 +52,6 @@
 ## Later Work
 
 - Add automated scheduled SQLite backups for the Pi deployment.
-- Provider reliability layer: explicit fallback order, stale-cache fallback, provider health metrics, and clearer source attribution for price, metadata, and ISIN lookups.
 - Explore taking advantage of Apps Script + Order emails from MyInvestor to populate the orders as an alternative to the CSV import.
     - If doable, we should include a button in the app that creates an apps script, needed gmail tags to filter messages, and asks for the needed permissions automatically.
 - Investigate an alternative or improvement to Tailscale that keeps the Raspberry Pi and home network safe while easing access for trusted family and friends from anywhere.

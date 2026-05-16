@@ -77,8 +77,10 @@ async def test_isin_resolver_calls_openfigi_and_reuses_cache(monkeypatch: pytest
 
 	assert first is not None
 	assert first["ticker"] == "IWDA.AS"
+	assert first["source"] == "openfigi"
 	assert second is not None
 	assert second["ticker"] == "IWDA.AS"
+	assert second["source"] == "fresh_cache"
 	assert len(calls) == 1
 	cache = StorageService.load_json(settings.DATA_DIR / "isin_resolution_cache.json", default={})
 	assert cache["mappings"]["IE00B4L5Y983"]["source"] == "openfigi"

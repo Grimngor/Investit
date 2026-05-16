@@ -9,6 +9,7 @@ from app.config import settings
 from app.services.isin_mapper import get_isin_mapper
 from app.services.metrics_service import metrics
 from app.services.morningstar_service import MorningstarService
+from app.services.provider_reliability import ProviderReliabilityService
 from app.services.storage_service import StorageService
 from app.services.yahoo_finance import YahooFinanceService
 from app.utils.validators import is_crypto_symbol, validate_price
@@ -37,15 +38,23 @@ class PriceService:
 		yahoo = YahooFinanceService()
 		quote = await yahoo.get_crypto_quote(isin, currency="EUR")
 		if not quote:
+			ProviderReliabilityService.record_attempt("yahoo_finance.quote", "price", False, f"{isin}: no crypto quote")
 			return None
-		return {
-			"price": quote["price"],
-			"currency": quote["currency"],
-			"timestamp": quote["timestamp"],
-			"name": quote.get("name", f"{isin} Cryptocurrency"),
-			"symbol": quote.get("symbol", isin),
-			"asset_type": "Crypto",
-		}
+		ProviderReliabilityService.record_attempt("yahoo_finance.quote", "price", True, f"{isin}: crypto quote")
+		return ProviderReliabilityService.annotate(
+			{
+				"price": quote["price"],
+				"currency": quote["currency"],
+				"timestamp": quote["timestamp"],
+				"name": quote.get("name", f"{isin} Cryptocurrency"),
+				"symbol": quote.get("symbol", isin),
+				"asset_type": "Crypto",
+			},
+			"yahoo_finance",
+			"price",
+			[ProviderReliabilityService.attempt("yahoo_finance.quote", True, "crypto quote")],
+			"Yahoo Finance crypto quote",
+		)
 
 	@staticmethod
 	def _merge_metadata(
@@ -99,13 +108,18 @@ class PriceService:
 		morningstar = MorningstarService()
 		storage = StorageService()
 		symbols = await PriceService.get_candidate_symbols(isin)
+		attempts: list[dict[str, Any]] = []
 
 		for idx, symbol in enumerate(symbols):
 			quote = await yahoo.get_quote(symbol)
 			if not quote:
+				attempts.append(ProviderReliabilityService.attempt("yahoo_finance.quote", False, symbol))
+				ProviderReliabilityService.record_attempt("yahoo_finance.quote", "price", False, f"{isin}: {symbol}")
 				if idx < len(symbols) - 1:
 					await asyncio.sleep(0.3)
 				continue
+			attempts.append(ProviderReliabilityService.attempt("yahoo_finance.quote", True, symbol))
+			ProviderReliabilityService.record_attempt("yahoo_finance.quote", "price", True, f"{isin}: {symbol}")
 
 			resolved = quote.get("symbol", symbol)
 			data: dict[str, Any] = {
@@ -118,18 +132,54 @@ class PriceService:
 
 			# Enrich with fund metadata
 			instrument_data: dict[str, Any] = {"name": data["name"], "symbol": resolved}
+			metadata_attempts: list[dict[str, Any]] = []
 			mstar = await morningstar.get_fund_metadata(isin)
+			metadata_attempts.append(ProviderReliabilityService.attempt("morningstar", bool(mstar), "price refresh metadata"))
+			ProviderReliabilityService.record_attempt("morningstar", "metadata", bool(mstar), isin)
 
 			# Fetch Yahoo data if mstar is missing core info (sector OR geo)
 			needs_yahoo = not mstar or not mstar.get("sector_allocation") or not mstar.get("regional_allocation")
-			yq = await yahoo.get_fund_metadata(resolved) if needs_yahoo else None
+			yq = None
+			if needs_yahoo:
+				yq = await yahoo.get_fund_metadata(resolved)
+				metadata_attempts.append(ProviderReliabilityService.attempt("yahooquery", bool(yq), resolved))
+				ProviderReliabilityService.record_attempt("yahooquery", "metadata", bool(yq), f"{isin}: {resolved}")
 
 			PriceService._merge_metadata(instrument_data, mstar, yq)
-			storage.upsert_instrument(isin, instrument_data)
+			metadata_sources = [attempt["provider"] for attempt in metadata_attempts if attempt.get("success")]
+			metadata_source = "+".join(metadata_sources) if metadata_sources else "yahoo_finance.quote"
+			storage.upsert_instrument(
+				isin,
+				ProviderReliabilityService.annotate(
+					instrument_data,
+					metadata_source,
+					"metadata",
+					metadata_attempts,
+					f"Metadata resolved during price refresh through {metadata_source}",
+				),
+			)
 
-			return data
+			return ProviderReliabilityService.annotate(data, "yahoo_finance", "price", attempts, f"Yahoo Finance quote via {symbol}")
 
 		return None
+
+	@staticmethod
+	def _stale_cache_fallback(isin: str, cached: dict[str, Any] | None) -> dict[str, Any] | None:
+		"""Return stale cached price data when providers fail but cached price is usable."""
+		if not cached or not validate_price(cached.get("price")):
+			return None
+		fallback = ProviderReliabilityService.annotate(
+			cached,
+			"stale_cache",
+			"price",
+			[ProviderReliabilityService.attempt("stale_cache", True, "provider refresh failed")],
+			"Stale cached price used after provider refresh failed",
+		)
+		fallback["stale_cache_fallback"] = True
+		fallback["fallback_timestamp"] = datetime.now(UTC).isoformat()
+		logger.warning(f"Using stale cached price for {isin} after provider refresh failure")
+		ProviderReliabilityService.record_attempt("stale_cache", "price", True, isin)
+		return fallback
 
 	@staticmethod
 	async def fetch_and_update_prices(username: str, isins: list[str], force: bool = False) -> None:
@@ -162,7 +212,12 @@ class PriceService:
 				prices[isin] = quote
 				updated += 1
 			else:
-				logger.warning(f"Price fetch or validation failed for {isin}. Result: {quote}")
+				fallback = PriceService._stale_cache_fallback(isin, prices.get(isin))
+				if fallback:
+					prices[isin] = fallback
+					updated += 1
+				else:
+					logger.warning(f"Price fetch or validation failed for {isin}. Result: {quote}")
 
 		users[username]["prices"] = prices
 		StorageService.save_json(users_file, users)

@@ -5,6 +5,7 @@ from typing import Any
 
 from app.services.morningstar_service import MorningstarService
 from app.services.price_service import PriceService
+from app.services.provider_reliability import ProviderReliabilityService
 from app.services.storage_service import StorageService, load_users
 from app.services.yahoo_finance import YahooFinanceService
 from app.utils.validators import is_crypto_symbol
@@ -87,15 +88,27 @@ class InstrumentMetadataService:
 		logger.info(f"Refreshing metadata for {isin}")
 
 		if is_crypto_symbol(isin):
-			storage.upsert_instrument(isin, {"name": isin, "symbol": isin, "type": "Crypto"})
+			storage.upsert_instrument(
+				isin,
+				ProviderReliabilityService.annotate(
+					{"name": isin, "symbol": isin, "type": "Crypto"},
+					"local",
+					"metadata",
+					[ProviderReliabilityService.attempt("local_crypto", True, "crypto metadata")],
+					"Local crypto metadata",
+				),
+			)
 			return True
 
 		instrument_data: dict[str, Any] = {"symbol": isin}
 		symbols = await PriceService.get_candidate_symbols(isin)
+		attempts: list[dict[str, Any]] = []
 
 		for symbol in symbols:
 			quote = await yfinance.get_quote(symbol)
 			if quote:
+				attempts.append(ProviderReliabilityService.attempt("yahoo_finance.quote", True, symbol))
+				ProviderReliabilityService.record_attempt("yahoo_finance.quote", "metadata", True, f"{isin}: {symbol}")
 				instrument_data["symbol"] = quote.get("symbol", symbol)
 				instrument_data["name"] = quote.get("name", isin)
 				if quote.get("asset_type"):
@@ -107,21 +120,41 @@ class InstrumentMetadataService:
 				if quote.get("country_allocation"):
 					instrument_data["country_allocation"] = quote["country_allocation"]
 				break
+			attempts.append(ProviderReliabilityService.attempt("yahoo_finance.quote", False, symbol))
+			ProviderReliabilityService.record_attempt("yahoo_finance.quote", "metadata", False, f"{isin}: {symbol}")
 
 		mstar_metadata = await morningstar.get_fund_metadata(isin)
 
 		if mstar_metadata:
 			logger.info(f"Got Morningstar data for {isin}")
+			attempts.append(ProviderReliabilityService.attempt("morningstar", True, "fund metadata"))
+			ProviderReliabilityService.record_attempt("morningstar", "metadata", True, isin)
 			PriceService._merge_metadata(instrument_data, mstar_metadata, None)
+		else:
+			attempts.append(ProviderReliabilityService.attempt("morningstar", False, "no metadata"))
+			ProviderReliabilityService.record_attempt("morningstar", "metadata", False, isin)
 
 		if not instrument_data.get("sector_allocation") or not instrument_data.get("geo_allocation"):
 			symbol = instrument_data.get("symbol", isin)
 			logger.info(f"Fetching YahooQuery data for {symbol} ({isin})")
 			yq_metadata = await yfinance.get_fund_metadata(symbol)
+			attempts.append(ProviderReliabilityService.attempt("yahooquery", bool(yq_metadata), symbol))
+			ProviderReliabilityService.record_attempt("yahooquery", "metadata", bool(yq_metadata), f"{isin}: {symbol}")
 			PriceService._merge_metadata(instrument_data, None, yq_metadata)
 
 		if len(instrument_data) <= 1:
 			return False
 
-		storage.upsert_instrument(isin, instrument_data)
+		sources = [attempt["provider"] for attempt in attempts if attempt.get("success")]
+		source = "+".join(sources) if sources else "existing_metadata"
+		storage.upsert_instrument(
+			isin,
+			ProviderReliabilityService.annotate(
+				instrument_data,
+				source,
+				"metadata",
+				attempts,
+				f"Metadata resolved through {source}",
+			),
+		)
 		return True

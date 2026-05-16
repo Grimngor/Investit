@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
+from app.services.provider_reliability import ProviderReliabilityService
 from app.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
@@ -99,11 +100,13 @@ class ISINMapper:
 				response = await client.post(OPENFIGI_MAPPING_URL, headers=headers, json=[{"idType": "ID_ISIN", "idValue": isin}])
 			if response.status_code == 429:
 				logger.warning(f"OpenFIGI rate limit reached while resolving {isin}")
+				ProviderReliabilityService.record_attempt("openfigi", "isin", False, f"{isin}: rate limited")
 				return None
 			response.raise_for_status()
 			payload = response.json()
 		except (httpx.HTTPError, ValueError) as e:
 			logger.warning(f"Could not resolve {isin} with OpenFIGI: {e!s}")
+			ProviderReliabilityService.record_attempt("openfigi", "isin", False, f"{isin}: {e!s}")
 			return None
 
 		if not isinstance(payload, list) or not payload:
@@ -117,7 +120,9 @@ class ISINMapper:
 				if normalized:
 					self.cache[isin] = normalized
 					self._save_cache()
+					ProviderReliabilityService.record_attempt("openfigi", "isin", True, isin)
 					return normalized
+		ProviderReliabilityService.record_attempt("openfigi", "isin", False, f"{isin}: no mapping")
 		return None
 
 	async def resolve_isin_info(self, isin: str) -> dict[str, Any] | None:
@@ -126,22 +131,40 @@ class ISINMapper:
 			return None
 
 		isin = isin.upper()
+		mapping: dict[str, Any] | None = None
+		source = ""
+		detail = ""
 		manual = self._manual_override(isin)
 		if manual:
-			return manual
+			mapping = manual
+			source = "manual_override"
+			detail = "Manual ISIN mapping"
+		else:
+			cached = self.cache.get(isin)
+			if cached and self._is_fresh(cached):
+				mapping = cached
+				source = "fresh_cache"
+				detail = "Fresh ISIN resolution cache"
+			else:
+				openfigi = await self._resolve_with_openfigi(isin)
+				if openfigi:
+					mapping = openfigi
+					source = "openfigi"
+					detail = "OpenFIGI ISIN mapping"
+				elif cached:
+					mapping = cached
+					source = "stale_cache"
+					detail = "Stale ISIN resolution cache"
+				else:
+					mapping = self._static_fallback(isin)
+					source = "static_mapping" if mapping else ""
+					detail = "Static ISIN mapping"
 
-		cached = self.cache.get(isin)
-		if cached and self._is_fresh(cached):
-			return cached
-
-		openfigi = await self._resolve_with_openfigi(isin)
-		if openfigi:
-			return openfigi
-
-		if cached:
-			return cached
-
-		return self._static_fallback(isin)
+		if not mapping:
+			return None
+		if source != "openfigi":
+			ProviderReliabilityService.record_attempt(source, "isin", True, isin)
+		return ProviderReliabilityService.annotate(mapping, source, "isin", detail=detail)
 
 	def resolve_isin(self, isin: str) -> str | None:
 		"""Resolve an ISIN code to a locally available ticker symbol."""

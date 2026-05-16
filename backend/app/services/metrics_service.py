@@ -18,6 +18,7 @@ class MetricsService:
 		self.latency_sum = 0.0
 		self.active_websockets = 0
 		self.last_price_fetch: dict[str, Any] = {"timestamp": None, "status": "never", "count": 0}
+		self.provider_health: dict[str, dict[str, Any]] = {}
 
 	@classmethod
 	def get_instance(cls) -> Self:
@@ -41,6 +42,30 @@ class MetricsService:
 			"count": count,
 		}
 
+	def record_provider_call(self, provider: str, operation: str, success: bool, detail: str | None = None) -> None:
+		"""Record a provider call outcome for health reporting."""
+		key = f"{operation}:{provider}"
+		current = self.provider_health.setdefault(
+			key,
+			{
+				"provider": provider,
+				"operation": operation,
+				"success_count": 0,
+				"failure_count": 0,
+				"last_success": None,
+				"last_failure": None,
+				"last_detail": None,
+			},
+		)
+		now = datetime.now(UTC).isoformat()
+		if success:
+			current["success_count"] += 1
+			current["last_success"] = now
+		else:
+			current["failure_count"] += 1
+			current["last_failure"] = now
+		current["last_detail"] = detail
+
 	def increment_websockets(self) -> None:
 		"""Increment active WebSocket connection count."""
 		self.active_websockets += 1
@@ -59,6 +84,7 @@ class MetricsService:
 			"avg_latency_ms": round(avg_latency * 1000, 2),
 			"active_websockets": self.active_websockets,
 			"last_price_fetch": self.last_price_fetch,
+			"provider_health": self.provider_health,
 			"uptime_seconds": int(uptime),
 		}
 

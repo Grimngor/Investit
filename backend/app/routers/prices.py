@@ -9,7 +9,9 @@ from app.config import settings
 from app.models.user import User
 from app.routers.auth import get_current_user
 from app.services.background_jobs import background_jobs
+from app.services.metrics_service import metrics
 from app.services.price_service import PriceService
+from app.services.provider_reliability import ProviderReliabilityService
 from app.services.storage_service import StorageService
 from app.services.yahoo_finance import YahooFinanceService
 
@@ -173,4 +175,6 @@ async def get_price_status(current_user: User = Depends(get_current_user)) -> di
 		"refreshing": background_jobs.is_active(current_user.username, PRICE_FETCH_JOB),
 		"job": background_jobs.get(current_user.username, PRICE_FETCH_JOB),
 		"cache_hours": settings.PRICE_CACHE_HOURS,
+		"provider_order": ProviderReliabilityService.provider_order("price"),
+		"provider_health": metrics.get_metrics()["provider_health"],
 	}
