@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import LineInvestedVsCurrent from '../LineInvestedVsCurrent.vue'
 
 vi.mock('chart.js', () => ({
@@ -33,15 +33,6 @@ function chartLabels(wrapper: ReturnType<typeof mount>): string[] {
 }
 
 describe('LineInvestedVsCurrent', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2024-05-16T12:00:00'))
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
   it('formats chart labels as DD/MM/YY', () => {
     const wrapper = mount(LineInvestedVsCurrent, {
       props: { timeSeries },
@@ -57,7 +48,22 @@ describe('LineInvestedVsCurrent', () => {
 
     await wrapper.get('button').trigger('click')
 
-    expect(chartLabels(wrapper)).toEqual(['16/04/24', '16/05/24'])
+    expect(chartLabels(wrapper)).toEqual(['15/03/24', '20/03/24', '15/04/24'])
+  })
+
+  it('anchors ranges to the latest real point instead of today', async () => {
+    const wrapper = mount(LineInvestedVsCurrent, {
+      props: {
+        timeSeries: [
+          { date: '2023-12-01', invested_value: 100, current_value: 120 },
+          { date: '2024-01-01', invested_value: 200, current_value: 240 },
+        ],
+      },
+    })
+
+    await wrapper.get('button').trigger('click')
+
+    expect(chartLabels(wrapper)).toEqual(['01/12/23', '01/01/24'])
   })
 
   it('parses DD/MM/YYYY dates before falling back to browser date parsing', () => {

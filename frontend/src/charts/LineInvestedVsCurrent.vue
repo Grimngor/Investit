@@ -129,34 +129,23 @@ function sortedTimeSeries(): TimeSeriesDataPoint[] {
   })
 }
 
-function addCurrentCarryForwardPoint(points: TimeSeriesDataPoint[]): TimeSeriesDataPoint[] {
-  if (points.length === 0) {
-    return points
-  }
-
-  const today = new Date()
-  const latestPoint = points[points.length - 1]
-  const latestDate = parsePointDate(latestPoint.date)
-
-  if (!latestDate || formatDateKey(latestDate) === formatDateKey(today)) {
-    return points
-  }
-
-  return [...points, clonePointAtDate(latestPoint, today)]
-}
-
-function rangeStartDate(months: number): Date {
-  const startDate = new Date()
+function rangeStartDate(anchorDate: Date, months: number): Date {
+  const startDate = new Date(anchorDate)
   startDate.setMonth(startDate.getMonth() - months)
   return startDate
 }
 
 function windowTimeSeries(points: TimeSeriesDataPoint[], months: number): TimeSeriesDataPoint[] {
-  const startDate = rangeStartDate(months)
+  const latestDate = parsePointDate(points[points.length - 1]?.date || '')
+  if (!latestDate) {
+    return points
+  }
+
+  const startDate = rangeStartDate(latestDate, months)
   const insideWindow: TimeSeriesDataPoint[] = []
   let previousPoint: TimeSeriesDataPoint | null = null
 
-  for (const point of addCurrentCarryForwardPoint(points)) {
+  for (const point of points) {
     const parsed = parsePointDate(point.date)
 
     if (!parsed || parsed >= startDate) {
@@ -170,7 +159,7 @@ function windowTimeSeries(points: TimeSeriesDataPoint[], months: number): TimeSe
     insideWindow.unshift(clonePointAtDate(previousPoint, startDate))
   }
 
-  return insideWindow
+  return insideWindow.length > 0 ? insideWindow : points.slice(-1)
 }
 
 function selectedRangeMonths(): number | null {
@@ -199,7 +188,7 @@ const filteredTimeSeries = computed(() => {
   }
 
   const windowedPoints = windowTimeSeries(sortedPoints, months)
-  return windowedPoints.length > 0 ? windowedPoints : sortedPoints.slice(-1)
+  return windowedPoints
 })
 
 const chartData = computed<ChartData<'line'> | null>(() => {

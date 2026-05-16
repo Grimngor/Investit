@@ -446,7 +446,7 @@ function toggleEUCollapse() {
   gap: 0.5rem;
   min-height: 2rem;
   min-width: 0;
-  color: rgb(55 65 81);
+  color: #ffffff;
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 500;
@@ -459,7 +459,7 @@ function toggleEUCollapse() {
 }
 
 :global(.dark) .legend-item {
-  color: rgb(249 250 251);
+  color: #ffffff;
 }
 
 @media (min-width: 1024px) {
@@ -473,7 +473,8 @@ function toggleEUCollapse() {
   }
 
   .legend-panel {
-    max-height: 320px;
+    max-height: none;
+    overflow: visible;
   }
 }
 </style>
