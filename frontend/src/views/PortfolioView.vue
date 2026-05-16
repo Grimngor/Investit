@@ -16,6 +16,13 @@
           Import CSV
         </button>
         <button
+          @click="showGmailImportModal = true"
+          class="portfolio-action portfolio-action--secondary"
+        >
+          <Mail class="h-4 w-4" />
+          Import Gmail
+        </button>
+        <button
           @click="showOrderModal = true"
           class="portfolio-action portfolio-action--primary"
         >
@@ -200,12 +207,19 @@
           />
         </div>
       </div>
+
+      <GmailImportModal
+        :show="showGmailImportModal"
+        @close="showGmailImportModal = false"
+        @import-complete="handleGmailImportComplete"
+      />
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useDashboardStore } from '@/stores/dashboard'
 import { useToastStore } from '@/stores/toast'
@@ -213,14 +227,18 @@ import { apiClient } from '@/services/api'
 import { wsClient } from '@/services/websocket'
 import SummaryCard from '@/components/SummaryCard.vue'
 import CSVImporter from '@/components/portfolio/CSVImporter.vue'
+import GmailImportModal from '@/components/portfolio/GmailImportModal.vue'
 import OrderForm from '@/components/portfolio/OrderForm.vue'
 import HoldingsTable from '@/components/portfolio/HoldingsTable.vue'
-import { ChevronDown, CircleDollarSign, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
+import { ChevronDown, CircleDollarSign, Mail, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
 
 const portfolioStore = usePortfolioStore()
 const toastStore = useToastStore()
+const route = useRoute()
+const router = useRouter()
 const fetchingPrices = ref(false)
 const showImportModal = ref(false)
+const showGmailImportModal = ref(false)
 const showOrderModal = ref(false)
 
 const holdings = computed(() => portfolioStore.portfolio?.holdings || [])
@@ -278,6 +296,10 @@ async function handleImportComplete() {
   await refreshPortfolio()
 }
 
+async function handleGmailImportComplete() {
+  await refreshPortfolio()
+}
+
 async function handleOrderSaved() {
   showOrderModal.value = false
   await refreshPortfolio()
@@ -322,11 +344,31 @@ async function handlePricesUpdated(data: any) {
 onMounted(() => {
   wsClient.on('prices_updated', handlePricesUpdated)
   portfolioStore.fetchPortfolio()
+  handleGmailCallbackToast()
 })
 
 onUnmounted(() => {
   wsClient.off('prices_updated', handlePricesUpdated)
 })
+
+function handleGmailCallbackToast() {
+  if (route.query.gmail === 'connected') {
+    toastStore.addToast('Gmail connected', 'success')
+    showGmailImportModal.value = true
+    router.replace({ path: route.path, query: withoutGmailQuery() })
+  } else if (route.query.gmail === 'error') {
+    const message = typeof route.query.message === 'string' ? route.query.message : 'Failed to connect Gmail'
+    toastStore.addToast(message, 'error')
+    router.replace({ path: route.path, query: withoutGmailQuery() })
+  }
+}
+
+function withoutGmailQuery() {
+  const query = { ...route.query }
+  delete query.gmail
+  delete query.message
+  return query
+}
 </script>
 
 <style scoped>

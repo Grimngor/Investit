@@ -26,6 +26,10 @@ tags_metadata = [
 		"description": "Instrument metadata and allocation overrides.",
 	},
 	{
+		"name": "gmail",
+		"description": "Gmail-backed MyInvestor order import connection, scan, and import operations.",
+	},
+	{
 		"name": "websocket",
 		"description": "WebSocket connections for real-time updates.",
 	},

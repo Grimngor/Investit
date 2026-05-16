@@ -77,6 +77,20 @@ class DatabaseService:
 					isin TEXT PRIMARY KEY,
 					mapping_json TEXT NOT NULL
 				);
+
+				CREATE TABLE IF NOT EXISTS gmail_connections (
+					username TEXT PRIMARY KEY,
+					connection_json TEXT NOT NULL,
+					FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+				);
+
+				CREATE TABLE IF NOT EXISTS gmail_imports (
+					username TEXT NOT NULL,
+					gmail_message_id TEXT NOT NULL,
+					import_json TEXT NOT NULL,
+					PRIMARY KEY (username, gmail_message_id),
+					FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+				);
 				"""
 			)
 			conn.execute("INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)", (self.SCHEMA_VERSION,))
@@ -215,6 +229,8 @@ class DatabaseService:
 				"instruments": conn.execute("SELECT COUNT(*) FROM instruments").fetchone()[0],
 				"isin_mappings": conn.execute("SELECT COUNT(*) FROM isin_mappings").fetchone()[0],
 				"isin_resolution_cache": conn.execute("SELECT COUNT(*) FROM isin_resolution_cache").fetchone()[0],
+				"gmail_connections": conn.execute("SELECT COUNT(*) FROM gmail_connections").fetchone()[0],
+				"gmail_imports": conn.execute("SELECT COUNT(*) FROM gmail_imports").fetchone()[0],
 			}
 
 	def _load_mapping_table(self, table: str) -> dict[str, dict[str, Any]]:

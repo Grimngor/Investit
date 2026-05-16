@@ -6,6 +6,61 @@ export interface AuthModes {
   trusted_proxy: boolean
 }
 
+export interface GmailConnectionStatus {
+  configured: boolean
+  connected: boolean
+  email?: string | null
+  scope?: string | null
+  query: string
+  max_messages: number
+}
+
+export interface GmailImportPreviewOrder {
+  gmail_message_id: string
+  gmail_thread_id: string
+  email_date: string
+  email_from: string
+  email_subject: string
+  operation_type: string
+  value_date?: string | null
+  unit_price: number
+  amount_gross: number
+  amount_net?: number | null
+  import_status: 'new' | 'already_present' | string
+  existing_order_id?: string | null
+  error?: string | null
+  order: {
+    id: string
+    date: string
+    isin: string
+    amount_eur: number
+    shares: number
+    price_per_share?: number
+    order_type: 'buy' | 'sell'
+    status: string
+    notes?: string
+  }
+}
+
+export interface GmailScanResponse {
+  success: boolean
+  orders: GmailImportPreviewOrder[]
+  errors: string[]
+  new_count: number
+  skipped_count: number
+  needs_review_count: number
+  already_processed_count: number
+}
+
+export interface GmailImportResponse {
+  success: boolean
+  imported_count: number
+  skipped_count: number
+  error_count: number
+  errors: string[]
+  message: string
+}
+
 class APIClient {
   private client: AxiosInstance
 
@@ -152,6 +207,35 @@ class APIClient {
 
   async getPriceStatus() {
     const response = await this.client.get('/api/prices/status')
+    return response.data
+  }
+
+  async getGmailStatus(): Promise<GmailConnectionStatus> {
+    const response = await this.client.get('/api/gmail/status')
+    return response.data
+  }
+
+  async getGmailAuthUrl(returnPath = '/portfolio'): Promise<{ auth_url: string }> {
+    const response = await this.client.get('/api/gmail/auth-url', {
+      params: { return_path: returnPath },
+    })
+    return response.data
+  }
+
+  async disconnectGmail() {
+    const response = await this.client.post('/api/gmail/disconnect')
+    return response.data
+  }
+
+  async scanGmailOrders(payload?: { query?: string; max_messages?: number }): Promise<GmailScanResponse> {
+    const response = await this.client.post('/api/gmail/scan', payload || {})
+    return response.data
+  }
+
+  async importGmailOrders(gmailMessageIds: string[]): Promise<GmailImportResponse> {
+    const response = await this.client.post('/api/gmail/import', {
+      gmail_message_ids: gmailMessageIds,
+    })
     return response.data
   }
 }

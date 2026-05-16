@@ -48,12 +48,11 @@
 - Added Portfolio Performance range controls (`1M`, `3M`, `6M`, `1Y`, `3Y`, `Max`) and `DD/MM/YY` chart date formatting.
 - Standardized Asset Allocation pie chart sizing and added responsive allocation legends.
 - Fixed short Portfolio Performance ranges for sparse time-series data, made desktop allocation legends visible by default, improved legend contrast and mobile legend scrolling, and unified Portfolio page action button styling with an icon-only refresh action.
+- Added a Gmail-backed MyInvestor order import flow from the Portfolio page, including Gmail OAuth setup, read-only message scanning, MyInvestor email parsing, preview/selection UI, duplicate detection, and local processed-message tracking. See [temporary Gmail import notes](TEMP_GMAIL_MYINVESTOR_IMPORT.md).
 
 ## Next Engineering Work
 
-- Explore taking advantage of Apps Script + Order emails from MyInvestor to populate the orders as an alternative to the CSV import.
-    - If doable, we should include a button in the app that creates an apps script, needed gmail tags to filter messages, and asks for the needed permissions automatically.
-- Investigate an alternative or improvement to Tailscale that keeps the Raspberry Pi and home network safe while easing access for trusted family and friends from anywhere without them needing to install Tailscale. Ideally they will create a new user manually or though a register/login with Google button.
+- Add a browser-friendly Raspberry Pi access path with Cloudflare Tunnel and Cloudflare Access for `javiansoleaga.es`, keeping the Pi behind a localhost-bound web proxy while allowing trusted users to authenticate without installing Tailscale. See [temporary Cloudflare Access notes](TEMP_CLOUDFLARE_TUNNEL_ACCESS.md).
 
 ## Later Work
 

@@ -18,6 +18,15 @@ class Settings(BaseSettings):
 	TRUSTED_PROXY_AUTH_ALLOWED_EMAILS: str = ""
 	TRUSTED_PROXY_AUTH_HEADER_EMAIL: str = "Tailscale-User-Login"
 	TRUSTED_PROXY_AUTH_HEADER_NAME: str = "Tailscale-User-Name"
+	GOOGLE_OAUTH_CLIENT_ID: str = ""
+	GOOGLE_OAUTH_CLIENT_SECRET: str = ""
+	GMAIL_OAUTH_REDIRECT_URI: str = ""
+	GMAIL_IMPORT_MAX_MESSAGES: int = 20
+	GMAIL_IMPORT_QUERY: str = (
+		"from:notificaciones@myinvestor.es "
+		'("CONFIRMACION DE OPERACION DE VALORES" OR "CONFIRMACIÓN DE OPERACIÓN DE VALORES" OR "Codigo ISIN" OR "Código ISIN") '
+		"newer_than:365d"
+	)
 	BACKEND_CORS_ORIGINS: list[str] = [
 		"http://localhost:5173",
 		"http://localhost:5174",

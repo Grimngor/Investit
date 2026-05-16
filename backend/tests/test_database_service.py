@@ -21,6 +21,8 @@ def test_schema_initialization_is_idempotent() -> None:
 		"instruments": 0,
 		"isin_mappings": 0,
 		"isin_resolution_cache": 0,
+		"gmail_connections": 0,
+		"gmail_imports": 0,
 	}
 
 
