@@ -88,20 +88,94 @@ const ranges: Array<{ label: string; value: RangeValue; months?: number }> = [
 const selectedRange = ref<RangeValue>('MAX')
 
 function parsePointDate(value: string): Date | null {
+  const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoDate) {
+    const [, year, month, day] = isoDate
+    const parsed = new Date(Number(year), Number(month) - 1, Number(day))
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
+  const ddmmyyyy = value.match(/^(\d{2})[/-](\d{2})[/-](\d{2}|\d{4})$/)
+  if (ddmmyyyy) {
+    const [, day, month, year] = ddmmyyyy
+    const fullYear = year.length === 2 ? `20${year}` : year
+    const parsed = new Date(Number(fullYear), Number(month) - 1, Number(day))
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+
   const parsed = new Date(value)
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
+function formatDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function clonePointAtDate(point: TimeSeriesDataPoint, date: Date): TimeSeriesDataPoint {
+  return {
+    ...point,
+    date: formatDateKey(date),
+  }
+}
+
+function sortedTimeSeries(): TimeSeriesDataPoint[] {
+  return [...props.timeSeries].sort((a, b) => {
+    const dateA = parsePointDate(a.date)?.getTime() ?? 0
+    const dateB = parsePointDate(b.date)?.getTime() ?? 0
+    return dateA - dateB
+  })
+}
+
+function addCurrentCarryForwardPoint(points: TimeSeriesDataPoint[]): TimeSeriesDataPoint[] {
+  if (points.length === 0) {
+    return points
   }
 
-  const ddmmyyyy = value.match(/^(\d{2})\/(\d{2})\/(\d{2}|\d{4})$/)
-  if (!ddmmyyyy) {
-    return null
+  const today = new Date()
+  const latestPoint = points[points.length - 1]
+  const latestDate = parsePointDate(latestPoint.date)
+
+  if (!latestDate || formatDateKey(latestDate) === formatDateKey(today)) {
+    return points
   }
 
-  const [, day, month, year] = ddmmyyyy
-  const fullYear = year.length === 2 ? `20${year}` : year
-  const fallback = new Date(`${fullYear}-${month}-${day}`)
-  return Number.isNaN(fallback.getTime()) ? null : fallback
+  return [...points, clonePointAtDate(latestPoint, today)]
+}
+
+function rangeStartDate(months: number): Date {
+  const startDate = new Date()
+  startDate.setMonth(startDate.getMonth() - months)
+  return startDate
+}
+
+function windowTimeSeries(points: TimeSeriesDataPoint[], months: number): TimeSeriesDataPoint[] {
+  const startDate = rangeStartDate(months)
+  const insideWindow: TimeSeriesDataPoint[] = []
+  let previousPoint: TimeSeriesDataPoint | null = null
+
+  for (const point of addCurrentCarryForwardPoint(points)) {
+    const parsed = parsePointDate(point.date)
+
+    if (!parsed || parsed >= startDate) {
+      insideWindow.push(point)
+    } else {
+      previousPoint = point
+    }
+  }
+
+  if (previousPoint) {
+    insideWindow.unshift(clonePointAtDate(previousPoint, startDate))
+  }
+
+  return insideWindow
+}
+
+function selectedRangeMonths(): number | null {
+  const range = ranges.find((item) => item.value === selectedRange.value)
+  return range?.months ?? null
 }
 
 function formatShortDate(value: string): string {
@@ -117,28 +191,15 @@ function formatShortDate(value: string): string {
 }
 
 const filteredTimeSeries = computed(() => {
-  if (selectedRange.value === 'MAX' || props.timeSeries.length === 0) {
-    return props.timeSeries
+  const sortedPoints = sortedTimeSeries()
+  const months = selectedRangeMonths()
+
+  if (!months || sortedPoints.length === 0) {
+    return sortedPoints
   }
 
-  const latestDate = props.timeSeries.reduce<Date | null>((latest, point) => {
-    const parsed = parsePointDate(point.date)
-    if (!parsed) return latest
-    return !latest || parsed > latest ? parsed : latest
-  }, null)
-  const range = ranges.find((item) => item.value === selectedRange.value)
-
-  if (!latestDate || !range?.months) {
-    return props.timeSeries
-  }
-
-  const startDate = new Date(latestDate)
-  startDate.setMonth(startDate.getMonth() - range.months)
-
-  return props.timeSeries.filter((point) => {
-    const parsed = parsePointDate(point.date)
-    return parsed ? parsed >= startDate : true
-  })
+  const windowedPoints = windowTimeSeries(sortedPoints, months)
+  return windowedPoints.length > 0 ? windowedPoints : sortedPoints.slice(-1)
 })
 
 const chartData = computed<ChartData<'line'> | null>(() => {

@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LineInvestedVsCurrent from '../LineInvestedVsCurrent.vue'
 
 vi.mock('chart.js', () => ({
@@ -33,6 +33,15 @@ function chartLabels(wrapper: ReturnType<typeof mount>): string[] {
 }
 
 describe('LineInvestedVsCurrent', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-05-16T12:00:00'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('formats chart labels as DD/MM/YY', () => {
     const wrapper = mount(LineInvestedVsCurrent, {
       props: { timeSeries },
@@ -41,13 +50,26 @@ describe('LineInvestedVsCurrent', () => {
     expect(chartLabels(wrapper)).toEqual(['01/01/24', '20/03/24', '15/04/24'])
   })
 
-  it('filters visible points with range buttons', async () => {
+  it('keeps short ranges visible when data is sparse', async () => {
     const wrapper = mount(LineInvestedVsCurrent, {
       props: { timeSeries },
     })
 
     await wrapper.get('button').trigger('click')
 
-    expect(chartLabels(wrapper)).toEqual(['20/03/24', '15/04/24'])
+    expect(chartLabels(wrapper)).toEqual(['16/04/24', '16/05/24'])
+  })
+
+  it('parses DD/MM/YYYY dates before falling back to browser date parsing', () => {
+    const wrapper = mount(LineInvestedVsCurrent, {
+      props: {
+        timeSeries: [
+          { date: '15/04/2024', invested_value: 100, current_value: 120 },
+          { date: '16/05/2024', invested_value: 200, current_value: 240 },
+        ],
+      },
+    })
+
+    expect(chartLabels(wrapper)).toEqual(['15/04/24', '16/05/24'])
   })
 })

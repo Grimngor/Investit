@@ -87,7 +87,7 @@
                 : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
             "
             :aria-pressed="showAllocationLegends"
-            @click="showAllocationLegends = !showAllocationLegends"
+            @click="toggleAllocationLegends"
           >
             Legends
           </button>
@@ -165,7 +165,9 @@ import PieAllocations from '@/charts/PieAllocations.vue'
 
 const portfolioStore = usePortfolioStore()
 const dashboardStore = useDashboardStore()
-const showAllocationLegends = ref(false)
+const isDesktop = ref(currentDesktopState())
+const allocationLegendPreference = ref<boolean | null>(null)
+const showAllocationLegends = computed(() => allocationLegendPreference.value ?? isDesktop.value)
 
 const totalCost = computed(() => portfolioStore.totalCost)
 const totalValue = computed(() => portfolioStore.totalValue)
@@ -191,13 +193,29 @@ async function handlePricesUpdated() {
   await Promise.all([dashboardStore.handlePricesUpdated(), portfolioStore.fetchPortfolio()])
 }
 
+function currentDesktopState(): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return false
+  return window.matchMedia('(min-width: 1024px)').matches
+}
+
+function syncDesktopState() {
+  isDesktop.value = currentDesktopState()
+}
+
+function toggleAllocationLegends() {
+  allocationLegendPreference.value = !showAllocationLegends.value
+}
+
 onMounted(async () => {
+  syncDesktopState()
+  window.addEventListener('resize', syncDesktopState)
   wsClient.on('prices_updated', handlePricesUpdated)
   await Promise.all([portfolioStore.fetchPortfolio(), dashboardStore.fetchAll()])
   await dashboardStore.refreshPricesIfNeeded()
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', syncDesktopState)
   wsClient.off('prices_updated', handlePricesUpdated)
 })
 </script>

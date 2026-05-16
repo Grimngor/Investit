@@ -44,16 +44,19 @@
 - Added Playwright phone/tablet projects, fixed SQLite E2E isolation through `DATABASE_PATH`, and added focused Orders E2E coverage for mobile card rendering without duplicate desktop tables.
 - Verified the frontend through Browser screenshots on phone and tablet viewports for dashboard, portfolio, orders, auth, CSV preview, and order edit modal with no horizontal overflow in checked screens.
 - Added a provider reliability layer with explicit fallback ordering, stale-cache price fallback, provider health metrics, and source attribution for price, metadata, and ISIN lookups.
+- Moved Portfolio CSV import and manual order entry into responsive modals opened from page actions, removing the need to scroll to those forms.
+- Added Portfolio Performance range controls (`1M`, `3M`, `6M`, `1Y`, `3Y`, `Max`) and `DD/MM/YY` chart date formatting.
+- Standardized Asset Allocation pie chart sizing and added responsive allocation legends.
+- Fixed short Portfolio Performance ranges for sparse time-series data, made desktop allocation legends visible by default, improved legend contrast and mobile legend scrolling, and unified Portfolio page action button styling with an icon-only refresh action.
 
 ## Next Engineering Work
 
-- Add a documented SSH key setup path for Pi maintenance from Windows, including a dedicated personal Pi key and avoiding reuse of work Git keys.
+- Explore taking advantage of Apps Script + Order emails from MyInvestor to populate the orders as an alternative to the CSV import.
+    - If doable, we should include a button in the app that creates an apps script, needed gmail tags to filter messages, and asks for the needed permissions automatically.
+- Investigate an alternative or improvement to Tailscale that keeps the Raspberry Pi and home network safe while easing access for trusted family and friends from anywhere without them needing to install Tailscale. Ideally they will create a new user manually or though a register/login with Google button.
 
 ## Later Work
 
 - Add automated scheduled SQLite backups for the Pi deployment.
-- Explore taking advantage of Apps Script + Order emails from MyInvestor to populate the orders as an alternative to the CSV import.
-    - If doable, we should include a button in the app that creates an apps script, needed gmail tags to filter messages, and asks for the needed permissions automatically.
-- Investigate an alternative or improvement to Tailscale that keeps the Raspberry Pi and home network safe while easing access for trusted family and friends from anywhere.
 - Portfolio export and backup UI so live data can be exported, backed up, and restored from the app instead of relying only on command-line SQLite copies.
 - PWA or desktop packaging for installing InvestIt as an app-like experience on trusted devices, either through browser PWA support or a lightweight desktop wrapper.

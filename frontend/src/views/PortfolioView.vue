@@ -7,34 +7,38 @@
           Manage your investments and import orders
         </p>
       </div>
-      <div class="flex flex-wrap gap-3">
+      <div class="flex flex-wrap items-center gap-2">
         <button
           @click="showImportModal = true"
-          class="inline-flex items-center justify-center gap-2 bg-white hover:bg-softblue-50 text-softblue-700 border border-softblue-300 px-4 py-2 rounded-md text-sm font-medium transition dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-softblue-300 dark:border-gray-600"
+          class="portfolio-action portfolio-action--secondary"
         >
+          <Upload class="h-4 w-4" />
           Import CSV
         </button>
         <button
           @click="showOrderModal = true"
-          class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium transition"
+          class="portfolio-action portfolio-action--primary"
         >
+          <Plus class="h-4 w-4" />
           Add Manual Order
         </button>
         <button
           @click="fetchPrices"
           :disabled="loading || fetchingPrices"
-          class="inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-md text-sm font-medium transition disabled:opacity-50"
+          class="portfolio-action portfolio-action--secondary"
         >
+          <CircleDollarSign class="h-4 w-4" />
           <span v-if="!fetchingPrices">Fetch Prices</span>
           <span v-else>Fetching...</span>
         </button>
         <button
           @click="refreshPortfolio"
           :disabled="loading"
-          class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium transition disabled:opacity-50"
+          class="portfolio-icon-button"
+          aria-label="Refresh portfolio"
+          title="Refresh portfolio"
         >
-          <span v-if="!loading">Refresh</span>
-          <span v-else>Loading...</span>
+          <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
         </button>
       </div>
     </div>
@@ -211,7 +215,7 @@ import SummaryCard from '@/components/SummaryCard.vue'
 import CSVImporter from '@/components/portfolio/CSVImporter.vue'
 import OrderForm from '@/components/portfolio/OrderForm.vue'
 import HoldingsTable from '@/components/portfolio/HoldingsTable.vue'
-import { ChevronDown, X } from 'lucide-vue-next'
+import { ChevronDown, CircleDollarSign, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
 
 const portfolioStore = usePortfolioStore()
 const toastStore = useToastStore()
@@ -325,4 +329,72 @@ onUnmounted(() => {
 })
 </script>
 
-<style scoped></style>
+<style scoped>
+.portfolio-action,
+.portfolio-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.375rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(203 213 225);
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    opacity 150ms ease;
+}
+
+.portfolio-icon-button {
+  width: 2.375rem;
+  padding: 0.5rem;
+}
+
+.portfolio-action:disabled,
+.portfolio-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.portfolio-action--primary {
+  border-color: rgb(37 99 235);
+  background-color: rgb(37 99 235);
+  color: white;
+}
+
+.portfolio-action--primary:hover:not(:disabled) {
+  border-color: rgb(29 78 216);
+  background-color: rgb(29 78 216);
+}
+
+.portfolio-action--secondary,
+.portfolio-icon-button {
+  background-color: white;
+  color: rgb(51 65 85);
+}
+
+.portfolio-action--secondary:hover:not(:disabled),
+.portfolio-icon-button:hover:not(:disabled) {
+  border-color: rgb(148 163 184);
+  background-color: rgb(248 250 252);
+  color: rgb(15 23 42);
+}
+
+:global(.dark) .portfolio-action--secondary,
+:global(.dark) .portfolio-icon-button {
+  border-color: rgb(75 85 99);
+  background-color: rgb(31 41 55);
+  color: rgb(229 231 235);
+}
+
+:global(.dark) .portfolio-action--secondary:hover:not(:disabled),
+:global(.dark) .portfolio-icon-button:hover:not(:disabled) {
+  border-color: rgb(107 114 128);
+  background-color: rgb(55 65 81);
+  color: rgb(249 250 251);
+}
+</style>

@@ -432,8 +432,8 @@ function toggleEUCollapse() {
 
 .legend-panel {
   display: grid;
-  grid-auto-rows: minmax(0, auto);
-  max-height: 6.75rem;
+  grid-auto-rows: 2rem;
+  max-height: calc(2rem * 3 + 0.35rem * 2);
   overflow-y: auto;
   gap: 0.35rem;
   padding-right: 0.25rem;
@@ -444,10 +444,12 @@ function toggleEUCollapse() {
   grid-template-columns: 0.75rem minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.5rem;
+  min-height: 2rem;
   min-width: 0;
-  color: rgb(75 85 99);
+  color: rgb(55 65 81);
   font-size: 0.75rem;
   line-height: 1rem;
+  font-weight: 500;
 }
 
 .legend-swatch {
@@ -457,7 +459,7 @@ function toggleEUCollapse() {
 }
 
 :global(.dark) .legend-item {
-  color: rgb(209 213 219);
+  color: rgb(249 250 251);
 }
 
 @media (min-width: 1024px) {

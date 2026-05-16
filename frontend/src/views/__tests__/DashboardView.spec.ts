@@ -34,16 +34,59 @@ vi.mock('@/services/websocket', () => ({
 }))
 
 describe('DashboardView', () => {
-  it('renders dashboard heading', () => {
-    const wrapper = shallowMount(DashboardView, {
+  function mountDashboard() {
+    return shallowMount(DashboardView, {
       global: {
         stubs: {
           SummaryCard: { template: '<div />' },
           LineInvestedVsCurrent: { template: '<div />' },
-          PieAllocations: { template: '<div />' },
+          PieAllocations: {
+            props: ['showLegend'],
+            template: '<div data-testid="pie-allocation" :data-show-legend="String(showLegend)" />',
+          },
         },
       },
     })
+  }
+
+  it('renders dashboard heading', () => {
+    const wrapper = mountDashboard()
     expect(wrapper.text()).toContain('Dashboard')
+  })
+
+  it('shows allocation legends by default on desktop', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: query === '(min-width: 1024px)',
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    })
+
+    const wrapper = mountDashboard()
+
+    expect(wrapper.find('[data-testid="pie-allocation"]').attributes('data-show-legend')).toBe(
+      'true',
+    )
+  })
+
+  it('hides allocation legends by default on mobile', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    })
+
+    const wrapper = mountDashboard()
+
+    expect(wrapper.find('[data-testid="pie-allocation"]').attributes('data-show-legend')).toBe(
+      'false',
+    )
   })
 })
