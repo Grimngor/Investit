@@ -180,12 +180,14 @@ Known ARM64 notes:
 
 ## Tailscale Passwordless Login
 
-InvestIt can optionally use Tailscale Serve identity headers as a passwordless login source while keeping the normal username/password flow enabled.
+InvestIt can optionally use Tailscale Serve identity headers as a passwordless login source while keeping the normal username/password flow enabled. When `TRUSTED_PROXY_AUTH_ALLOWED_EMAILS` is populated, the same email allowlist is also enforced for registration and password login.
 
 Requirements:
 
 - Use Tailscale Serve, not Funnel.
 - Keep the web proxy bound to `127.0.0.1`.
+- Registration must use an email listed in `TRUSTED_PROXY_AUTH_ALLOWED_EMAILS`.
+- Password login is accepted only for users whose `email` or `username` is listed in `TRUSTED_PROXY_AUTH_ALLOWED_EMAILS`.
 - The Tailscale login email must match an existing InvestIt user's `email` or `username`.
 - The Tailscale login email must also be listed in `TRUSTED_PROXY_AUTH_ALLOWED_EMAILS`.
 
@@ -193,7 +195,7 @@ Enable it in `.env`:
 
 ```env
 TRUSTED_PROXY_AUTH_ENABLED=true
-TRUSTED_PROXY_AUTH_ALLOWED_EMAILS=you@example.com
+TRUSTED_PROXY_AUTH_ALLOWED_EMAILS=you@example.com,friend@example.com
 TRUSTED_PROXY_AUTH_HEADER_EMAIL=Tailscale-User-Login
 TRUSTED_PROXY_AUTH_HEADER_NAME=Tailscale-User-Name
 ```
@@ -208,6 +210,23 @@ docker compose up -d
 The login screen will show both password login and `Continue with Tailscale`. If Tailscale login fails, the password login remains available.
 
 ## Upgrade And Rollback
+
+For normal updates from the Pi, use the deployment helper:
+
+```bash
+cd ~/services/investit
+bash scripts/deploy/update_pi.sh
+```
+
+The helper checks required tools, refuses to deploy over tracked local changes, creates a pre-deploy SQLite backup under `data/backups/`, runs `git pull --ff-only`, rebuilds the Compose images, restarts the stack, checks `/health`, and prints recent logs.
+
+Useful options:
+
+```bash
+bash scripts/deploy/update_pi.sh --pull-images
+bash scripts/deploy/update_pi.sh --skip-pull
+bash scripts/deploy/update_pi.sh --skip-backup
+```
 
 Upgrade:
 
