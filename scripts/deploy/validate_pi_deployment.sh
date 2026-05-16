@@ -45,6 +45,33 @@ require_command() {
 	command -v "$command_name" >/dev/null 2>&1 || fail "Missing required command: ${command_name}"
 }
 
+published_ports_for_service() {
+	local service_name="$1"
+	docker compose ps --format json "$service_name" \
+		| python3 -c 'import json, sys
+ports = []
+for line in sys.stdin:
+	line = line.strip()
+	if not line:
+		continue
+	item = json.loads(line)
+	value = item.get("Publishers") or item.get("Ports") or []
+	if isinstance(value, list):
+		for port in value:
+			if isinstance(port, dict):
+				url = port.get("URL") or ""
+				published = port.get("PublishedPort")
+				target = port.get("TargetPort")
+				protocol = port.get("Protocol") or "tcp"
+				if published:
+					ports.append(f"{url}:{published}->{target}/{protocol}".lstrip(":"))
+			elif port:
+				ports.append(str(port))
+	elif value:
+		ports.append(str(value))
+print("\n".join(ports))'
+}
+
 log "Host"
 [[ -f compose.yaml ]] || fail "Run this script from the InvestIt repository root or keep its relative path intact."
 arch="$(uname -m)"
@@ -59,6 +86,7 @@ esac
 log "Tooling"
 require_command docker
 require_command curl
+require_command python3
 docker --version
 docker compose version
 pass "Docker and Compose are available"
@@ -94,14 +122,14 @@ pass "Health endpoint responded at ${health_url}"
 
 log "Port exposure"
 web_port_mapping="$(docker compose port web 80 || true)"
-backend_port_mapping="$(docker compose port backend 8000 || true)"
+backend_published_ports="$(published_ports_for_service backend)"
 printf 'web: %s\n' "${web_port_mapping:-not published}"
-printf 'backend: %s\n' "${backend_port_mapping:-not published}"
+printf 'backend: %s\n' "${backend_published_ports:-not published}"
 if [[ "$web_port_mapping" != 127.0.0.1:* ]]; then
 	fail "web service must publish only on 127.0.0.1, got: ${web_port_mapping:-none}"
 fi
-if [[ -n "$backend_port_mapping" ]]; then
-	fail "backend service must not publish a host port, got: ${backend_port_mapping}"
+if [[ -n "$backend_published_ports" ]]; then
+	fail "backend service must not publish a host port, got: ${backend_published_ports}"
 fi
 pass "Only the web proxy is published, and it is localhost-bound"
 
