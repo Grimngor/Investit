@@ -5,23 +5,7 @@
     <link rel="icon" href="/favicon.ico">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>InvestIt</title>
-    <script>
-      // Apply theme early to avoid FOUC. Default to dark.
-      (function() {
-        try {
-          var stored = localStorage.getItem('theme');
-          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          var toSet = 'dark';
-          if (stored === 'light') toSet = 'light';
-          else if (stored === 'auto') toSet = prefersDark ? 'dark' : 'light';
-          else if (stored === 'dark') toSet = 'dark';
-          if (toSet === 'dark') document.documentElement.classList.add('dark');
-          else document.documentElement.classList.remove('dark');
-        } catch (e) {
-          document.documentElement.classList.add('dark');
-        }
-      })();
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="app"></div>
