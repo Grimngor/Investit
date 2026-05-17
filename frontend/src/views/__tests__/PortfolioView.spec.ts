@@ -25,6 +25,11 @@ vi.mock('@/stores/toast', () => ({
   }),
 }))
 
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ path: '/portfolio', query: {} }),
+  useRouter: () => ({ replace: vi.fn() }),
+}))
+
 vi.mock('@/services/api', () => ({
   apiClient: {
     fetchPrices: vi.fn(),
@@ -53,19 +58,23 @@ function mountView() {
 }
 
 describe('PortfolioView', () => {
-  it('opens the CSV import modal from the page action', async () => {
+  it('opens the CSV import modal from the import menu', async () => {
     const wrapper = mountView()
 
-    const importButton = wrapper.findAll('button').find((button) => button.text() === 'Import CSV')
+    const importButton = wrapper.findAll('button').find((button) => button.text().includes('Import'))
     await importButton?.trigger('click')
+    const csvButton = wrapper.findAll('button').find((button) => button.text() === 'Import CSV')
+    await csvButton?.trigger('click')
 
     expect(wrapper.get('[data-testid="csv-importer"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Import Orders from CSV')
   })
 
-  it('opens the manual order modal from the page action', async () => {
+  it('opens the manual order modal from the import menu', async () => {
     const wrapper = mountView()
 
+    const importButton = wrapper.findAll('button').find((button) => button.text().includes('Import'))
+    await importButton?.trigger('click')
     const orderButton = wrapper.findAll('button').find((button) => button.text() === 'Add Manual Order')
     await orderButton?.trigger('click')
 

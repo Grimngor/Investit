@@ -8,27 +8,38 @@
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <button
-          @click="showImportModal = true"
-          class="portfolio-action portfolio-action--secondary"
-        >
-          <Upload class="h-4 w-4" />
-          Import CSV
-        </button>
-        <button
-          @click="showGmailImportModal = true"
-          class="portfolio-action portfolio-action--secondary"
-        >
-          <Mail class="h-4 w-4" />
-          Import Gmail
-        </button>
-        <button
-          @click="showOrderModal = true"
-          class="portfolio-action portfolio-action--primary"
-        >
-          <Plus class="h-4 w-4" />
-          Add Manual Order
-        </button>
+        <div class="relative">
+          <button
+            @click="showImportMenu = !showImportMenu"
+            class="portfolio-action portfolio-action--primary"
+            type="button"
+            aria-haspopup="menu"
+            :aria-expanded="showImportMenu"
+          >
+            <Upload class="h-4 w-4" />
+            Import
+            <ChevronDown class="h-4 w-4 transition-transform" :class="{ 'rotate-180': showImportMenu }" />
+          </button>
+          <div
+            v-if="showImportMenu"
+            class="import-menu"
+            role="menu"
+            @keydown.esc="showImportMenu = false"
+          >
+            <button type="button" class="import-menu-item" role="menuitem" @click="openGmailImport">
+              <Mail class="h-4 w-4" />
+              Import Gmail
+            </button>
+            <button type="button" class="import-menu-item" role="menuitem" @click="openCsvImport">
+              <Upload class="h-4 w-4" />
+              Import CSV
+            </button>
+            <button type="button" class="import-menu-item" role="menuitem" @click="openManualOrder">
+              <Plus class="h-4 w-4" />
+              Add Manual Order
+            </button>
+          </div>
+        </div>
         <button
           @click="fetchPrices"
           :disabled="loading || fetchingPrices"
@@ -37,15 +48,6 @@
           <CircleDollarSign class="h-4 w-4" />
           <span v-if="!fetchingPrices">Fetch Prices</span>
           <span v-else>Fetching...</span>
-        </button>
-        <button
-          @click="refreshPortfolio"
-          :disabled="loading"
-          class="portfolio-icon-button"
-          aria-label="Refresh portfolio"
-          title="Refresh portfolio"
-        >
-          <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': loading }" />
         </button>
       </div>
     </div>
@@ -230,7 +232,7 @@ import CSVImporter from '@/components/portfolio/CSVImporter.vue'
 import GmailImportModal from '@/components/portfolio/GmailImportModal.vue'
 import OrderForm from '@/components/portfolio/OrderForm.vue'
 import HoldingsTable from '@/components/portfolio/HoldingsTable.vue'
-import { ChevronDown, CircleDollarSign, Mail, Plus, RefreshCw, Upload, X } from 'lucide-vue-next'
+import { ChevronDown, CircleDollarSign, Mail, Plus, Upload, X } from 'lucide-vue-next'
 
 const portfolioStore = usePortfolioStore()
 const toastStore = useToastStore()
@@ -240,6 +242,7 @@ const fetchingPrices = ref(false)
 const showImportModal = ref(false)
 const showGmailImportModal = ref(false)
 const showOrderModal = ref(false)
+const showImportMenu = ref(false)
 
 const holdings = computed(() => portfolioStore.portfolio?.holdings || [])
 
@@ -289,6 +292,21 @@ const gainLossPercentage = computed(() => {
 
 async function refreshPortfolio() {
   await portfolioStore.fetchPortfolio()
+}
+
+function openGmailImport() {
+  showImportMenu.value = false
+  showGmailImportModal.value = true
+}
+
+function openCsvImport() {
+  showImportMenu.value = false
+  showImportModal.value = true
+}
+
+function openManualOrder() {
+  showImportMenu.value = false
+  showOrderModal.value = true
 }
 
 async function handleImportComplete() {
@@ -341,14 +359,30 @@ async function handlePricesUpdated(data: any) {
   }
 }
 
+async function handleOrdersChanged() {
+  await refreshPortfolio()
+  const dashboardStore = useDashboardStore()
+  await dashboardStore.fetchAll()
+}
+
 onMounted(() => {
   wsClient.on('prices_updated', handlePricesUpdated)
+  wsClient.on('orders_imported', handleOrdersChanged)
+  wsClient.on('order_created', handleOrdersChanged)
+  wsClient.on('order_updated', handleOrdersChanged)
+  wsClient.on('order_deleted', handleOrdersChanged)
+  wsClient.on('orders_cleared', handleOrdersChanged)
   portfolioStore.fetchPortfolio()
   handleGmailCallbackToast()
 })
 
 onUnmounted(() => {
   wsClient.off('prices_updated', handlePricesUpdated)
+  wsClient.off('orders_imported', handleOrdersChanged)
+  wsClient.off('order_created', handleOrdersChanged)
+  wsClient.off('order_updated', handleOrdersChanged)
+  wsClient.off('order_deleted', handleOrdersChanged)
+  wsClient.off('orders_cleared', handleOrdersChanged)
 })
 
 function handleGmailCallbackToast() {
@@ -426,6 +460,41 @@ function withoutGmailQuery() {
   color: rgb(15 23 42);
 }
 
+.import-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 20;
+  display: grid;
+  min-width: 13rem;
+  gap: 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(226 232 240);
+  background: white;
+  padding: 0.375rem;
+  box-shadow: 0 16px 40px rgb(15 23 42 / 16%);
+}
+
+.import-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  color: rgb(51 65 85);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: left;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.import-menu-item:hover {
+  background: rgb(241 245 249);
+  color: rgb(15 23 42);
+}
+
 :global(.dark) .portfolio-action--secondary,
 :global(.dark) .portfolio-icon-button {
   border-color: rgb(75 85 99);
@@ -437,6 +506,20 @@ function withoutGmailQuery() {
 :global(.dark) .portfolio-icon-button:hover:not(:disabled) {
   border-color: rgb(107 114 128);
   background-color: rgb(55 65 81);
+  color: rgb(249 250 251);
+}
+
+:global(.dark) .import-menu {
+  border-color: rgb(55 65 81);
+  background: rgb(31 41 55);
+}
+
+:global(.dark) .import-menu-item {
+  color: rgb(229 231 235);
+}
+
+:global(.dark) .import-menu-item:hover {
+  background: rgb(55 65 81);
   color: rgb(249 250 251);
 }
 </style>
