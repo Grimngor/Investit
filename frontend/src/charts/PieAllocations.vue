@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div v-if="title" class="flex justify-between items-center mb-4">
+  <div class="allocation-chart">
+    <div v-if="title" class="allocation-chart-header">
       <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
         {{ title }}
         <span
@@ -421,9 +421,24 @@ function toggleEUCollapse() {
   width: 100%;
 }
 
+.allocation-chart {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}
+
+.allocation-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2rem;
+  margin-bottom: 1rem;
+}
+
 .allocation-chart-layout {
   display: grid;
   gap: 1rem;
+  align-items: start;
 }
 
 .allocation-chart-layout--legend {
@@ -469,7 +484,7 @@ function toggleEUCollapse() {
 
   .allocation-chart-layout--legend {
     grid-template-columns: minmax(260px, 1fr) minmax(140px, 200px);
-    align-items: center;
+    align-items: start;
   }
 
   .legend-panel {
