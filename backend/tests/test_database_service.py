@@ -47,6 +47,44 @@ def test_user_order_price_round_trip() -> None:
 	assert loaded["primary_user"]["prices"]["IE00TEST0001"]["price"] == 100.0
 
 
+def test_save_users_preserves_gmail_connection_for_existing_user() -> None:
+	"""Persist user rewrites without cascading existing Gmail connection rows."""
+	db = DatabaseService()
+	users = {
+		"primary_user": {
+			"username": "primary_user",
+			"hashed_password": "hash",
+			"orders": [{"id": "order-1", "isin": "IE00TEST0001"}],
+			"prices": {},
+		}
+	}
+	db.save_users(users)
+	with db.connect() as conn, conn:
+		conn.execute(
+			"INSERT INTO gmail_connections (username, connection_json) VALUES (?, ?)",
+			("primary_user", '{"email": "user@example.com"}'),
+		)
+
+	db.save_users(
+		{
+			"primary_user": {
+				"username": "primary_user",
+				"hashed_password": "updated-hash",
+				"orders": [{"id": "order-2", "isin": "IE00TEST0002"}],
+				"prices": {"IE00TEST0002": {"price": 42.0}},
+			}
+		}
+	)
+
+	loaded = db.load_users()
+	assert loaded["primary_user"]["hashed_password"] == "updated-hash"
+	assert loaded["primary_user"]["orders"][0]["id"] == "order-2"
+	with db.connect() as conn:
+		row = conn.execute("SELECT connection_json FROM gmail_connections WHERE username = ?", ("primary_user",)).fetchone()
+	assert row is not None
+	assert row["connection_json"] == '{"email": "user@example.com"}'
+
+
 def test_instrument_and_isin_mapping_round_trip() -> None:
 	"""Persist and load instruments and ISIN mappings."""
 	db = DatabaseService()

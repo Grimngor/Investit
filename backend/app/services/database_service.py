@@ -119,12 +119,17 @@ class DatabaseService:
 			return users
 
 	def save_users(self, users: dict[str, Any]) -> None:
-		"""Replace all user, order, and price data in one transaction."""
+		"""Replace user, order, and price data while preserving per-user integration rows."""
 		self.initialize()
 		with self.connect() as conn, conn:
 			conn.execute("DELETE FROM prices")
 			conn.execute("DELETE FROM orders")
-			conn.execute("DELETE FROM users")
+			usernames = list(users)
+			if usernames:
+				placeholders = ",".join("?" for _ in usernames)
+				conn.execute(f"DELETE FROM users WHERE username NOT IN ({placeholders})", usernames)
+			else:
+				conn.execute("DELETE FROM users")
 			self._insert_users(conn, users)
 
 	def update_users(self, update_fn: Callable[[dict[str, Any]], dict[str, Any]], default: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -264,7 +269,14 @@ class DatabaseService:
 			stored["username"] = username
 			orders = stored.pop("orders", [])
 			prices = stored.pop("prices", {})
-			conn.execute("INSERT INTO users (username, user_json) VALUES (?, ?)", (username, json.dumps(stored, ensure_ascii=False)))
+			conn.execute(
+				"""
+				INSERT INTO users (username, user_json)
+				VALUES (?, ?)
+				ON CONFLICT(username) DO UPDATE SET user_json = excluded.user_json
+				""",
+				(username, json.dumps(stored, ensure_ascii=False)),
+			)
 
 			for index, order in enumerate(orders):
 				order_key = str(order.get("id") or f"{index}")
