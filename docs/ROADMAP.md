@@ -50,12 +50,18 @@
 - Fixed short Portfolio Performance ranges for sparse time-series data, made desktop allocation legends visible by default, improved legend contrast and mobile legend scrolling, and unified Portfolio page action button styling with an icon-only refresh action.
 - Added a Gmail-backed MyInvestor order import flow from the Portfolio page, including Gmail OAuth setup, read-only message scanning, MyInvestor email parsing, preview/selection UI, duplicate detection, first-run backfill scanning, and local processed-message tracking. See [temporary Gmail import notes](TEMP_GMAIL_MYINVESTOR_IMPORT.md).
 
-## Next Engineering Work
+## Next Work
 
-- Add a browser-friendly Raspberry Pi access path with Cloudflare Tunnel and Cloudflare Access for `javiansoleaga.es`, keeping the Pi behind a localhost-bound web proxy while allowing trusted users to authenticate without installing Tailscale. See [temporary Cloudflare Access notes](TEMP_CLOUDFLARE_TUNNEL_ACCESS.md).
+- Get Import CSV, Import Gmail, and Add Manual Order buttons under the same butto. i.e., clicking on "Import" opens a dropdown with the three options ordered by: Gmail first, then CSV, then Manual Order.
+- In desktop, the pie charts get vertically disaligned, when the legends are shown.
+- Add smart duplicate logic for Gmail/MyInvestor imports: keep exact matches as already present, classify close ISIN/type/share/date/amount matches as likely duplicates or needs review, default those rows unchecked, and show the existing order comparison in the review table.
+- Fix Gmail reconnect persistence so saved Gmail OAuth connections survive normal user/order/price updates; investigate SQLite user rewrites deleting `gmail_connections` rows through foreign-key cascade.
+- Get rid of the refresh button while ensuring it's automatically triggered after import, after manual order save/delete, after price update WebSocket events, and when entering the page, etc.
+- Brainstorm standarizing the button colors and style depending on the type of button and state.
 
 ## Later Work
 
+- Add a browser-friendly Raspberry Pi access path with Cloudflare Tunnel and Cloudflare Access for `javiansoleaga.es`, keeping the Pi behind a localhost-bound web proxy while allowing trusted users to authenticate without installing Tailscale. See [temporary Cloudflare Access notes](TEMP_CLOUDFLARE_TUNNEL_ACCESS.md).
 - Add automated scheduled SQLite backups for the Pi deployment.
 - Portfolio export and backup UI so live data can be exported, backed up, and restored from the app instead of relying only on command-line SQLite copies.
 - PWA or desktop packaging for installing InvestIt as an app-like experience on trusted devices, either through browser PWA support or a lightweight desktop wrapper.
