@@ -99,6 +99,7 @@ async def preview_import_csv(
 			"orders": classification["orders"],
 			"new_count": classification["new_count"],
 			"skipped_count": classification["skipped_count"],
+			"needs_review_count": classification["needs_review_count"],
 			"errors": errors,
 		}
 	except Exception as e:

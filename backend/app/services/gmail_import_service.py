@@ -152,7 +152,7 @@ class GmailImportService:
 			errors=errors,
 			new_count=classified["new_count"],
 			skipped_count=classified["skipped_count"],
-			needs_review_count=len(errors),
+			needs_review_count=classified["needs_review_count"] + len(errors),
 			already_processed_count=already_processed_count,
 		)
 

@@ -148,6 +148,32 @@ def test_preview_import_csv_marks_already_present_orders(auth_token):
 	assert data["orders"][1]["existing_order_id"] is None
 
 
+def test_preview_import_csv_marks_close_duplicates_for_review(auth_token):
+	"""Test CSV preview flags close existing-order matches for review."""
+	initial_csv = """Fecha de la orden,ISIN,Importe estimado,Numero de participaciones,Estado
+15/01/2024,IE00B4L5Y983,500.00 EUR,5.0,Finalizada"""
+	preview_csv = """Fecha de la orden,ISIN,Importe estimado,Numero de participaciones,Estado
+16/01/2024,IE00B4L5Y983,500.02 EUR,5.0001,Finalizada
+15/01/2024,IE00B4L5Y983,500.02 EUR,8.0,Finalizada"""
+
+	import_response = post_csv_import(auth_token, initial_csv)
+	assert import_response.status_code == 200
+	existing_order = client.get("/api/orders/", headers={"Authorization": f"Bearer {auth_token}"}).json()["orders"][0]
+
+	preview_response = post_csv_import(auth_token, preview_csv, "/api/orders/import-csv/preview")
+	assert preview_response.status_code == 200
+	data = preview_response.json()
+
+	assert data["new_count"] == 0
+	assert data["skipped_count"] == 0
+	assert data["needs_review_count"] == 2
+	assert [order["import_status"] for order in data["orders"]] == ["likely_duplicate", "needs_review"]
+	assert data["orders"][0]["existing_order_id"] == existing_order["id"]
+	assert data["orders"][0]["existing_order"]["amount_eur"] == 500.0
+	assert data["orders"][0]["duplicate_match"]["date_close"] is True
+	assert data["orders"][1]["duplicate_match"]["shares_close"] is False
+
+
 def test_import_csv_with_errors(auth_token):
 	"""Test CSV import with validation errors."""
 	csv_content = """Fecha de la orden,ISIN,Importe estimado,Nº de participaciones,Estado

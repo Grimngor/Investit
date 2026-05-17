@@ -189,6 +189,39 @@ describe('CSVPreviewModal', () => {
     expect(wrapper.text()).toContain('New')
   })
 
+  it('leaves likely duplicate rows unchecked and shows the existing order', async () => {
+    mockPreview([
+      {
+        ...previewOrders[0],
+        import_status: 'likely_duplicate',
+        existing_order_id: 'existing-1',
+        existing_order: {
+          id: 'existing-1',
+          date: '2025-10-25',
+          isin: 'IE00B4L5Y983',
+          amount_eur: 850.49,
+          shares: 10,
+          status: 'Finalizada',
+        },
+      },
+    ])
+    const file = new File([csvContent], 'orders.csv', { type: 'text/csv' })
+
+    const wrapper = mountModal({
+      file,
+      isOpen: true,
+    })
+
+    await waitForPreview()
+
+    expect(wrapper.text()).toContain('Likely duplicate')
+    expect(wrapper.text()).toContain('EUR 850.49 / 10 shares')
+    const checkbox = wrapper.find('tbody input[type="checkbox"]')
+    expect((checkbox.element as HTMLInputElement).checked).toBe(false)
+    const importButton = wrapper.findAll('button').find((btn) => btn.text().includes('Nothing New'))
+    expect(importButton?.attributes('disabled')).toBeDefined()
+  })
+
   it('disables import button when all orders are already present', async () => {
     mockPreview(previewOrders.map((order) => ({ ...order, import_status: 'already_present', existing_order_id: `existing-${order.id}` })))
     const file = new File([csvContent], 'orders.csv', { type: 'text/csv' })

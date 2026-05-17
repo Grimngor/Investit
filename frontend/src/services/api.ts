@@ -26,7 +26,7 @@ export interface GmailImportPreviewOrder {
   unit_price: number
   amount_gross: number
   amount_net?: number | null
-  import_status: 'new' | 'already_present' | string
+  import_status: 'new' | 'already_present' | 'likely_duplicate' | 'needs_review' | string
   existing_order_id?: string | null
   error?: string | null
   order: {
@@ -39,6 +39,16 @@ export interface GmailImportPreviewOrder {
     order_type: 'buy' | 'sell'
     status: string
     notes?: string
+    existing_order?: {
+      id?: string | null
+      date?: string
+      isin?: string
+      order_type?: 'buy' | 'sell'
+      amount_eur?: number
+      shares?: number
+      status?: string
+    } | null
+    duplicate_match?: Record<string, unknown> | null
   }
 }
 

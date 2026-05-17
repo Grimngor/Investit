@@ -112,6 +112,7 @@
                   <th class="px-3 py-3 text-right">Shares</th>
                   <th class="px-3 py-3 text-right">Price</th>
                   <th class="px-3 py-3 text-left">Status</th>
+                  <th class="px-3 py-3 text-left">Existing Order</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -121,7 +122,7 @@
                       type="checkbox"
                       :value="row.gmail_message_id"
                       v-model="selectedIds"
-                      :disabled="row.import_status !== 'new'"
+                      :disabled="row.import_status === 'already_present'"
                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
                     />
                   </td>
@@ -142,6 +143,15 @@
                     <span :class="statusClass(row.import_status)">
                       {{ statusLabel(row.import_status) }}
                     </span>
+                  </td>
+                  <td class="px-3 py-3">
+                    <div v-if="row.order.existing_order" class="space-y-0.5 text-xs text-gray-600 dark:text-gray-300">
+                      <div class="font-mono">{{ row.order.existing_order.date }} - {{ row.order.existing_order.isin }}</div>
+                      <div>
+                        EUR {{ formatAmount(row.order.existing_order.amount_eur) }} / {{ row.order.existing_order.shares }} shares
+                      </div>
+                    </div>
+                    <span v-else class="text-xs text-gray-400">-</span>
                   </td>
                 </tr>
               </tbody>
@@ -182,7 +192,8 @@ const scanning = ref(false)
 const importing = ref(false)
 
 const orders = computed(() => scanResult.value?.orders || [])
-const importableOrders = computed(() => orders.value.filter((order) => order.import_status === 'new'))
+const importableOrders = computed(() => orders.value.filter((order) => order.import_status !== 'already_present'))
+const defaultSelectedOrders = computed(() => orders.value.filter((order) => order.import_status === 'new'))
 const allImportableSelected = computed(() => {
   return importableOrders.value.length > 0 && importableOrders.value.every((order) => selectedIds.value.includes(order.gmail_message_id))
 })
@@ -235,7 +246,7 @@ async function scan() {
   selectedIds.value = []
   try {
     scanResult.value = await apiClient.scanGmailOrders()
-    selectedIds.value = importableOrders.value.map((order) => order.gmail_message_id)
+    selectedIds.value = defaultSelectedOrders.value.map((order) => order.gmail_message_id)
     toastStore.addToast(`Found ${scanResult.value.new_count} new Gmail order(s)`, 'success')
   } catch (error: any) {
     toastStore.addToast(error.response?.data?.detail || 'Failed to scan Gmail', 'error')
@@ -267,15 +278,27 @@ function toggleAll(event: Event) {
 function statusLabel(statusValue: GmailImportPreviewOrder['import_status']) {
   if (statusValue === 'new') return 'New'
   if (statusValue === 'already_present') return 'Already present'
+  if (statusValue === 'likely_duplicate') return 'Likely duplicate'
+  if (statusValue === 'needs_review') return 'Needs review'
   return statusValue
 }
 
 function statusClass(statusValue: string) {
-  const base = 'inline-flex rounded px-2 py-1 text-xs font-semibold'
+  const base = 'inline-flex rounded px-2 py-1 text-xs font-semibold whitespace-nowrap'
   if (statusValue === 'new') {
     return `${base} bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300`
   }
+  if (statusValue === 'likely_duplicate') {
+    return `${base} bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300`
+  }
+  if (statusValue === 'needs_review') {
+    return `${base} bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300`
+  }
   return `${base} bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300`
+}
+
+function formatAmount(value: number | undefined) {
+  return Number(value || 0).toFixed(2)
 }
 </script>
 

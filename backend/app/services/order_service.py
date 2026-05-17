@@ -13,6 +13,12 @@ from app.utils.validators import is_crypto_symbol
 class OrderService:
 	"""Service for order filtering, import, and persistence operations."""
 
+	CLOSE_DATE_DAYS: int = 3
+	CLOSE_AMOUNT_RATIO: Decimal = Decimal("0.01")
+	CLOSE_AMOUNT_ABSOLUTE: Decimal = Decimal("0.05")
+	CLOSE_SHARES_RATIO: Decimal = Decimal("0.001")
+	CLOSE_SHARES_ABSOLUTE: Decimal = Decimal("0.000001")
+
 	@staticmethod
 	def _normalized_decimal(value: Any, places: str) -> str:
 		"""Return a stable decimal string for order fingerprinting."""
@@ -21,6 +27,33 @@ class OrderService:
 		except (InvalidOperation, TypeError, ValueError):
 			decimal_value = Decimal("0")
 		return str(decimal_value.quantize(Decimal(places), rounding=ROUND_HALF_UP))
+
+	@staticmethod
+	def _decimal_value(value: Any) -> Decimal:
+		"""Return a Decimal value for duplicate comparison."""
+		try:
+			return Decimal(str(value))
+		except (InvalidOperation, TypeError, ValueError):
+			return Decimal("0")
+
+	@staticmethod
+	def _date_distance_days(first_date: Any, second_date: Any) -> int | None:
+		"""Return the absolute distance between two ISO dates."""
+		try:
+			first = datetime.strptime(str(first_date), "%Y-%m-%d").date()
+			second = datetime.strptime(str(second_date), "%Y-%m-%d").date()
+		except (TypeError, ValueError):
+			return None
+		return abs((first - second).days)
+
+	@staticmethod
+	def _values_are_close(first_value: Any, second_value: Any, ratio: Decimal, absolute: Decimal) -> bool:
+		"""Return True when two numeric values are within an absolute or relative tolerance."""
+		first = OrderService._decimal_value(first_value)
+		second = OrderService._decimal_value(second_value)
+		delta = abs(first - second)
+		largest = max(abs(first), abs(second), Decimal("1"))
+		return delta <= max(absolute, largest * ratio)
 
 	@staticmethod
 	def order_fingerprint(order: dict[str, Any]) -> tuple[str, str, str, str, str]:
@@ -34,13 +67,84 @@ class OrderService:
 		)
 
 	@staticmethod
+	def _existing_order_summary(order: dict[str, Any] | None) -> dict[str, Any] | None:
+		"""Return the existing-order fields needed by import review UIs."""
+		if not order:
+			return None
+		return {
+			"id": order.get("id"),
+			"date": order.get("date"),
+			"isin": order.get("isin"),
+			"order_type": order.get("order_type", "buy"),
+			"amount_eur": order.get("amount_eur"),
+			"shares": order.get("shares"),
+			"status": order.get("status"),
+		}
+
+	@staticmethod
+	def _close_match_details(order: dict[str, Any], existing_order: dict[str, Any]) -> dict[str, Any]:
+		"""Return close-match comparison details for two orders."""
+		date_distance = OrderService._date_distance_days(order.get("date"), existing_order.get("date"))
+		amount_close = OrderService._values_are_close(
+			order.get("amount_eur"),
+			existing_order.get("amount_eur"),
+			OrderService.CLOSE_AMOUNT_RATIO,
+			OrderService.CLOSE_AMOUNT_ABSOLUTE,
+		)
+		shares_close = OrderService._values_are_close(
+			order.get("shares"),
+			existing_order.get("shares"),
+			OrderService.CLOSE_SHARES_RATIO,
+			OrderService.CLOSE_SHARES_ABSOLUTE,
+		)
+		return {
+			"date_days": date_distance,
+			"date_close": date_distance is not None and date_distance <= OrderService.CLOSE_DATE_DAYS,
+			"amount_close": amount_close,
+			"shares_close": shares_close,
+		}
+
+	@staticmethod
+	def _find_close_existing_order(
+		order: dict[str, Any], existing_orders: list[dict[str, Any]]
+	) -> tuple[str, dict[str, Any] | None, dict[str, Any] | None]:
+		"""Return the close duplicate status, matched existing order, and comparison details."""
+		order_isin = str(order.get("isin", "")).strip().upper()
+		order_type = str(order.get("order_type", "buy")).strip().lower()
+		best_status = "new"
+		best_order: dict[str, Any] | None = None
+		best_details: dict[str, Any] | None = None
+		best_score = 0
+
+		for existing_order in existing_orders:
+			if str(existing_order.get("isin", "")).strip().upper() != order_isin:
+				continue
+			if str(existing_order.get("order_type", "buy")).strip().lower() != order_type:
+				continue
+
+			details = OrderService._close_match_details(order, existing_order)
+			score = sum(1 for key in ("date_close", "amount_close", "shares_close") if details[key])
+			if score < 2:
+				continue
+
+			status = "likely_duplicate" if score == 3 else "needs_review"
+			if score > best_score or (score == best_score and status == "likely_duplicate"):
+				best_status = status
+				best_order = existing_order
+				best_details = details
+				best_score = score
+
+		return best_status, best_order, best_details
+
+	@staticmethod
 	def classify_import_orders(existing_orders: list[dict[str, Any]], parsed_orders: list[dict[str, Any]]) -> dict[str, Any]:
-		"""Classify parsed orders as new or already present."""
+		"""Classify parsed orders as new, already present, or needing duplicate review."""
 		existing_by_fingerprint = {OrderService.order_fingerprint(order): order for order in existing_orders}
 		seen_fingerprints = set(existing_by_fingerprint)
 		classified_orders: list[dict[str, Any]] = []
 		new_count = 0
 		skipped_count = 0
+		needs_review_count = 0
 
 		for order in parsed_orders:
 			fingerprint = OrderService.order_fingerprint(order)
@@ -49,15 +153,28 @@ class OrderService:
 			if fingerprint in seen_fingerprints:
 				classified["import_status"] = "already_present"
 				classified["existing_order_id"] = existing_order.get("id") if existing_order else None
+				classified["existing_order"] = OrderService._existing_order_summary(existing_order)
+				classified["duplicate_match"] = {"match_type": "exact"}
 				skipped_count += 1
 			else:
-				classified["import_status"] = "new"
-				classified["existing_order_id"] = None
+				close_status, close_order, close_details = OrderService._find_close_existing_order(order, existing_orders)
+				classified["import_status"] = close_status
+				classified["existing_order_id"] = close_order.get("id") if close_order else None
+				classified["existing_order"] = OrderService._existing_order_summary(close_order)
+				classified["duplicate_match"] = close_details
 				seen_fingerprints.add(fingerprint)
-				new_count += 1
+				if close_status == "new":
+					new_count += 1
+				else:
+					needs_review_count += 1
 			classified_orders.append(classified)
 
-		return {"orders": classified_orders, "new_count": new_count, "skipped_count": skipped_count}
+		return {
+			"orders": classified_orders,
+			"new_count": new_count,
+			"skipped_count": skipped_count,
+			"needs_review_count": needs_review_count,
+		}
 
 	@staticmethod
 	def filter_orders(

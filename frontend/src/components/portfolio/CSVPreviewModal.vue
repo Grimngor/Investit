@@ -10,7 +10,8 @@
 					<div class="min-w-0">
 						<h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200">Preview & Edit CSV Import</h2>
 						<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-							Review {{ parsedOrders.length }} orders: {{ importableOrders.length }} new, {{ skippedOrders.length }} already present
+							Review {{ parsedOrders.length }} orders: {{ newOrders.length }} new, {{ reviewOrders.length }} review,
+							{{ skippedOrders.length }} already present
 						</p>
 					</div>
 					<button @click="close" class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition">
@@ -24,6 +25,7 @@
 					<table class="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg">
 						<thead class="bg-gray-100 dark:bg-gray-800 sticky top-0">
 							<tr>
+								<th class="px-3 py-2 text-left text-xs font-medium">Select</th>
 								<th class="px-3 py-2 text-left text-xs font-medium">#</th>
 								<th class="px-3 py-2 text-left text-xs font-medium">Date</th>
 								<th class="px-3 py-2 text-left text-xs font-medium">ISIN</th>
@@ -31,6 +33,7 @@
 								<th class="px-3 py-2 text-left text-xs font-medium">Shares</th>
 								<th class="px-3 py-2 text-left text-xs font-medium">Status</th>
 								<th class="px-3 py-2 text-left text-xs font-medium">Import</th>
+								<th class="px-3 py-2 text-left text-xs font-medium">Existing Order</th>
 								<th class="px-3 py-2 text-center text-xs font-medium w-16">Action</th>
 							</tr>
 						</thead>
@@ -43,9 +46,20 @@
 										? 'bg-blue-50 dark:bg-blue-900/20'
 										: order.import_status === 'already_present'
 											? 'bg-gray-50 dark:bg-gray-900/30 opacity-75'
-											: 'hover:bg-gray-50 dark:hover:bg-gray-700/40',
+											: order.import_status === 'likely_duplicate' || order.import_status === 'needs_review'
+												? 'bg-amber-50 dark:bg-amber-900/10'
+												: 'hover:bg-gray-50 dark:hover:bg-gray-700/40',
 								]"
 							>
+								<td class="px-3 py-2">
+									<input
+										type="checkbox"
+										:checked="selectedOrderKeys.has(orderKey(order, idx))"
+										:disabled="!isSelectable(order)"
+										class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-40"
+										@change="toggleOrderSelection(order, idx, $event)"
+									/>
+								</td>
 								<td class="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{{ idx + 1 }}</td>
 								<td class="px-3 py-2">
 									<input
@@ -109,15 +123,19 @@
 								</td>
 								<td class="px-3 py-2">
 									<span
-										:class="[
-											'inline-flex px-2 py-0.5 rounded text-xs font-semibold',
-											order.import_status === 'already_present'
-												? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-												: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-										]"
+										:class="importStatusClass(order.import_status)"
 									>
-										{{ order.import_status === 'already_present' ? 'Already present' : 'New' }}
+										{{ importStatusLabel(order.import_status) }}
 									</span>
+								</td>
+								<td class="px-3 py-2">
+									<div v-if="order.existing_order" class="space-y-0.5 text-xs text-gray-600 dark:text-gray-300">
+										<div class="font-mono">{{ order.existing_order.date }} - {{ order.existing_order.isin }}</div>
+										<div>
+											EUR {{ formatAmount(order.existing_order.amount_eur) }} / {{ order.existing_order.shares }} shares
+										</div>
+									</div>
+									<span v-else class="text-xs text-gray-400">-</span>
 								</td>
 								<td class="px-3 py-2">
 									<div v-if="editingIndex === idx" class="flex gap-1 justify-center">
@@ -182,7 +200,10 @@
 				<div class="flex flex-col gap-4 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30 sm:flex-row sm:items-center sm:justify-between">
 					<div class="text-sm text-gray-600 dark:text-gray-400">
 						<span class="font-medium text-gray-800 dark:text-gray-200">{{ importableOrders.length }}</span>
-						new orders ready to import
+						selected orders ready to import
+						<span v-if="reviewOrders.length" class="ml-2 text-amber-700 dark:text-amber-300">
+							{{ reviewOrders.length }} need review
+						</span>
 					</div>
 					<div class="flex flex-col-reverse gap-3 sm:flex-row">
 						<button
@@ -221,15 +242,28 @@ import { useToastStore } from '@/stores/toast'
 import { API_BASE_URL } from '@/services/config'
 
 interface CSVOrder {
+	id?: string
 	date: string
 	isin: string
 	amount_eur: number
 	shares: number
 	status: string
 	order_type?: 'buy' | 'sell'
-	import_status?: 'new' | 'already_present'
+	import_status?: 'new' | 'already_present' | 'likely_duplicate' | 'needs_review'
 	existing_order_id?: string | null
+	existing_order?: ExistingOrder | null
+	duplicate_match?: Record<string, unknown> | null
 	asset_type?: string
+}
+
+interface ExistingOrder {
+	id?: string | null
+	date?: string
+	isin?: string
+	order_type?: 'buy' | 'sell'
+	amount_eur?: number
+	shares?: number
+	status?: string
 }
 
 interface Props {
@@ -247,8 +281,15 @@ const toastStore = useToastStore()
 const parsedOrders = ref<CSVOrder[]>([])
 const importing = ref(false)
 const editingIndex = ref<number | null>(null)
-const importableOrders = computed(() => parsedOrders.value.filter((order) => order.import_status !== 'already_present'))
+const selectedOrderKeys = ref(new Set<string>())
+const importableOrders = computed(() => {
+	return parsedOrders.value.filter((order, idx) => isSelectable(order) && selectedOrderKeys.value.has(orderKey(order, idx)))
+})
+const newOrders = computed(() => parsedOrders.value.filter((order) => order.import_status === 'new'))
 const skippedOrders = computed(() => parsedOrders.value.filter((order) => order.import_status === 'already_present'))
+const reviewOrders = computed(() => {
+	return parsedOrders.value.filter((order) => order.import_status === 'likely_duplicate' || order.import_status === 'needs_review')
+})
 const editForm = ref<CSVOrder>({
 	date: '',
 	isin: '',
@@ -281,6 +322,11 @@ async function previewCSV(file: File) {
 			},
 		})
 		parsedOrders.value = response.data.orders || []
+		selectedOrderKeys.value = new Set(
+			parsedOrders.value
+				.map((order, idx) => (order.import_status === 'new' ? orderKey(order, idx) : null))
+				.filter((key): key is string => key !== null),
+		)
 		if (parsedOrders.value.length === 0) {
 			toastStore.addToast('No valid orders found in CSV', 'warning')
 		}
@@ -295,6 +341,51 @@ async function previewCSV(file: File) {
 	}
 }
 
+function orderKey(order: CSVOrder, idx: number) {
+	return order.id || `${order.date}-${order.isin}-${order.order_type || 'buy'}-${order.amount_eur}-${order.shares}-${idx}`
+}
+
+function isSelectable(order: CSVOrder) {
+	return order.import_status !== 'already_present'
+}
+
+function toggleOrderSelection(order: CSVOrder, idx: number, event: Event) {
+	const target = event.target as HTMLInputElement
+	const next = new Set(selectedOrderKeys.value)
+	const key = orderKey(order, idx)
+	if (target.checked) {
+		next.add(key)
+	} else {
+		next.delete(key)
+	}
+	selectedOrderKeys.value = next
+}
+
+function importStatusLabel(status: CSVOrder['import_status']) {
+	if (status === 'already_present') return 'Already present'
+	if (status === 'likely_duplicate') return 'Likely duplicate'
+	if (status === 'needs_review') return 'Needs review'
+	return 'New'
+}
+
+function importStatusClass(status: CSVOrder['import_status']) {
+	const base = 'inline-flex px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap'
+	if (status === 'already_present') {
+		return `${base} bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300`
+	}
+	if (status === 'likely_duplicate') {
+		return `${base} bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300`
+	}
+	if (status === 'needs_review') {
+		return `${base} bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300`
+	}
+	return `${base} bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300`
+}
+
+function formatAmount(value: number | undefined) {
+	return Number(value || 0).toFixed(2)
+}
+
 function startEdit(idx: number, order: CSVOrder) {
 	if (order.import_status === 'already_present') return
 	editingIndex.value = idx
@@ -303,6 +394,7 @@ function startEdit(idx: number, order: CSVOrder) {
 
 function saveEdit(idx: number) {
 	parsedOrders.value[idx] = { ...editForm.value, import_status: 'new' }
+	selectedOrderKeys.value = new Set([...selectedOrderKeys.value, orderKey(parsedOrders.value[idx], idx)])
 	editingIndex.value = null
 }
 
@@ -402,6 +494,7 @@ async function handleImport() {
 function close() {
 	emit('close')
 	parsedOrders.value = []
+	selectedOrderKeys.value = new Set()
 	editingIndex.value = null
 }
 </script>
