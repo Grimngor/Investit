@@ -48,7 +48,7 @@
 - Added Portfolio Performance range controls (`1M`, `3M`, `6M`, `1Y`, `3Y`, `Max`) and `DD/MM/YY` chart date formatting.
 - Standardized Asset Allocation pie chart sizing and added responsive allocation legends.
 - Fixed short Portfolio Performance ranges for sparse time-series data, made desktop allocation legends visible by default, improved legend contrast and mobile legend scrolling, and unified Portfolio page action button styling with an icon-only refresh action.
-- Added a Gmail-backed MyInvestor order import flow from the Portfolio page, including Gmail OAuth setup, read-only message scanning, MyInvestor email parsing, preview/selection UI, duplicate detection, and local processed-message tracking. See [temporary Gmail import notes](TEMP_GMAIL_MYINVESTOR_IMPORT.md).
+- Added a Gmail-backed MyInvestor order import flow from the Portfolio page, including Gmail OAuth setup, read-only message scanning, MyInvestor email parsing, preview/selection UI, duplicate detection, first-run backfill scanning, and local processed-message tracking. See [temporary Gmail import notes](TEMP_GMAIL_MYINVESTOR_IMPORT.md).
 
 ## Next Engineering Work
 

@@ -64,12 +64,18 @@ def gmail_message(message_id: str = "gmail-1") -> dict:
 class FakeGmailImportService(GmailImportService):
 	"""Gmail import service with network calls replaced by fixtures."""
 
+	def __init__(self) -> None:
+		"""Initialize the fake service."""
+		super().__init__()
+		self.requested_max_messages: list[int] = []
+
 	async def access_token(self, username: str) -> str:
 		"""Return a fake token."""
 		return "fake-token"
 
 	async def list_message_ids(self, access_token: str, query: str, max_messages: int) -> list[str]:
 		"""Return fixture message IDs."""
+		self.requested_max_messages.append(max_messages)
 		return ["gmail-1"]
 
 	async def get_message(self, access_token: str, message_id: str) -> dict:
@@ -107,6 +113,7 @@ async def test_gmail_scan_and_import_selected_message() -> None:
 
 	scan = await service.scan("gmail_user")
 	assert scan.new_count == 1
+	assert service.requested_max_messages == [100]
 	assert scan.orders[0].gmail_message_id == "gmail-1"
 	assert scan.orders[0].order["isin"] == "IE0031786696"
 
@@ -123,3 +130,6 @@ async def test_gmail_scan_and_import_selected_message() -> None:
 	second_result = await service.import_messages("gmail_user", ["gmail-1"])
 	assert second_result["imported_count"] == 0
 	assert second_result["skipped_count"] == 1
+
+	await service.scan("gmail_user")
+	assert service.requested_max_messages[-1] == 20

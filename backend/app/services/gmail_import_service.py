@@ -49,7 +49,7 @@ class GmailImportService:
 			"email": connection.get("email") if connection else None,
 			"scope": connection.get("scope") if connection else None,
 			"query": settings.GMAIL_IMPORT_QUERY,
-			"max_messages": settings.GMAIL_IMPORT_MAX_MESSAGES,
+			"max_messages": self.default_max_messages(username),
 		}
 
 	def build_auth_url(self, username: str, redirect_uri: str, return_path: str = "/portfolio") -> str:
@@ -122,7 +122,7 @@ class GmailImportService:
 		message_ids = await self.list_message_ids(
 			access_token,
 			query=query or settings.GMAIL_IMPORT_QUERY,
-			max_messages=max_messages or settings.GMAIL_IMPORT_MAX_MESSAGES,
+			max_messages=max_messages or self.default_max_messages(username),
 		)
 		processed_ids = self.processed_message_ids(username)
 		already_processed_count = 0
@@ -225,6 +225,12 @@ class GmailImportService:
 			params={"q": query, "maxResults": max_messages},
 		)
 		return [str(message["id"]) for message in response.get("messages", []) if message.get("id")]
+
+	def default_max_messages(self, username: str) -> int:
+		"""Return the default scan size, using a larger first Gmail backfill."""
+		if self.processed_message_ids(username):
+			return settings.GMAIL_IMPORT_MAX_MESSAGES
+		return settings.GMAIL_IMPORT_INITIAL_MAX_MESSAGES
 
 	async def get_message(self, access_token: str, message_id: str) -> dict[str, Any]:
 		"""Fetch a Gmail message with full payload data."""
