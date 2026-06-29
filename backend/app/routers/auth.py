@@ -233,8 +233,6 @@ async def complete_google_login(code: str, redirect_uri: str, service: GmailImpo
 				"updated_at": now,
 			},
 		)
-	elif not service.get_connection(user.username):
-		raise GmailImportError("Google did not return a refresh token. Reconnect and approve Gmail access.")
 
 	access_token = create_user_access_token(user)
 	return {"access_token": access_token, "token_type": "bearer"}

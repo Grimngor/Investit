@@ -409,6 +409,19 @@ async def test_google_login_rejects_non_allowlisted_email(monkeypatch):
 		await complete_google_login("code", "http://testserver/api/auth/google/callback", FakeGoogleLoginService())
 
 
+@pytest.mark.asyncio
+async def test_google_login_without_refresh_token_still_logs_in(monkeypatch):
+	"""Test Google login succeeds when Google omits a repeat-login refresh token."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "google-user@example.com")
+	service = FakeGoogleLoginService(refresh_token=None)
+
+	token = await complete_google_login("code", "http://testserver/api/auth/google/callback", service)
+
+	assert token["token_type"] == "bearer"
+	assert load_user_data("google-user")["email"] == "google-user@example.com"
+	assert service.get_connection("google-user") is None
+
+
 def test_login_wrong_password(test_user):
 	"""Test login fails with wrong password."""
 	response = client.post("/api/auth/login", data={"username": test_user["username"], "password": "wrongpassword"})
