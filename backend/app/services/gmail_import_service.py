@@ -99,7 +99,7 @@ class GmailImportService:
 			"response_type": "code",
 			"scope": self.LOGIN_SCOPE,
 			"access_type": "offline",
-			"prompt": "consent",
+			"prompt": "select_account",
 			"include_granted_scopes": "true",
 			"state": state,
 		}

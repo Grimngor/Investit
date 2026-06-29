@@ -358,6 +358,33 @@ Do not hand-edit password hashes unless you know the expected hash format. To ch
 
 To copy your local primary-user data to the Pi, transfer the SQLite database as a stopped-service restore:
 
+From Windows PowerShell, use the helper script:
+
+```powershell
+.\scripts\deploy\copy_local_db_to_pi.ps1
+```
+
+Defaults:
+
+- Remote: `javi@pi5.tailfc2d4f.ts.net`
+- Remote project root: `~/services/investit`
+- Local database: `data/investit.sqlite3`
+- SSH config: `NUL`, which bypasses the local Windows SSH config file if its permissions are broken.
+
+Override values when needed:
+
+```powershell
+.\scripts\deploy\copy_local_db_to_pi.ps1 -Remote "javi@Pi5" -RemoteRoot "~/services/investit"
+```
+
+The script stops the Pi stack, creates a remote backup under `data/backups/`, copies the local main SQLite file,
+removes remote WAL/SHM files, restarts Compose, and checks `/health`.
+
+The script defaults to `-SshConfigPath NUL` to bypass a broken Windows SSH config and uses
+`$HOME\.ssh\id_ed25519_pi5` automatically when that key exists.
+
+Manual equivalent:
+
 ```bash
 cd ~/services/investit
 docker compose down

@@ -90,7 +90,7 @@ Gmail import is optional and remains preview-first:
 - Selected imports are re-fetched server-side before writing orders.
 - Gmail message IDs and import status are stored in SQLite.
 
-The feature requires Google OAuth credentials in `.env`. Google login is shown only when OAuth credentials and the email allowlist are configured. For public users, the Google OAuth app may need verification because Gmail read-only access is a restricted scope.
+The feature requires Google OAuth credentials in `.env`. Google login is shown only when OAuth credentials and the email allowlist are configured. Repeat Google logins use account selection rather than forced consent, while the separate Gmail connection flow can still force consent to recover a refresh token. For public users, the Google OAuth app may need verification because Gmail read-only access is a restricted scope.
 
 ## Instrument Metadata And ISIN Resolution
 
