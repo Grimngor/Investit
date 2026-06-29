@@ -8,7 +8,7 @@ Finalized orders are sorted chronologically before position and cost-basis calcu
 
 ## Manual Orders
 
-Manual orders are created from the Portfolio page.
+Manual orders are created from the Portfolio page through the `Import` dropdown.
 
 Required fields:
 
@@ -22,7 +22,7 @@ The backend stores `price_per_share` as `amount_eur / shares` when no explicit e
 
 ## CSV Import
 
-The Portfolio page supports importing Spanish bank CSV files with a preview step.
+The Portfolio page supports importing Spanish bank CSV files with a preview step through the `Import` dropdown.
 
 Supported headers:
 
@@ -46,6 +46,25 @@ CSV rules:
 - `Estado = Rechazada` rows are skipped
 - Invalid rows produce row-level errors
 
+The CSV preview classifies rows before import:
+
+- `new`: selected by default.
+- `already_present`: exact duplicate and not selectable.
+- `likely_duplicate` or `needs_review`: close match against an existing order and unchecked by default.
+
+## Gmail Import
+
+The Portfolio page also supports Gmail-backed MyInvestor import through the same `Import` dropdown.
+
+Gmail rules:
+
+- Requires backend Google OAuth configuration.
+- Uses Gmail read-only access.
+- Searches MyInvestor messages from `notificaciones@myinvestor.es`.
+- Parses MyInvestor confirmation emails into normal InvestIt orders.
+- Uses a larger first-run scan and smaller later scans.
+- Uses the same duplicate classification as CSV imports.
+
 ## Orders Page
 
 The Orders page supports:
@@ -66,6 +85,13 @@ The Orders page supports:
 - `DELETE /api/orders/{order_id}`
 - `DELETE /api/orders/all`
 - `POST /api/orders/import-csv`
+- `POST /api/orders/import-csv/preview`
+- `GET /api/gmail/status`
+- `GET /api/gmail/auth-url`
+- `GET /api/gmail/oauth/callback`
+- `POST /api/gmail/scan`
+- `POST /api/gmail/import`
+- `POST /api/gmail/disconnect`
 
 All endpoints require a bearer token.
 

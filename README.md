@@ -55,14 +55,15 @@ Stop local servers:
 - [Orders Management](docs/ORDERS_MANAGEMENT.md)
 - [Operations](docs/OPERATIONS.md)
 - [Raspberry Pi Deployment](docs/DEPLOYMENT_PI.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Roadmap](ROADMAP.md)
 
 ## Runtime Notes
 
 - Register with a username and password; email and full name are optional.
 - Log in with either username or email when an email exists for the user.
 - Cached prices render immediately. The app queues a background refresh after login and on dashboard entry only when prices are missing or stale.
-- The manual Portfolio `Fetch Prices` action still forces a refresh.
+- The Portfolio page has an `Import` dropdown for Gmail, CSV, and manual order entry.
+- The manual Portfolio `Fetch Prices` action forces a price refresh.
 - Geography allocation is shown by country, with an optional Europe collapse and automatic `Others` grouping only when a chart has more than 15 entries.
 
 ## Data And Publishing

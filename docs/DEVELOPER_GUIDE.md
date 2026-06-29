@@ -27,6 +27,9 @@ The repository intentionally keeps a split layout: backend Python code and share
 
 For non-local frontends, set `BACKEND_CORS_ORIGINS` in `.env` to a JSON list of allowed origins.
 
+Gmail-backed MyInvestor import is optional. To enable it locally or on the Pi, configure `GOOGLE_OAUTH_CLIENT_ID`,
+`GOOGLE_OAUTH_CLIENT_SECRET`, and usually `GMAIL_OAUTH_REDIRECT_URI` in `.env`.
+
 Real runtime data stays in ignored files under `data/`. Public-safe examples are stored under `data/examples/`.
 
 Runtime persistence uses SQLite by default:
@@ -123,6 +126,7 @@ Scripts not listed here should not be added as scratch probes. Prefer backend te
 - Backend unreachable: verify `http://localhost:8000/health` and check `backend/logs/error.log`.
 - Frontend cannot register or log in: confirm the frontend API URL points to `http://localhost:8000`.
 - Stale prices: use Portfolio `Fetch Prices` for a manual force refresh, or check `POST /api/prices/refresh-if-needed` and the `prices_updated` WebSocket event.
+- Gmail import unavailable: confirm Google OAuth credentials are set and the redirect URI matches the Google Cloud OAuth client.
 - ISIN resolution: local manual overrides and OpenFIGI-derived mappings are stored in SQLite.
 - Vitest scans inaccessible folders: `.pytest_cache/**` is excluded in `frontend/vitest.config.ts`.
 - Route mismatch: run `.\scripts\dev\verify_backend.ps1` after starting the backend.

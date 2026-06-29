@@ -33,6 +33,12 @@ Frontend logging is handled by `frontend/src/utils/logger.ts`.
 - `FINNHUB_API_KEY`: optional market-data key.
 - `OPENFIGI_API_KEY`: optional OpenFIGI key for higher ISIN mapping limits.
 - `ISIN_RESOLUTION_CACHE_DAYS`: age threshold for OpenFIGI-derived ISIN mappings; default is `30`.
+- `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`: optional Google OAuth credentials for Gmail-backed MyInvestor import.
+- `GOOGLE_LOGIN_REDIRECT_URI`: optional explicit OAuth callback URL for Google login/register.
+- `GMAIL_OAUTH_REDIRECT_URI`: optional explicit OAuth callback URL for deployed Gmail import.
+- `GMAIL_IMPORT_MAX_MESSAGES`: normal Gmail scan size after initial import history exists; default is `20`.
+- `GMAIL_IMPORT_INITIAL_MAX_MESSAGES`: first-run Gmail backfill scan size; default is `100`.
+- `GMAIL_IMPORT_QUERY`: Gmail search query used to find MyInvestor order emails.
 
 ## WebSocket Events
 
@@ -57,7 +63,7 @@ Events:
 | `order_created` | Manual order created |
 | `order_updated` | Order updated |
 | `order_deleted` | Order deleted |
-| `orders_imported` | CSV import completed |
+| `orders_imported` | CSV or Gmail import completed |
 | `orders_cleared` | All orders deleted |
 | `prices_updated` | Background price refresh completed |
 
@@ -71,6 +77,20 @@ The app owns price refreshes through lightweight FastAPI background jobs; there 
 - `prices_updated`: WebSocket event emitted when a background refresh completes so open dashboard and portfolio views can reload current values.
 
 The frontend triggers `refresh-if-needed` after login and when entering the dashboard with an existing session. Cached data remains visible while the refresh runs.
+
+## Gmail MyInvestor Import
+
+Gmail import is optional and remains preview-first:
+
+- Allowlisted users can use Google login/register and grant Gmail read consent in the same flow.
+- The user connects Gmail from the Portfolio `Import` dropdown.
+- InvestIt requests `gmail.readonly`, searches candidate MyInvestor messages, parses order confirmations, and shows a preview.
+- Exact duplicates are skipped as already present.
+- Close duplicates are marked for review and are not selected by default.
+- Selected imports are re-fetched server-side before writing orders.
+- Gmail message IDs and import status are stored in SQLite.
+
+The feature requires Google OAuth credentials in `.env`. Google login is shown only when OAuth credentials and the email allowlist are configured. For public users, the Google OAuth app may need verification because Gmail read-only access is a restricted scope.
 
 ## Instrument Metadata And ISIN Resolution
 

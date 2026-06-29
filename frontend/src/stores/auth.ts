@@ -8,6 +8,7 @@ import { logger } from '@/utils/logger'
 const DEFAULT_AUTH_MODES: AuthModes = {
   password: true,
   trusted_proxy: false,
+  google: false,
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -20,6 +21,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!token.value)
   const trustedProxyAvailable = computed(() => authModes.value.trusted_proxy)
+  const googleAvailable = computed(() => authModes.value.google)
 
   function connectWebSocket(accessToken: string) {
     const ws = (wsClient as any).ws
@@ -91,6 +93,28 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  async function startGoogleLogin(returnPath = '/dashboard') {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await apiClient.getGoogleAuthUrl(returnPath)
+      window.location.href = response.auth_url
+      return true
+    } catch (err: any) {
+      error.value = err.response?.data?.detail || 'Google login failed'
+      useToastStore().addToast(error.value, 'error')
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function completeExternalLogin(accessToken: string, toastMessage?: string) {
+    await completeLogin(accessToken, toastMessage)
+    return true
   }
 
   async function tryTrustedProxyLogin() {
@@ -181,8 +205,11 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     isAuthenticated,
     trustedProxyAvailable,
+    googleAvailable,
     login,
     trustedProxyLogin,
+    startGoogleLogin,
+    completeExternalLogin,
     tryTrustedProxyLogin,
     register,
     fetchAuthModes,

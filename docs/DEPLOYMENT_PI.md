@@ -87,6 +87,12 @@ TRUSTED_PROXY_AUTH_ENABLED=false
 TRUSTED_PROXY_AUTH_ALLOWED_EMAILS=
 TRUSTED_PROXY_AUTH_HEADER_EMAIL=Tailscale-User-Login
 TRUSTED_PROXY_AUTH_HEADER_NAME=Tailscale-User-Name
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GOOGLE_LOGIN_REDIRECT_URI=
+GMAIL_OAUTH_REDIRECT_URI=
+GMAIL_IMPORT_MAX_MESSAGES=20
+GMAIL_IMPORT_INITIAL_MAX_MESSAGES=100
 ```
 
 `compose.yaml` overrides the backend container database path to `/app/data/investit.sqlite3`, while the host keeps the database under `INVESTIT_DATA_DIR`, which defaults to `./data/`.
@@ -208,6 +214,30 @@ docker compose up -d
 ```
 
 The login screen will show both password login and `Continue with Tailscale`. If Tailscale login fails, the password login remains available.
+
+## Gmail Import On The Pi
+
+Gmail-backed MyInvestor import and Google login/register are optional. If enabled, create a Google Cloud OAuth web client and add the Pi HTTPS callback URLs as authorized redirect URIs, for example:
+
+```text
+https://<pi-tailnet-name>.ts.net/api/auth/google/callback
+https://<pi-tailnet-name>.ts.net/api/gmail/oauth/callback
+```
+
+Then set:
+
+```env
+GOOGLE_OAUTH_CLIENT_ID=<client-id>
+GOOGLE_OAUTH_CLIENT_SECRET=<client-secret>
+GOOGLE_LOGIN_REDIRECT_URI=https://<pi-tailnet-name>.ts.net/api/auth/google/callback
+GMAIL_OAUTH_REDIRECT_URI=https://<pi-tailnet-name>.ts.net/api/gmail/oauth/callback
+GMAIL_IMPORT_MAX_MESSAGES=20
+GMAIL_IMPORT_INITIAL_MAX_MESSAGES=100
+```
+
+Rebuild/restart the stack after changing `.env`.
+
+Google login/register is restricted by `TRUSTED_PROXY_AUTH_ALLOWED_EMAILS`. Add each family/friend email there before they try to sign in.
 
 ## Upgrade And Rollback
 

@@ -10,6 +10,12 @@ class Token(BaseModel):
 	token_type: str
 
 
+class AuthUrlResponse(BaseModel):
+	"""External authentication URL response schema."""
+
+	auth_url: str
+
+
 class TokenData(BaseModel):
 	"""Token payload data."""
 

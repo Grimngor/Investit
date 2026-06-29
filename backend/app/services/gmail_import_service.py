@@ -29,7 +29,9 @@ class GmailImportService:
 	TOKEN_URL = "https://oauth2.googleapis.com/token"
 	GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1"
 	PROFILE_URL = f"{GMAIL_API_BASE}/users/me/profile"
+	USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 	SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+	LOGIN_SCOPE = f"openid email profile {SCOPE}"
 
 	def __init__(self, db: DatabaseService | None = None, parser: MyInvestorEmailParser | None = None) -> None:
 		"""Initialize the service."""
@@ -77,6 +79,32 @@ class GmailImportService:
 		}
 		return f"{self.AUTH_URL}?{urlencode(params)}"
 
+	def build_google_login_auth_url(self, redirect_uri: str, return_path: str = "/dashboard") -> str:
+		"""Build a Google OAuth URL for app login/register plus Gmail import consent."""
+		if not self.is_configured():
+			raise GmailImportError("Google OAuth is not configured.")
+
+		state = jwt.encode(
+			{
+				"kind": "google_login",
+				"return_path": return_path if return_path.startswith("/") else "/dashboard",
+				"exp": datetime.now(UTC) + timedelta(minutes=15),
+			},
+			settings.SECRET_KEY,
+			algorithm=settings.ALGORITHM,
+		)
+		params = {
+			"client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+			"redirect_uri": self.effective_google_login_redirect_uri(redirect_uri),
+			"response_type": "code",
+			"scope": self.LOGIN_SCOPE,
+			"access_type": "offline",
+			"prompt": "consent",
+			"include_granted_scopes": "true",
+			"state": state,
+		}
+		return f"{self.AUTH_URL}?{urlencode(params)}"
+
 	def parse_state(self, state: str) -> dict[str, Any]:
 		"""Decode and validate an OAuth state token."""
 		try:
@@ -85,6 +113,16 @@ class GmailImportService:
 			raise GmailImportError("Invalid Gmail OAuth state.") from exc
 		if not payload.get("sub"):
 			raise GmailImportError("Invalid Gmail OAuth state.")
+		return payload
+
+	def parse_login_state(self, state: str) -> dict[str, Any]:
+		"""Decode and validate a Google login OAuth state token."""
+		try:
+			payload = jwt.decode(state, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+		except JWTError as exc:
+			raise GmailImportError("Invalid Google OAuth state.") from exc
+		if payload.get("kind") != "google_login":
+			raise GmailImportError("Invalid Google OAuth state.")
 		return payload
 
 	async def complete_oauth(self, username: str, code: str, redirect_uri: str) -> None:
@@ -115,6 +153,24 @@ class GmailImportService:
 				"updated_at": datetime.now(UTC).isoformat(),
 			},
 		)
+
+	async def exchange_code(self, code: str, redirect_uri: str) -> dict[str, Any]:
+		"""Exchange a Google OAuth authorization code for tokens."""
+		return await self._post_token(
+			{
+				"client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+				"client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
+				"code": code,
+				"grant_type": "authorization_code",
+				"redirect_uri": redirect_uri,
+			}
+		)
+
+	async def userinfo(self, access_token: str) -> dict[str, Any]:
+		"""Fetch Google OpenID user profile information."""
+		if not access_token:
+			raise GmailImportError("Google did not return an access token.")
+		return await self._get_json(self.USERINFO_URL, access_token)
 
 	async def scan(self, username: str, query: str | None = None, max_messages: int | None = None) -> GmailScanResponse:
 		"""Scan Gmail for MyInvestor order emails and return import previews."""
@@ -258,6 +314,10 @@ class GmailImportService:
 		"""Return configured redirect URI or the request-derived fallback."""
 		return settings.GMAIL_OAUTH_REDIRECT_URI or fallback_redirect_uri
 
+	def effective_google_login_redirect_uri(self, fallback_redirect_uri: str) -> str:
+		"""Return configured Google login redirect URI or the request-derived fallback."""
+		return settings.GOOGLE_LOGIN_REDIRECT_URI or fallback_redirect_uri
+
 	def get_connection(self, username: str) -> dict[str, Any] | None:
 		"""Load a user's Gmail connection."""
 		self.db.initialize()
@@ -325,6 +385,10 @@ class GmailImportService:
 				"INSERT OR REPLACE INTO gmail_imports (username, gmail_message_id, import_json) VALUES (?, ?, ?)",
 				(username, parsed.gmail_message_id, json.dumps(record, ensure_ascii=False)),
 			)
+
+	def now_iso(self) -> str:
+		"""Return the current UTC timestamp as an ISO string."""
+		return datetime.now(UTC).isoformat()
 
 	def parsed_hash(self, order: dict[str, Any]) -> str:
 		"""Return a stable hash for parsed order content."""

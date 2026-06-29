@@ -43,7 +43,7 @@ def authenticate_user(username_or_email: str, password: str) -> User | None:
 	user_data = users.get(username_or_email)
 	if not user_data:
 		login_email = username_or_email.casefold()
-		user_data = next((data for data in users.values() if str(data.get("email", "")).casefold() == login_email), None)
+		user_data = next((data for data in users.values() if user_matches_email(data, login_email)), None)
 
 	if not user_data:
 		return None
@@ -87,12 +87,25 @@ def is_trusted_proxy_email_allowed(email: str) -> bool:
 	return email.casefold() in get_trusted_proxy_allowed_emails()
 
 
+def user_email_values(user_data: dict[str, Any]) -> set[str]:
+	"""Return all login email values stored for a user."""
+	values = {str(user_data.get("email", "")).strip().casefold()}
+	values.update(str(email).strip().casefold() for email in user_data.get("email_aliases", []) if str(email).strip())
+	return {value for value in values if value}
+
+
+def user_matches_email(user_data: dict[str, Any], email: str) -> bool:
+	"""Return whether a stored user matches an email or email alias."""
+	return email.casefold() in user_email_values(user_data)
+
+
 def is_user_allowed_by_email_allowlist(user: User) -> bool:
 	"""Return whether a user matches the configured email allowlist."""
 	allowed = get_trusted_proxy_allowed_emails()
 	if not allowed:
 		return True
-	return user.email.casefold() in allowed or user.username.casefold() in allowed
+	emails = {user.email.casefold(), *(email.casefold() for email in user.email_aliases)}
+	return bool(emails & allowed) or user.username.casefold() in allowed
 
 
 def build_user(user_data: dict[str, Any]) -> User:
@@ -100,6 +113,7 @@ def build_user(user_data: dict[str, Any]) -> User:
 	return User(
 		username=user_data["username"],
 		email=user_data.get("email", ""),
+		email_aliases=user_data.get("email_aliases", []),
 		full_name=user_data.get("full_name"),
 		disabled=user_data.get("disabled", False),
 	)
@@ -111,7 +125,7 @@ def find_user_by_trusted_proxy_email(email: str) -> User | None:
 	users = get_all_users()
 
 	for username, user_data in users.items():
-		if username.casefold() == login_email or str(user_data.get("email", "")).casefold() == login_email:
+		if username.casefold() == login_email or user_matches_email(user_data, login_email):
 			return build_user(user_data)
 
 	return None

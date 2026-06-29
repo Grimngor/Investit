@@ -4,6 +4,7 @@ import { API_BASE_URL } from '@/services/config'
 export interface AuthModes {
   password: boolean
   trusted_proxy: boolean
+  google: boolean
 }
 
 export interface GmailConnectionStatus {
@@ -129,6 +130,13 @@ class APIClient {
 
   async trustedProxyLogin() {
     const response = await this.client.post('/api/auth/trusted-proxy/login')
+    return response.data
+  }
+
+  async getGoogleAuthUrl(returnPath = '/dashboard'): Promise<{ auth_url: string }> {
+    const response = await this.client.get('/api/auth/google/auth-url', {
+      params: { return_path: returnPath },
+    })
     return response.data
   }
 

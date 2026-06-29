@@ -3,12 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginView from '../LoginView.vue'
 
 const push = vi.fn()
+const replace = vi.fn()
 const fetchAuthModes = vi.fn()
 const login = vi.fn()
 const trustedProxyLogin = vi.fn()
+const startGoogleLogin = vi.fn()
+const completeExternalLogin = vi.fn()
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace }),
+  useRoute: () => ({ path: '/login', query: {}, hash: '' }),
   RouterLink: {
     name: 'RouterLink',
     template: '<a><slot /></a>',
@@ -19,9 +23,18 @@ vi.mock('@/stores/auth', () => ({
   useAuthStore: () => ({
     error: null,
     trustedProxyAvailable: true,
+    googleAvailable: false,
     fetchAuthModes,
     login,
     trustedProxyLogin,
+    startGoogleLogin,
+    completeExternalLogin,
+  }),
+}))
+
+vi.mock('@/stores/toast', () => ({
+  useToastStore: () => ({
+    addToast: vi.fn(),
   }),
 }))
 
@@ -43,9 +56,12 @@ function mountLoginView() {
 describe('LoginView', () => {
   beforeEach(() => {
     push.mockReset()
+    replace.mockReset()
     fetchAuthModes.mockReset()
     login.mockReset()
     trustedProxyLogin.mockReset()
+    startGoogleLogin.mockReset()
+    completeExternalLogin.mockReset()
   })
 
   it('loads auth modes and shows trusted proxy login when available', () => {

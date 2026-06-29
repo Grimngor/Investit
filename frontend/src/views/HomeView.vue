@@ -2,6 +2,17 @@
   <AuthLayout subtitle="Access your portfolio">
     <template #title>Investit</template>
     <button
+      v-if="authStore.googleAvailable"
+      type="button"
+      :disabled="googleLoading"
+      class="w-full mb-4 inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      @click="handleGoogleLogin"
+    >
+      <Mail class="h-4 w-4" aria-hidden="true" />
+      {{ googleLoading ? 'Connecting...' : 'Continue with Google' }}
+    </button>
+
+    <button
       v-if="authStore.trustedProxyAvailable"
       type="button"
       :disabled="trustedProxyLoading"
@@ -36,21 +47,26 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ShieldCheck } from 'lucide-vue-next'
+import { Mail, ShieldCheck } from 'lucide-vue-next'
 import AuthLayout from '@/components/AuthLayout.vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useToastStore } from '@/stores/toast'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+const toastStore = useToastStore()
 
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const trustedProxyLoading = ref(false)
+const googleLoading = ref(false)
 
-onMounted(() => {
-  authStore.fetchAuthModes()
+onMounted(async () => {
+  await authStore.fetchAuthModes()
+  await handleGoogleCallback()
 })
 
 async function handleLogin() {
@@ -70,6 +86,26 @@ async function handleTrustedProxyLogin() {
 
   if (success) {
     router.push('/dashboard')
+  }
+}
+
+async function handleGoogleLogin() {
+  googleLoading.value = true
+  await authStore.startGoogleLogin('/')
+  googleLoading.value = false
+}
+
+async function handleGoogleCallback() {
+  const params = new URLSearchParams(route.hash.replace(/^#/, ''))
+  const googleStatus = params.get('google')
+  const accessToken = params.get('access_token')
+  if (googleStatus === 'connected' && accessToken) {
+    await authStore.completeExternalLogin(accessToken, 'Google login successful')
+    await router.replace('/dashboard')
+  } else if (googleStatus === 'error') {
+    const message = params.get('message') || 'Google login failed'
+    toastStore.addToast(message, 'error')
+    await router.replace({ path: route.path, query: {}, hash: '' })
   }
 }
 </script>

@@ -6,10 +6,33 @@ from fastapi.testclient import TestClient
 from app.config import settings
 from app.main import app
 from app.models.persistence import get_all_users, load_user_data, save_user_data
+from app.routers.auth import complete_google_login
 from app.services.auth import get_password_hash
+from app.services.gmail_import_service import GmailImportError, GmailImportService
 from app.services.storage_service import StorageService
 
 client = TestClient(app)
+
+
+class FakeGoogleLoginService(GmailImportService):
+	"""Google login service with network calls replaced by fixtures."""
+
+	def __init__(self, email: str = "google-user@example.com", refresh_token: str | None = "refresh-token") -> None:
+		"""Initialize the fake Google service."""
+		super().__init__()
+		self.email = email
+		self.refresh_token = refresh_token
+
+	async def exchange_code(self, code: str, redirect_uri: str) -> dict:
+		"""Return fake OAuth tokens."""
+		payload = {"access_token": "google-access-token", "scope": self.LOGIN_SCOPE}
+		if self.refresh_token:
+			payload["refresh_token"] = self.refresh_token
+		return payload
+
+	async def userinfo(self, access_token: str) -> dict:
+		"""Return fake Google profile data."""
+		return {"email": self.email, "email_verified": True, "name": "Google User"}
 
 
 @pytest.fixture
@@ -140,6 +163,19 @@ def test_login_with_email(test_user):
 	assert "access_token" in response.json()
 
 
+def test_login_with_email_alias(test_user):
+	"""Test successful login with an email alias when one is stored."""
+	users = get_all_users()
+	users[test_user["username"]]["email"] = "auth-user@example.com"
+	users[test_user["username"]]["email_aliases"] = ["alias@example.com"]
+	StorageService.save_json(settings.DATA_DIR / "users.json", users)
+
+	response = client.post("/api/auth/login", data={"username": "ALIAS@example.com", "password": test_user["password"]})
+
+	assert response.status_code == 200
+	assert "access_token" in response.json()
+
+
 def test_login_requires_allowlisted_user_when_allowlist_configured(monkeypatch):
 	"""Test password login rejects users outside the configured email allowlist."""
 	username = "blocked_login"
@@ -183,12 +219,46 @@ def test_login_accepts_allowlisted_user_when_allowlist_configured(monkeypatch):
 	assert "access_token" in response.json()
 
 
+def test_login_accepts_allowlisted_alias_when_allowlist_configured(monkeypatch):
+	"""Test password login accepts users whose alias is allowlisted."""
+	username = "allowed_alias_login"
+	save_user_data(
+		username,
+		{
+			"username": username,
+			"email": "primary@example.com",
+			"email_aliases": ["allowed-alias@example.com"],
+			"hashed_password": get_password_hash("password123"),
+			"disabled": False,
+			"holdings": [],
+		},
+	)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "allowed-alias@example.com")
+
+	response = client.post("/api/auth/login", data={"username": username, "password": "password123"})
+
+	assert response.status_code == 200
+	assert "access_token" in response.json()
+
+
 def test_auth_modes_default_to_password_only():
 	"""Test default authentication modes keep trusted proxy auth disabled."""
 	response = client.get("/api/auth/modes")
 
 	assert response.status_code == 200
-	assert response.json() == {"password": True, "trusted_proxy": False}
+	assert response.json() == {"password": True, "trusted_proxy": False, "google": False}
+
+
+def test_auth_modes_enable_google_when_oauth_and_allowlist_configured(monkeypatch):
+	"""Test Google auth mode appears only when OAuth and allowlist are configured."""
+	monkeypatch.setattr(settings, "GOOGLE_OAUTH_CLIENT_ID", "client-id")
+	monkeypatch.setattr(settings, "GOOGLE_OAUTH_CLIENT_SECRET", "client-secret")
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "owner@example.com")
+
+	response = client.get("/api/auth/modes")
+
+	assert response.status_code == 200
+	assert response.json()["google"] is True
 
 
 def test_trusted_proxy_login_returns_404_when_disabled():
@@ -257,6 +327,86 @@ def test_trusted_proxy_login_success_for_linked_allowlisted_user(monkeypatch):
 	me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
 	assert me.status_code == 200
 	assert me.json()["username"] == username
+
+
+def test_trusted_proxy_login_success_for_linked_alias(monkeypatch):
+	"""Test trusted proxy login can match a stored email alias."""
+	username = "tailscale_alias_user"
+	email = "owner@example.com"
+	alias = "owner.alias@example.com"
+	save_user_data(
+		username,
+		{
+			"username": username,
+			"email": email,
+			"email_aliases": [alias],
+			"hashed_password": get_password_hash("unused-password"),
+			"disabled": False,
+			"holdings": [],
+		},
+	)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ENABLED", True)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", alias)
+
+	response = client.post("/api/auth/trusted-proxy/login", headers={"Tailscale-User-Login": alias})
+
+	assert response.status_code == 200
+	token = response.json()["access_token"]
+
+	me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+	assert me.status_code == 200
+	assert me.json()["username"] == username
+
+
+@pytest.mark.asyncio
+async def test_google_login_creates_allowlisted_user_and_gmail_connection(monkeypatch):
+	"""Test Google login can auto-register allowlisted users and save Gmail connection."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "google-user@example.com")
+	service = FakeGoogleLoginService()
+
+	token = await complete_google_login("code", "http://testserver/api/auth/google/callback", service)
+
+	assert token["token_type"] == "bearer"
+	created = load_user_data("google-user")
+	assert created["email"] == "google-user@example.com"
+	connection = service.get_connection("google-user")
+	assert connection is not None
+	assert connection["email"] == "google-user@example.com"
+
+
+@pytest.mark.asyncio
+async def test_google_login_links_email_alias_to_existing_user(monkeypatch):
+	"""Test Google login maps an alias to an existing account instead of creating another user."""
+	save_user_data(
+		"existing_google_owner",
+		{
+			"username": "existing_google_owner",
+			"email": "primary@example.com",
+			"email_aliases": ["google-user@example.com"],
+			"hashed_password": get_password_hash("password123"),
+			"disabled": False,
+			"holdings": [],
+		},
+	)
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "google-user@example.com")
+	service = FakeGoogleLoginService()
+
+	token = await complete_google_login("code", "http://testserver/api/auth/google/callback", service)
+
+	me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token['access_token']}"})
+	assert me.status_code == 200
+	assert me.json()["username"] == "existing_google_owner"
+	assert load_user_data("google-user") == {}
+	assert service.get_connection("existing_google_owner") is not None
+
+
+@pytest.mark.asyncio
+async def test_google_login_rejects_non_allowlisted_email(monkeypatch):
+	"""Test Google login rejects emails outside the allowlist."""
+	monkeypatch.setattr(settings, "TRUSTED_PROXY_AUTH_ALLOWED_EMAILS", "owner@example.com")
+
+	with pytest.raises(GmailImportError, match="Google email is not allowed"):
+		await complete_google_login("code", "http://testserver/api/auth/google/callback", FakeGoogleLoginService())
 
 
 def test_login_wrong_password(test_user):
