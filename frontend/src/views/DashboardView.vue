@@ -193,6 +193,10 @@ async function handlePricesUpdated() {
   await Promise.all([dashboardStore.handlePricesUpdated(), portfolioStore.fetchPortfolio()])
 }
 
+async function handleOrdersChanged() {
+  await Promise.all([portfolioStore.fetchPortfolio(), dashboardStore.fetchAll()])
+}
+
 function currentDesktopState(): boolean {
   if (typeof window === 'undefined' || !window.matchMedia) return false
   return window.matchMedia('(min-width: 1024px)').matches
@@ -210,6 +214,11 @@ onMounted(async () => {
   syncDesktopState()
   window.addEventListener('resize', syncDesktopState)
   wsClient.on('prices_updated', handlePricesUpdated)
+  wsClient.on('orders_imported', handleOrdersChanged)
+  wsClient.on('order_created', handleOrdersChanged)
+  wsClient.on('order_updated', handleOrdersChanged)
+  wsClient.on('order_deleted', handleOrdersChanged)
+  wsClient.on('orders_cleared', handleOrdersChanged)
   await Promise.all([portfolioStore.fetchPortfolio(), dashboardStore.fetchAll()])
   await dashboardStore.refreshPricesIfNeeded()
 })
@@ -217,6 +226,11 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('resize', syncDesktopState)
   wsClient.off('prices_updated', handlePricesUpdated)
+  wsClient.off('orders_imported', handleOrdersChanged)
+  wsClient.off('order_created', handleOrdersChanged)
+  wsClient.off('order_updated', handleOrdersChanged)
+  wsClient.off('order_deleted', handleOrdersChanged)
+  wsClient.off('orders_cleared', handleOrdersChanged)
 })
 </script>
 

@@ -8,7 +8,7 @@ Finalized orders are sorted chronologically before position and cost-basis calcu
 
 ## Manual Orders
 
-Manual orders are created from the Portfolio page through the `Import` dropdown.
+Manual orders are created from the Portfolio or Orders page through the `Import` dropdown.
 
 Required fields:
 
@@ -22,7 +22,7 @@ The backend stores `price_per_share` as `amount_eur / shares` when no explicit e
 
 ## CSV Import
 
-The Portfolio page supports importing Spanish bank CSV files with a preview step through the `Import` dropdown.
+The Portfolio and Orders pages support importing Spanish bank CSV files with a preview step through the `Import` dropdown.
 
 Supported headers:
 
@@ -54,7 +54,7 @@ The CSV preview classifies rows before import:
 
 ## Gmail Import
 
-The Portfolio page also supports Gmail-backed MyInvestor import through the same `Import` dropdown.
+The Portfolio and Orders pages also support Gmail-backed MyInvestor import through the same `Import` dropdown.
 
 Gmail rules:
 
@@ -70,6 +70,8 @@ Gmail rules:
 The Orders page supports:
 
 - Viewing index fund and crypto orders separately
+- Importing orders from Gmail or CSV
+- Adding manual orders
 - Editing one order
 - Deleting one order
 - Selecting and deleting multiple orders

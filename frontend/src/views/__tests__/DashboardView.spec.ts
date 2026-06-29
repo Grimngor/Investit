@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import DashboardView from '../DashboardView.vue'
+import { wsClient } from '@/services/websocket'
 
 vi.mock('@/stores/portfolio', () => ({
   usePortfolioStore: () => ({
@@ -88,5 +89,21 @@ describe('DashboardView', () => {
     expect(wrapper.find('[data-testid="pie-allocation"]').attributes('data-show-legend')).toBe(
       'false',
     )
+  })
+
+  it('listens for order change websocket events', () => {
+    vi.mocked(wsClient.on).mockClear()
+
+    mountDashboard()
+
+    for (const eventType of [
+      'orders_imported',
+      'order_created',
+      'order_updated',
+      'order_deleted',
+      'orders_cleared',
+    ]) {
+      expect(wsClient.on).toHaveBeenCalledWith(eventType, expect.any(Function))
+    }
   })
 })

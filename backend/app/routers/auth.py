@@ -221,6 +221,7 @@ async def complete_google_login(code: str, redirect_uri: str, service: GmailImpo
 		raise GmailImportError("Inactive user.")
 
 	refresh_token = token_payload.get("refresh_token")
+	access_token = str(token_payload.get("access_token", ""))
 	if refresh_token:
 		now = service.now_iso()
 		service.save_connection(
@@ -233,9 +234,25 @@ async def complete_google_login(code: str, redirect_uri: str, service: GmailImpo
 				"updated_at": now,
 			},
 		)
+	elif access_token:
+		existing_connection = service.get_connection(user.username)
+		if not existing_connection or not existing_connection.get("encrypted_refresh_token"):
+			now = service.now_iso()
+			service.save_connection(
+				user.username,
+				{
+					**(existing_connection or {}),
+					"email": email,
+					"scope": token_payload.get("scope", service.LOGIN_SCOPE),
+					"encrypted_access_token": service.encrypt_token(access_token),
+					"access_token_expires_at": service.access_token_expiry_iso(token_payload),
+					"connected_at": (existing_connection or {}).get("connected_at", now),
+					"updated_at": now,
+				},
+			)
 
-	access_token = create_user_access_token(user)
-	return {"access_token": access_token, "token_type": "bearer"}
+	app_access_token = create_user_access_token(user)
+	return {"access_token": app_access_token, "token_type": "bearer"}
 
 
 def create_google_user(email: str, profile: dict) -> User:

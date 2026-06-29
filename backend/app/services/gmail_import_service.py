@@ -259,6 +259,11 @@ class GmailImportService:
 		connection = self.get_connection(username)
 		if not connection:
 			raise GmailImportError("Gmail is not connected.")
+		encrypted_access_token = connection.get("encrypted_access_token")
+		if encrypted_access_token and self.access_token_is_valid(connection):
+			return self.decrypt_token(encrypted_access_token)
+		if encrypted_access_token and not connection.get("encrypted_refresh_token"):
+			raise GmailImportError("Gmail connection expired. Reconnect Gmail to import orders.")
 		refresh_token = self.decrypt_token(connection["encrypted_refresh_token"])
 		token_payload = await self._post_token(
 			{
@@ -317,6 +322,21 @@ class GmailImportService:
 	def effective_google_login_redirect_uri(self, fallback_redirect_uri: str) -> str:
 		"""Return configured Google login redirect URI or the request-derived fallback."""
 		return settings.GOOGLE_LOGIN_REDIRECT_URI or fallback_redirect_uri
+
+	def access_token_expiry_iso(self, token_payload: dict[str, Any]) -> str:
+		"""Return the access token expiry timestamp from a Google token response."""
+		expires_in = int(token_payload.get("expires_in") or 3600)
+		return (datetime.now(UTC) + timedelta(seconds=max(expires_in - 60, 0))).isoformat()
+
+	def access_token_is_valid(self, connection: dict[str, Any]) -> bool:
+		"""Return whether a stored Google access token is still usable."""
+		expires_at = connection.get("access_token_expires_at")
+		if not expires_at:
+			return False
+		try:
+			return datetime.fromisoformat(str(expires_at)) > datetime.now(UTC)
+		except ValueError:
+			return False
 
 	def get_connection(self, username: str) -> dict[str, Any] | None:
 		"""Load a user's Gmail connection."""

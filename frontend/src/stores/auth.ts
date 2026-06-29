@@ -177,6 +177,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     wsClient.disconnect()
+    void fetchAuthModes()
     useToastStore().addToast('Logged out successfully', 'info')
   }
 

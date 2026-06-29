@@ -2,9 +2,7 @@
 
 ## To Do
 
-- Duplicate the Import dropdown and it's functionality in the orders tab.
-- Brainstorm standarizing the button colors and style depending on the type of button and state.
-- Add Dashboard WebSocket listeners for `orders_imported`, `order_created`, `order_updated`, `order_deleted`, and `orders_cleared`, then refresh dashboard allocations/KPIs so pie charts update live when orders change in another tab.
+- No active engineering items queued.
 
 ## Future Work
 
@@ -67,3 +65,7 @@
 - Fixed desktop Asset Allocation pie chart alignment when responsive legends are visible.
 - Added smart CSV/Gmail import duplicate review for close ISIN/type/share/date/amount matches, with review rows unchecked by default and existing-order comparisons shown in preview tables.
 - Preserved saved Gmail OAuth connections across SQLite user/order/price rewrites by avoiding user-row delete/reinsert cascades for existing users.
+- Added the shared Gmail/CSV/manual `Import` dropdown to the Orders page.
+- Standardized primary, secondary, danger, and dropdown action button styles for Portfolio and Orders page actions.
+- Added Dashboard WebSocket refresh listeners for order imports, creates, updates, deletes, and clears so allocation charts and KPIs update when orders change in another tab.
+- Reused Google-login Gmail access for immediate Gmail imports when Google does not issue a repeat refresh token.

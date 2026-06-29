@@ -11,7 +11,7 @@
         <div class="relative">
           <button
             @click="showImportMenu = !showImportMenu"
-            class="portfolio-action portfolio-action--primary"
+            class="action-button action-button--primary"
             type="button"
             aria-haspopup="menu"
             :aria-expanded="showImportMenu"
@@ -22,19 +22,19 @@
           </button>
           <div
             v-if="showImportMenu"
-            class="import-menu"
+            class="action-menu"
             role="menu"
             @keydown.esc="showImportMenu = false"
           >
-            <button type="button" class="import-menu-item" role="menuitem" @click="openGmailImport">
+            <button type="button" class="action-menu-item" role="menuitem" @click="openGmailImport">
               <Mail class="h-4 w-4" />
               Import Gmail
             </button>
-            <button type="button" class="import-menu-item" role="menuitem" @click="openCsvImport">
+            <button type="button" class="action-menu-item" role="menuitem" @click="openCsvImport">
               <Upload class="h-4 w-4" />
               Import CSV
             </button>
-            <button type="button" class="import-menu-item" role="menuitem" @click="openManualOrder">
+            <button type="button" class="action-menu-item" role="menuitem" @click="openManualOrder">
               <Plus class="h-4 w-4" />
               Add Manual Order
             </button>
@@ -43,7 +43,7 @@
         <button
           @click="fetchPrices"
           :disabled="loading || fetchingPrices"
-          class="portfolio-action portfolio-action--secondary"
+          class="action-button action-button--secondary"
         >
           <CircleDollarSign class="h-4 w-4" />
           <span v-if="!fetchingPrices">Fetch Prices</span>
@@ -405,121 +405,4 @@ function withoutGmailQuery() {
 }
 </script>
 
-<style scoped>
-.portfolio-action,
-.portfolio-icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 2.375rem;
-  border-radius: 0.375rem;
-  border: 1px solid rgb(203 213 225);
-  padding: 0.5rem 0.875rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    opacity 150ms ease;
-}
-
-.portfolio-icon-button {
-  width: 2.375rem;
-  padding: 0.5rem;
-}
-
-.portfolio-action:disabled,
-.portfolio-icon-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
-.portfolio-action--primary {
-  border-color: rgb(37 99 235);
-  background-color: rgb(37 99 235);
-  color: white;
-}
-
-.portfolio-action--primary:hover:not(:disabled) {
-  border-color: rgb(29 78 216);
-  background-color: rgb(29 78 216);
-}
-
-.portfolio-action--secondary,
-.portfolio-icon-button {
-  background-color: white;
-  color: rgb(51 65 85);
-}
-
-.portfolio-action--secondary:hover:not(:disabled),
-.portfolio-icon-button:hover:not(:disabled) {
-  border-color: rgb(148 163 184);
-  background-color: rgb(248 250 252);
-  color: rgb(15 23 42);
-}
-
-.import-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.5rem);
-  z-index: 20;
-  display: grid;
-  min-width: 13rem;
-  gap: 0.25rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgb(226 232 240);
-  background: white;
-  padding: 0.375rem;
-  box-shadow: 0 16px 40px rgb(15 23 42 / 16%);
-}
-
-.import-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  border-radius: 0.375rem;
-  padding: 0.625rem 0.75rem;
-  color: rgb(51 65 85);
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-align: left;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease;
-}
-
-.import-menu-item:hover {
-  background: rgb(241 245 249);
-  color: rgb(15 23 42);
-}
-
-:global(.dark) .portfolio-action--secondary,
-:global(.dark) .portfolio-icon-button {
-  border-color: rgb(75 85 99);
-  background-color: rgb(31 41 55);
-  color: rgb(229 231 235);
-}
-
-:global(.dark) .portfolio-action--secondary:hover:not(:disabled),
-:global(.dark) .portfolio-icon-button:hover:not(:disabled) {
-  border-color: rgb(107 114 128);
-  background-color: rgb(55 65 81);
-  color: rgb(249 250 251);
-}
-
-:global(.dark) .import-menu {
-  border-color: rgb(55 65 81);
-  background: rgb(31 41 55);
-}
-
-:global(.dark) .import-menu-item {
-  color: rgb(229 231 235);
-}
-
-:global(.dark) .import-menu-item:hover {
-  background: rgb(55 65 81);
-  color: rgb(249 250 251);
-}
-</style>
+<style scoped></style>

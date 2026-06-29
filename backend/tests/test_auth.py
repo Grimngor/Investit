@@ -419,7 +419,10 @@ async def test_google_login_without_refresh_token_still_logs_in(monkeypatch):
 
 	assert token["token_type"] == "bearer"
 	assert load_user_data("google-user")["email"] == "google-user@example.com"
-	assert service.get_connection("google-user") is None
+	connection = service.get_connection("google-user")
+	assert connection is not None
+	assert connection["email"] == "google-user@example.com"
+	assert "encrypted_access_token" in connection
 
 
 def test_login_wrong_password(test_user):

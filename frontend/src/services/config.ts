@@ -6,6 +6,15 @@ export function getWebSocketUrl() {
     return configuredUrl
   }
 
+  if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
+    const apiUrl = new URL(API_BASE_URL)
+    apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+    apiUrl.pathname = '/ws'
+    apiUrl.search = ''
+    apiUrl.hash = ''
+    return apiUrl.toString()
+  }
+
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   return `${protocol}//${window.location.host}/ws`
 }
